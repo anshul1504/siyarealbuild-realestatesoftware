@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Register - Siya Real Build{% endblock %}
+{% block content %}
+<div class="page-layout">
+  <div class="auth-frame-wrapper">
+    <div class="inner-wrap">
+      <div class="mb-4 text-center">
+        <a href="{% url 'accounts:login' %}" aria-label="Siya Real Build logo">
+          <img class="auth-brand-logo" src="{% static 'assets/images/siya-builder-logo-transparent.png' %}" alt="Siya Real Build">
+        </a>
+      </div>
+      <div class="text-center mb-5">
+        <h5 class="mb-1">Create your account</h5>
+        <p>Verify your email first. Admin approval is required before login.</p>
+      </div>
+      <form method="post" action="{% url 'accounts:signup' %}">
+        {% csrf_token %}
+        <div class="mb-4">
+          <label class="form-label" for="{{ form.name.id_for_label }}">Name</label>
+          {{ form.name }}
+          {% for error in form.name.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+        </div>
+        <div class="mb-4">
+          <label class="form-label" for="{{ form.email.id_for_label }}">Email Address</label>
+          {{ form.email }}
+          {% for error in form.email.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+        </div>
+        <div class="mb-4">
+          <label class="form-label" for="{{ form.phone.id_for_label }}">Phone</label>
+          {{ form.phone }}
+          {% for error in form.phone.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+        </div>
+        <div class="mb-4">
+          <label class="form-label" for="{{ form.requested_role.id_for_label }}">Requested Role</label>
+          {{ form.requested_role }}
+          {% for error in form.requested_role.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+        </div>
+        <div class="mb-3">
+          <button type="submit" class="btn btn-primary w-100">Send Signup OTP</button>
+        </div>
+        <p class="mb-0 text-center">Already approved? <a class="text-dark" href="{% url 'accounts:login' %}">Sign In here</a></p>
+      </form>
+      <p class="auth-credit">Design and developed by <a href="https://www.thewebfix.in/" target="_blank" rel="noopener noreferrer">The Webfix</a></p>
+    </div>
+  </div>
+</div>
+{% endblock %}

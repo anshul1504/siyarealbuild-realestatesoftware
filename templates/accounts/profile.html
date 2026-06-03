@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Profile - Siya Real Build{% endblock %}
+{% block content %}
+<div class="profile-hero">
+    <div class="profile-hero-main">
+        {% if user_profile.profile_image %}
+            <img class="profile-avatar" src="{{ user_profile.profile_image.url }}" alt="{{ request.user.get_full_name|default:request.user.username }}">
+        {% else %}
+            <div class="profile-avatar profile-avatar-fallback">{{ request.user.email|default:request.user.username|slice:":1"|upper }}</div>
+        {% endif %}
+        <div class="profile-title">
+            <span class="profile-kicker">Profile</span>
+            <h1>{{ request.user.get_full_name|default:request.user.username }}</h1>
+            <p>{{ request.user.email }}</p>
+            <div class="d-flex gap-2 flex-wrap">
+                <span class="badge rounded-pill bg-primary-subtle text-primary">{{ user_profile.get_role_display }}</span>
+                {% if user_profile.employee_code %}<span class="badge rounded-pill bg-light text-dark">{{ user_profile.employee_code }}</span>{% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="profile-grid profile-grid-profile-only">
+    <section class="profile-panel profile-panel-wide">
+        <div class="profile-panel-head">
+            <div>
+                <h2>Personal Details</h2>
+                <p>Update your profile image, contact details, employee code and address.</p>
+            </div>
+        </div>
+        <form method="post" enctype="multipart/form-data" class="profile-form">
+            {% csrf_token %}
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label" for="{{ profile_form.full_name.id_for_label }}">Full Name</label>
+                    {{ profile_form.full_name }}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="{{ profile_form.email.id_for_label }}">Email</label>
+                    {{ profile_form.email }}
+                    {% for error in profile_form.email.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                </div>
+                {% for field in profile_form %}
+                    {% if field.name != "full_name" and field.name != "email" %}
+                    <div class="{% if field.name == 'address' %}col-12{% else %}col-md-6{% endif %}">
+                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                    </div>
+                    {% endif %}
+                {% endfor %}
+                <div class="col-12 d-flex justify-content-end">
+                    <button class="btn btn-primary" type="submit">Save Profile</button>
+                </div>
+            </div>
+        </form>
+    </section>
+
+    <aside class="profile-panel">
+        <div class="profile-panel-head">
+            <div>
+                <h2>Summary</h2>
+                <p>Your current access information.</p>
+            </div>
+        </div>
+        <div class="profile-summary-list">
+            <div><span>Role</span><strong>{{ user_profile.get_role_display }}</strong></div>
+            <div><span>Employee Code</span><strong>{{ user_profile.employee_code|default:"Not added" }}</strong></div>
+            <div><span>Phone</span><strong>{{ user_profile.phone|default:"Not added" }}</strong></div>
+            <div><span>Company</span><strong>{{ company.name|default:"Not added" }}</strong></div>
+        </div>
+    </aside>
+</div>
+{% endblock %}

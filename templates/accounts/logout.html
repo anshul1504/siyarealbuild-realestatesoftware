@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Signed Out - Siya Real Build{% endblock %}
+{% block content %}
+<div class="page-layout">
+  <div class="auth-frame-wrapper">
+    <div class="inner-wrap signed-out-card">
+      <div class="mb-4 text-center">
+        <a href="{% url 'accounts:login' %}" aria-label="Siya Real Build logo">
+          <img class="auth-brand-logo" src="{% static 'assets/images/siya-builder-logo-transparent.png' %}" alt="Siya Real Build">
+        </a>
+      </div>
+      <div class="signed-out-icon" aria-hidden="true">
+        <span class="ui-icon"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>
+      </div>
+      <div class="text-center">
+        <h5 class="mb-2">You have been signed out</h5>
+        <p class="mb-4">Thank you for using Siya Real Build. Your session has ended safely.</p>
+      </div>
+      <div class="d-grid gap-2">
+        <a class="btn btn-primary" href="{% url 'accounts:login' %}">Sign in again</a>
+        <a class="btn btn-outline-primary" href="{% url 'accounts:signup' %}">Request account access</a>
+      </div>
+      <p class="auth-credit">Design and developed by <a href="https://www.thewebfix.in/" target="_blank" rel="noopener noreferrer">The Webfix</a></p>
+    </div>
+  </div>
+</div>
+{% endblock %}

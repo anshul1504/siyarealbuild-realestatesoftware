@@ -1,0 +1,1843 @@
+<!DOCTYPE html>
+<html lang="en">
+
+
+<!-- Mirrored from urbanhub.layoutdrop.com/demo/components/dropdowns.html by HTTrack Website Copier/3.x [XR&CO'2014], Tue, 02 Jun 2026 09:57:59 GMT -->
+<head>
+
+  <base >
+
+  <!-- begin::UrbanHub Meta Basic -->
+  <meta charset="utf-8">
+  <meta name="theme-color" content="#0D919C">
+  <meta name="robots" content="index, follow">
+  <meta name="author" content="LayoutDrop">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="keywords" content="Real Estate Dashboard, Property Management System, Real Estate Admin Template, Property Listing Dashboard, Rent & Lease Management, Real Estate CRM, Agent Management System, Housing Society Dashboard, Apartment Management System, Real Estate Analytics, Property Booking Dashboard, Real Estate Web App, Bootstrap Real Estate Template, Modern Real Estate UI Kit, Responsive Admin Template, Property Sales Dashboard">
+  <meta name="description" content="UrbanHub is a modern and feature-rich Real Estate Management Admin Dashboard Template built with Bootstrap. It includes tools for managing properties, agents, leads, bookings, payments, maintenance, and detailed analytics — perfect for real estate companies, builders, housing societies, and property management platforms.">
+  <!-- end::UrbanHub Meta Basic -->
+
+  <!-- begin::UrbanHub Meta Social -->
+  <meta property="og:url" content="../index-2.html">
+  <meta property="og:site_name" content="UrbanHub | Real Estate Management Admin Dashboard Template">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="en_us">
+  <meta property="og:title" content="UrbanHub | Real Estate Management Admin Dashboard Template">
+  <meta property="og:description" content="UrbanHub is a professional Real Estate Management Admin Dashboard Template with tools for managing properties, agents, payments, bookings, and analytics.">
+  <meta property="og:image" content="../preview.png">
+  <!-- end::UrbanHub Meta Social -->
+
+  <!-- begin::UrbanHub Meta Twitter -->
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:url" content="../index-2.html">
+  <meta name="twitter:creator" content="@layoutdrop">
+  <meta name="twitter:title" content="UrbanHub | Real Estate Management Admin Dashboard Template">
+  <meta name="twitter:description" content="A complete Real Estate Admin Dashboard Template for managing listings, agents, payments, bookings, and analytics.">
+  <!-- end::UrbanHub Meta Twitter -->
+
+  <!-- begin::UrbanHub Website Page Title -->
+  <title>UrbanHub | Real Estate Management Admin Dashboard Template</title>
+  <!-- end::UrbanHub Website Page Title -->
+
+  <!-- begin::UrbanHub Mobile Specific -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- end::UrbanHub Mobile Specific -->
+
+  <!-- begin::UrbanHub Favicon Tags -->
+  <link rel="icon" type="image/png" href="../../..//assets/images/favicon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="../../..//assets/images/apple-touch-icon.png">
+  <!-- end::UrbanHub Favicon Tags -->
+
+  <!-- begin::UrbanHub Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com/">
+  <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@0,100..900;1,100..900&amp;display=swap" rel="stylesheet">
+  <!-- end::UrbanHub Google Fonts -->
+
+  <link rel="stylesheet" href="../../..//assets/libs/bootstrap-select/css/bootstrap-select.min.css">
+
+  <!-- begin::UrbanHub Required Stylesheet -->
+  <link rel="stylesheet" href="../../..//assets/libs/flaticon/css/all/all.css">
+  <link rel="stylesheet" href="../../..//assets/libs/lucide/lucide.css">
+  <link rel="stylesheet" href="../../..//assets/libs/fontawesome/css/all.min.css">
+  <link rel="stylesheet" href="../../..//assets/libs/simplebar/simplebar.css">
+  <!-- end::UrbanHub Required Stylesheet -->
+
+  <!-- begin::UrbanHub CSS Stylesheet -->
+  <link rel="stylesheet" href="../../..//assets/css/styles.css">
+  <!-- end::UrbanHub CSS Stylesheet -->
+
+</head>
+
+<body>
+  <div class="page-layout">
+
+    <!-- begin::UrbanHub Page Header -->
+    <header class="app-header">
+      <div class="app-header-inner">
+        <div class="app-header-start">
+          <button class="app-toggler" type="button">
+            <i class="fi fi-br-angle-small-left"></i>
+          </button>
+          <div class="app-header-brand">
+            <a class="navbar-brand-logo" href="http://../index.html">
+              <img src="http://../assets/images/logo.svg" alt="UrbanHub Admin Dashboard">
+            </a>
+            <a class="navbar-brand-mini visible-light" href="http://../index.html">
+              <img src="http://../assets/images/logo-text.svg" alt="UrbanHub Admin Dashboard">
+            </a>
+            <a class="navbar-brand-mini visible-dark" href="http://../index.html">
+              <img src="http://../assets/images/logo-text-white.svg" alt="UrbanHub Admin Dashboard">
+            </a>
+          </div>
+          <form class="d-none d-xl-flex align-items-center h-100 w-lg-250px w-xxl-300px position-relative" action="#">
+            <input type="text" class="form-control px-sm-3 bg-light" placeholder="Search anything">
+            <button type="button" class="btn btn-sm text-primary border-0 position-absolute end-0 me-3 p-0">
+              <i class="fi fi-rr-search"></i>
+            </button>
+          </form>
+        </div>
+        <div class="app-header-end">
+          <div class="d-flex align-items-center gap-sm-1 gap-0 px-lg-2 px-sm-2 px-1">
+            <div class="dropdown text-end">
+              <a href="javascript:void(0);" class="btn btn-icon btn-action-gray" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="true">
+                <i class="icon-bell">
+                  <span class="visually-hidden">New alerts</span>
+                </i>
+              </a>
+              <div class="dropdown-menu dropdown-menu-lg-end p-0 w-300px mt-2">
+                <div class="px-3 py-3 border-bottom d-flex justify-content-between align-items-center">
+                  <h6 class="mb-0">Notifications <span class="badge badge-sm rounded-pill bg-primary ms-1">9</span>
+                  </h6>
+                  <i class="bi bi-x-lg cursor-pointer"></i>
+                </div>
+                <div class="p-2" style="height: 300px;" data-simplebar>
+                  <ul class="list-group list-group-hover list-group-smooth list-group-unlined">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <div class="avatar avatar-xs avatar-status-success rounded-circle me-1">
+                        <img src="http://../assets/images/avatar/avatar2.webp" alt="">
+                      </div>
+                      <div class="ms-2 me-auto">
+                        <h6 class="mb-0">Emma Smith</h6>
+                        <small class="text-body d-block">Need to update the details.</small>
+                        <small class="text-muted position-absolute end-0 top-0 mt-2 me-3">7 hr ago</small>
+                      </div>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <div class="avatar avatar-xs bg-success rounded-circle text-white">D</div>
+                      <div class="ms-2 me-auto">
+                        <h6 class="mb-0">Design Team</h6>
+                        <small class="text-body d-block">Check your shared folder.</small>
+                        <small class="text-muted position-absolute end-0 top-0 mt-2 me-3">6 hr ago</small>
+                      </div>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <div class="avatar avatar-xs bg-dark rounded-circle text-white">
+                        <i class="fi fi-rr-lock"></i>
+                      </div>
+                      <div class="ms-2 me-auto">
+                        <h6 class="mb-0">Security Update</h6>
+                        <small class="text-body d-block">Password successfully set.</small>
+                        <small class="text-muted position-absolute end-0 top-0 mt-2 me-3">5 hr ago</small>
+                      </div>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <div class="avatar avatar-xs bg-info rounded-circle text-white">
+                        <i class="fi fi-rr-shopping-cart"></i>
+                      </div>
+                      <div class="ms-2 me-auto">
+                        <h6 class="mb-0">Invoice #1432</h6>
+                        <small class="text-body d-block">has been paid Amount: $899.00</small>
+                        <small class="text-muted position-absolute end-0 top-0 mt-2 me-3">5 hr ago</small>
+                      </div>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <div class="avatar avatar-xs bg-danger rounded-circle text-white">R</div>
+                      <div class="ms-2 me-auto">
+                        <h6 class="mb-0">Emma Smith</h6>
+                        <small class="text-body d-block">added you to Dashboard Analytics</small>
+                        <small class="text-muted position-absolute end-0 top-0 mt-2 me-3">5 hr ago</small>
+                      </div>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <div class="avatar avatar-xs avatar-status-success rounded-circle me-1">
+                        <img src="http://../assets/images/avatar/avatar3.webp" alt="">
+                      </div>
+                      <div class="ms-2 me-auto">
+                        <h6 class="mb-0">Olivia Clark</h6>
+                        <small class="text-body d-block">You can now view the “Report”.</small>
+                        <small class="text-muted position-absolute end-0 top-0 mt-2 me-3">4 hr ago</small>
+                      </div>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <div class="avatar avatar-xs avatar-status-danger rounded-circle me-1">
+                        <img src="http://../assets/images/avatar/avatar5.webp" alt="">
+                      </div>
+                      <div class="ms-2 me-auto">
+                        <h6 class="mb-0">Isabella Walker</h6>
+                        <small class="text-body d-block">@Isabella please review.</small>
+                        <small class="text-muted position-absolute end-0 top-0 mt-2 me-3">2 hr ago</small>
+                      </div>
+                    </li>
+                  </ul>
+                </div>
+                <div class="p-2">
+                  <a href="javascript:void(0);" class="btn w-100 btn-primary">View all notifications</a>
+                </div>
+              </div>
+            </div>
+            <a href="http://../email/inbox.html" class="btn btn-md btn-icon btn-action-gray">
+              <i class="icon-message-square-text"></i>
+              <span class="visually-hidden">Inbox</span>
+            </a>
+            <a href="http://../calendar.html" class="btn btn-md btn-icon btn-action-gray d-none d-sm-flex">
+              <i class="icon-calendar"></i>
+              <span class="visually-hidden">Calendar</span>
+            </a>
+            <a href="javascript:void(0);" class="btn btn-md btn-icon btn-action-gray theme-btn">
+              <i class="icon-sun-medium icon-light"></i>
+              <i class="icon-moon icon-dark"></i>
+            </a>
+          </div>
+          <div class="d-flex align-items-center gap-sm-2 gap-0 px-lg-2 px-sm-2 px-1">
+            <div class="dropdown text-end">
+              <a href="#" class="d-flex align-items-center py-2" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="true">
+                <div class="text-end me-2 d-none d-lg-inline-block">
+                  <div class="fw-bold text-dark">Robert Brown</div>
+                  <small class="text-body d-block lh-sm">
+                    <i class="fi fi-rr-angle-down text-3xs me-1"></i> Manager
+                  </small>
+                </div>
+                <div class="avatar avatar-sm rounded-circle avatar-status-success">
+                  <img src="http://../assets/images/avatar/avatar1.webp" alt="">
+                </div>
+              </a>
+              <ul class="dropdown-menu dropdown-menu-end w-225px mt-1">
+                <li class="d-flex align-items-center p-2">
+                  <div class="avatar avatar-sm rounded-circle">
+                    <img src="http://../assets/images/avatar/avatar1.webp" alt="">
+                  </div>
+                  <div class="ms-2">
+                    <div class="fw-bold text-dark">John Carter </div>
+                    <small class="text-body d-block lh-sm">john@gamil.com</small>
+                  </div>
+                </li>
+                <li>
+                  <div class="dropdown-divider my-1"></div>
+                </li>
+                <li>
+                  <a class="dropdown-item d-flex align-items-center gap-2" href="http://../profile.html">
+                    <i class="fi fi-rr-user scale-1x"></i> View Profile
+                  </a>
+                </li>
+                <li>
+                  <a class="dropdown-item d-flex align-items-center gap-2" href="http://../pages/faq.html">
+                    <i class="fi fi-rs-interrogation scale-1x"></i> Help Center
+                  </a>
+                </li>
+                <li>
+                  <a class="dropdown-item d-flex align-items-center gap-2" href="http://../profile.html">
+                    <i class="fi fi-rr-settings scale-1x"></i> Account Settings
+                  </a>
+                </li>
+                <li>
+                  <a class="dropdown-item d-flex align-items-center gap-2" href="http://../pages/pricing.html">
+                    <i class="fi fi-rr-usd-circle scale-1x"></i> Upgrade Plan
+                  </a>
+                </li>
+                <li>
+                  <div class="dropdown-divider my-1"></div>
+                </li>
+                <li>
+                  <a class="dropdown-item d-flex align-items-center gap-2 text-danger" href="http://../authentication/login.html">
+                    <i class="fi fi-sr-exit scale-1x"></i> Log Out
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+    <!-- end::UrbanHub Page Header -->
+
+    <!-- begin::UrbanHub Sidebar Menu -->
+    <aside class="app-menubar" id="menubar">
+      <button class="app-toggler" type="button">
+        <i class="fi fi-br-angle-small-left"></i>
+      </button>
+      <div class="app-navbar-brand">
+        <a class="navbar-brand-logo" href="http://../index.html">
+          <img src="http://../assets/images/logo.svg" alt="UrbanHub Admin Dashboard">
+        </a>
+        <a class="navbar-brand-mini visible-light" href="http://../index.html">
+          <img src="http://../assets/images/logo-text.svg" alt="UrbanHub Admin Dashboard">
+        </a>
+        <a class="navbar-brand-mini visible-dark" href="http://../index.html">
+          <img src="http://../assets/images/logo-text-white.svg" alt="UrbanHub Admin Dashboard">
+        </a>
+      </div>
+      <nav class="app-navbar" data-simplebar>
+        <ul class="menubar">
+          <li class="menu-item menu-arrow">
+            <a class="menu-link" href="javascript:void(0);">
+              <i class="icon-house"></i>
+              <span class="menu-label">Dashboard</span>
+            </a>
+            <ul class="menu-inner">
+              <li class="menu-item">
+                <a class="menu-link" href="http://../index.html">
+                  <span class="menu-label">Dashboard</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../index-2.html">
+                  <span class="menu-label">Agent Dashboard</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../index-3.html">
+                  <span class="menu-label">Analytics Dashboard</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../add-agent.html">
+                  <span class="menu-label">Add Agents</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../all-agents.html">
+                  <span class="menu-label">All Agents</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../agent-profile.html">
+                  <span class="menu-label">Agent Profile</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../add-property.html">
+                  <span class="menu-label">Add Property</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../property-list.html">
+                  <span class="menu-label">Property List</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../property-grid.html">
+                  <span class="menu-label">Property Grid</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../property-details.html">
+                  <span class="menu-label">Property Details</span>
+                </a>
+              </li>
+            </ul>
+          </li>
+          <li class="menu-item">
+            <a class="menu-link" href="http://../chat.html">
+              <i class="icon-message-square-text"></i>
+              <span class="menu-label">Chat</span>
+            </a>
+          </li>
+          <li class="menu-item">
+            <a class="menu-link" href="http://../calendar.html">
+              <i class="icon-calendar-days"></i>
+              <span class="menu-label">Calendar</span>
+            </a>
+          </li>
+          <li class="menu-item menu-arrow">
+            <a class="menu-link" href="javascript:void(0);" role="button">
+              <i class="icon-mail-open"></i>
+              <span class="menu-label">Email</span>
+            </a>
+            <ul class="menu-inner">
+              <li class="menu-item">
+                <a class="menu-link" href="http://../email/inbox.html">
+                  <span class="menu-label">Inbox</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../email/compose.html">
+                  <span class="menu-label">Compose</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../email/read-email.html">
+                  <span class="menu-label">Read email</span>
+                </a>
+              </li>
+            </ul>
+          </li>
+          <li class="menu-item menu-arrow">
+            <a class="menu-link" href="javascript:void(0);" role="button">
+              <i class="icon-file"></i>
+              <span class="menu-label">Pages</span>
+            </a>
+            <ul class="menu-inner">
+              <li class="menu-item">
+                <a class="menu-link" href="http://../pages/pricing.html">
+                  <span class="menu-label">Pricing</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../pages/faq.html">
+                  <span class="menu-label">FAQ's</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../pages/coming-soon.html">
+                  <span class="menu-label">Coming Soon</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../pages/error-404.html">
+                  <span class="menu-label">Error 404</span>
+                </a>
+              </li>
+            </ul>
+          </li>
+          <li class="menu-item menu-arrow">
+            <a class="menu-link" href="javascript:void(0);" role="button">
+              <i class="icon-circle-user-round"></i>
+              <span class="menu-label">Authentication</span>
+            </a>
+            <ul class="menu-inner">
+              <li class="menu-item">
+                <a class="menu-link" href="http://../authentication/login.html">
+                  <span class="menu-label">Login</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../authentication/register.html">
+                  <span class="menu-label">Register</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../authentication/forgot-password.html">
+                  <span class="menu-label">Forgot Password</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../authentication/new-password.html">
+                  <span class="menu-label">New Password</span>
+                </a>
+              </li>
+            </ul>
+          </li>
+          <li class="menu-item menu-arrow">
+            <a class="menu-link" href="javascript:void(0);" role="button">
+              <i class="icon-folder-open"></i>
+              <span class="menu-label">UI Components</span>
+            </a>
+            <ul class="menu-inner">
+              <li class="menu-item">
+                <a class="menu-link" href="http://../components/accordion.html">
+                  <span class="menu-label">Accordion</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../components/alerts.html">
+                  <span class="menu-label">Alerts</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../components/badge.html">
+                  <span class="menu-label">Badge</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../components/breadcrumb.html">
+                  <span class="menu-label">Breadcrumb</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../components/buttons.html">
+                  <span class="menu-label">Buttons</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../components/typography.html">
+                  <span class="menu-label">Typography</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../components/button-group.html">
+                  <span class="menu-label">Button Group</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../components/card.html">
+                  <span class="menu-label">Card</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../components/collapse.html">
+                  <span class="menu-label">Collapse</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../components/carousel.html">
+                  <span class="menu-label">Carousel</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../components/dropdowns.html">
+                  <span class="menu-label">Dropdowns</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../components/modal.html">
+                  <span class="menu-label">Modal</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../components/list-group.html">
+                  <span class="menu-label">List Group</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../components/tabs.html">
+                  <span class="menu-label">Tabs</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../components/offcanvas.html">
+                  <span class="menu-label">Offcanvas</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../components/pagination.html">
+                  <span class="menu-label">Pagination</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../components/popovers.html">
+                  <span class="menu-label">Popovers</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../components/progress.html">
+                  <span class="menu-label">Progress</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../components/scrollspy.html">
+                  <span class="menu-label">Scrollspy</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../components/spinners.html">
+                  <span class="menu-label">Spinners</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../components/toasts.html">
+                  <span class="menu-label">Toasts</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../components/tooltips.html">
+                  <span class="menu-label">Tooltips</span>
+                </a>
+              </li>
+            </ul>
+          </li>
+          <li class="menu-item menu-arrow">
+            <a class="menu-link" href="javascript:void(0);" role="button">
+              <i class="icon-star"></i>
+              <span class="menu-label">Icons</span>
+            </a>
+            <ul class="menu-inner">
+              <li class="menu-item">
+                <a class="menu-link" href="http://../icons/flaticon.html">
+                  <span class="menu-label">Flaticon</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../icons/lucide.html">
+                  <span class="menu-label">Lucide</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../icons/fontawesome.html">
+                  <span class="menu-label">Font Awesome</span>
+                </a>
+              </li>
+            </ul>
+          </li>
+          <li class="menu-item menu-arrow">
+            <a class="menu-link" href="javascript:void(0);" role="button">
+              <i class="icon-file-text"></i>
+              <span class="menu-label">Form Elements</span>
+            </a>
+            <ul class="menu-inner">
+              <li class="menu-item">
+                <a class="menu-link" href="http://../forms/form-elements.html">
+                  <span class="menu-label">Form Elements</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../forms/form-floating.html">
+                  <span class="menu-label">Form floating</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../forms/form-input-group.html">
+                  <span class="menu-label">Form input group</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../forms/form-layout.html">
+                  <span class="menu-label">Form layout</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../forms/form-validation.html">
+                  <span class="menu-label">Form validation</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../forms/flatpickr.html">
+                  <span class="menu-label">Flatpickr</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../forms/tagify.html">
+                  <span class="menu-label">Tagify</span>
+                </a>
+              </li>
+            </ul>
+          </li>
+          <li class="menu-item menu-arrow">
+            <a class="menu-link" href="javascript:void(0);" role="button">
+              <i class="icon-table-2"></i>
+              <span class="menu-label">Table</span>
+            </a>
+            <ul class="menu-inner">
+              <li class="menu-item">
+                <a class="menu-link" href="http://../table/tables-basic.html">
+                  <span class="menu-label">Table</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../table/tables-datatable.html">
+                  <span class="menu-label">Datatable</span>
+                </a>
+              </li>
+            </ul>
+          </li>
+          <li class="menu-item menu-arrow">
+            <a class="menu-link" href="javascript:void(0);" role="button">
+              <i class="icon-chart-pie"></i>
+              <span class="menu-label">Charts</span>
+            </a>
+            <ul class="menu-inner">
+              <li class="menu-item">
+                <a class="menu-link" href="http://../chart/apexchart.html">
+                  <span class="menu-label">Apex Chart</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../chart/chartjs.html">
+                  <span class="menu-label">Chart JS</span>
+                </a>
+              </li>
+            </ul>
+          </li>
+          <li class="menu-item menu-arrow">
+            <a class="menu-link" href="javascript:void(0);" role="button">
+              <i class="icon-map-pinned"></i>
+              <span class="menu-label">Maps</span>
+            </a>
+            <ul class="menu-inner">
+              <li class="menu-item">
+                <a class="menu-link" href="http://../maps/jsvectormap.html">
+                  <span class="menu-label">JS Vector Map</span>
+                </a>
+              </li>
+              <li class="menu-item">
+                <a class="menu-link" href="http://../maps/leaflet.html">
+                  <span class="menu-label">Leaflet</span>
+                </a>
+              </li>
+            </ul>
+          </li>
+          <li class="menu-item">
+            <a class="menu-link" href="javascript:void(0);">
+              <i class="icon-badge-percent"></i>
+              <span class="menu-label">Badge</span>
+              <span class="badge badge-sm rounded-pill bg-secondary ms-2 float-end">5</span>
+            </a>
+          </li>
+          <li class="menu-item menu-arrow">
+            <a class="menu-link" href="javascript:void(0);" role="button">
+              <i class="icon-layers"></i>
+              <span class="menu-label">Multi Level</span>
+            </a>
+            <ul class="menu-inner">
+              <li class="menu-item menu-arrow">
+                <a class="menu-link" href="javascript:void(0);">
+                  <span class="menu-label">Multi Level 2</span>
+                </a>
+                <ul class="menu-inner">
+                  <li class="menu-item">
+                    <a class="menu-link" href="javascript:void(0);">
+                      <span class="menu-label">Multi Level 3</span>
+                    </a>
+                  </li>
+                  <li class="menu-item">
+                    <a class="menu-link" href="javascript:void(0);">
+                      <span class="menu-label">Multi Level 3</span>
+                    </a>
+                  </li>
+                  <li class="menu-item">
+                    <a class="menu-link" href="javascript:void(0);">
+                      <span class="menu-label">Multi Level 3</span>
+                    </a>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </nav>
+      <div class="app-footer">
+        <a href="http://../pages/faq.html" class="btn btn-outline-light btn-shadow btn-app-nav w-100">
+          <i class="fi fi-rs-interrogation text-primary"></i>
+          <span class="nav-text">Help and Support</span>
+        </a>
+      </div>
+    </aside>
+    <!-- end::UrbanHub Sidebar Menu -->
+
+    <main class="app-wrapper">
+
+      <div class="container-fluid">
+
+        <div class="app-page-head d-flex align-items-center justify-content-between">
+          <div class="clearfix">
+            <h1 class="app-page-title">Dropdowns</h1>
+            <nav aria-label="breadcrumb">
+              <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item">
+                  <a href="http://../index.html" class="text-body">
+                    <i class="fi fi-rr-home"></i>Dashboard
+                  </a>
+                </li>
+                <li class="breadcrumb-item active" aria-current="page">Dropdowns</li>
+              </ol>
+            </nav>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-lg-12">
+            <div class="card">
+              <div class="card-header border-0 pb-0">
+                <h6 class="card-title mb-0">Basic dropdowns</h6>
+              </div>
+              <div class="card-body">
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-primary waves-effect waves-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                      Primary
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Another action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Something else here</a>
+                      </li>
+                      <li>
+                        <hr class="dropdown-divider">
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Separated link</a>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-secondary waves-effect waves-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                      Secondary
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Another action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Something else here</a>
+                      </li>
+                      <li>
+                        <hr class="dropdown-divider">
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Separated link</a>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-success waves-effect waves-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                      Success
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Another action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Something else here</a>
+                      </li>
+                      <li>
+                        <hr class="dropdown-divider">
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Separated link</a>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-info waves-effect waves-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                      Info
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Another action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Something else here</a>
+                      </li>
+                      <li>
+                        <hr class="dropdown-divider">
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Separated link</a>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-warning waves-effect waves-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                      Warning
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Another action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Something else here</a>
+                      </li>
+                      <li>
+                        <hr class="dropdown-divider">
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Separated link</a>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-danger waves-effect waves-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                      Danger
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Another action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Something else here</a>
+                      </li>
+                      <li>
+                        <hr class="dropdown-divider">
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Separated link</a>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-dark waves-effect waves-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                      Dark
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Another action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Something else here</a>
+                      </li>
+                      <li>
+                        <hr class="dropdown-divider">
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Separated link</a>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-subtle-primary waves-effect waves-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                      Primary
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Another action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Something else here</a>
+                      </li>
+                      <li>
+                        <hr class="dropdown-divider">
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Separated link</a>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-subtle-secondary waves-effect waves-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                      Secondary
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Another action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Something else here</a>
+                      </li>
+                      <li>
+                        <hr class="dropdown-divider">
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Separated link</a>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-subtle-success waves-effect waves-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                      Success
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Another action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Something else here</a>
+                      </li>
+                      <li>
+                        <hr class="dropdown-divider">
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Separated link</a>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-subtle-info waves-effect waves-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                      Info
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Another action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Something else here</a>
+                      </li>
+                      <li>
+                        <hr class="dropdown-divider">
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Separated link</a>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-subtle-warning waves-effect waves-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                      Warning
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Another action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Something else here</a>
+                      </li>
+                      <li>
+                        <hr class="dropdown-divider">
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Separated link</a>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-subtle-danger waves-effect waves-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                      Danger
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Another action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Something else here</a>
+                      </li>
+                      <li>
+                        <hr class="dropdown-divider">
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Separated link</a>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-subtle-dark waves-effect waves-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                      Dark
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Another action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Something else here</a>
+                      </li>
+                      <li>
+                        <hr class="dropdown-divider">
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Separated link</a>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-outline-primary waves-effect waves-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                      Primary
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Another action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Something else here</a>
+                      </li>
+                      <li>
+                        <hr class="dropdown-divider">
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Separated link</a>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-outline-secondary waves-effect waves-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                      Secondary
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Another action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Something else here</a>
+                      </li>
+                      <li>
+                        <hr class="dropdown-divider">
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Separated link</a>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-outline-success waves-effect waves-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                      Success
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Another action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Something else here</a>
+                      </li>
+                      <li>
+                        <hr class="dropdown-divider">
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Separated link</a>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-outline-info waves-effect waves-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                      Info
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Another action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Something else here</a>
+                      </li>
+                      <li>
+                        <hr class="dropdown-divider">
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Separated link</a>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-outline-warning waves-effect waves-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                      Warning
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Another action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Something else here</a>
+                      </li>
+                      <li>
+                        <hr class="dropdown-divider">
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Separated link</a>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-outline-danger waves-effect waves-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                      Danger
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Another action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Something else here</a>
+                      </li>
+                      <li>
+                        <hr class="dropdown-divider">
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Separated link</a>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-outline-dark waves-effect waves-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                      Dark
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Another action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Something else here</a>
+                      </li>
+                      <li>
+                        <hr class="dropdown-divider">
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Separated link</a>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-12">
+            <div class="card">
+              <div class="card-header border-0 pb-0">
+                <h6 class="card-title mb-0">Split button</h6>
+              </div>
+              <div class="card-body">
+                <div class="d-flex flex-wrap gap-2">
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-primary waves-effect waves-light">Primary</button>
+                    <button type="button" class="btn btn-primary waves-effect waves-light dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                      <span class="visually-hidden">Primary</span>
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Another action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Something else here</a>
+                      </li>
+                      <li>
+                        <hr class="dropdown-divider">
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Separated link</a>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-warning waves-effect waves-light">Warning</button>
+                    <button type="button" class="btn btn-warning waves-effect waves-light dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                      <span class="visually-hidden">Warning</span>
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Another action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Something else here</a>
+                      </li>
+                      <li>
+                        <hr class="dropdown-divider">
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Separated link</a>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-success waves-effect waves-light">Success</button>
+                    <button type="button" class="btn btn-success waves-effect waves-light dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                      <span class="visually-hidden">Success</span>
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Another action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Something else here</a>
+                      </li>
+                      <li>
+                        <hr class="dropdown-divider">
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Separated link</a>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-info waves-effect waves-light">Info</button>
+                    <button type="button" class="btn btn-info waves-effect waves-light dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                      <span class="visually-hidden">Info</span>
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Another action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Something else here</a>
+                      </li>
+                      <li>
+                        <hr class="dropdown-divider">
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Separated link</a>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-warning waves-effect waves-light">Warning</button>
+                    <button type="button" class="btn btn-warning waves-effect waves-light dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                      <span class="visually-hidden">Warning</span>
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Another action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Something else here</a>
+                      </li>
+                      <li>
+                        <hr class="dropdown-divider">
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Separated link</a>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-danger waves-effect waves-light">Danger</button>
+                    <button type="button" class="btn btn-danger waves-effect waves-light dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                      <span class="visually-hidden">Danger</span>
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Another action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Something else here</a>
+                      </li>
+                      <li>
+                        <hr class="dropdown-divider">
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Separated link</a>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-dark waves-effect waves-light">Dark</button>
+                    <button type="button" class="btn btn-dark waves-effect waves-light dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                      <span class="visually-hidden">Dark</span>
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Another action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Something else here</a>
+                      </li>
+                      <li>
+                        <hr class="dropdown-divider">
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Separated link</a>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-12">
+            <div class="card">
+              <div class="card-header border-0 pb-0">
+                <h6 class="card-title mb-0">Alignment options</h6>
+              </div>
+              <div class="card-body">
+                <div class="d-flex flex-wrap gap-2">
+                  <div class="btn-group">
+                    <button class="btn btn-secondary waves-effect waves-light dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                      Dropdown
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-secondary waves-effect waves-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                      Right-aligned menu
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-secondary waves-effect waves-light dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
+                      Left-aligned, right-aligned lg
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-lg-end">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-secondary waves-effect waves-light dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
+                      Right-aligned, left-aligned lg
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end dropdown-menu-lg-start">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div class="btn-group dropstart">
+                    <button type="button" class="btn btn-secondary waves-effect waves-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                      Dropstart
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div class="btn-group dropend">
+                    <button type="button" class="btn btn-secondary waves-effect waves-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                      Dropend
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div class="btn-group dropup">
+                    <button type="button" class="btn btn-secondary waves-effect waves-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                      Dropup
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                    </ul>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-8">
+            <div class="card">
+              <div class="card-header border-0 pb-0">
+                <h6 class="card-title mb-0">Sizing</h6>
+              </div>
+              <div class="card-body">
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                  <div class="btn-group">
+                    <button class="btn btn-secondary waves-effect waves-light btn-lg dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                      Large button
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Another action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Something else here</a>
+                      </li>
+                      <li>
+                        <hr class="dropdown-divider">
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Separated link</a>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div class="btn-group">
+                    <button class="btn btn-secondary waves-effect waves-light btn-lg" type="button">
+                      Large split button
+                    </button>
+                    <button type="button" class="btn waves-effect waves-light btn-lg btn-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                      <span class="visually-hidden">Toggle Dropdown</span>
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Another action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Something else here</a>
+                      </li>
+                      <li>
+                        <hr class="dropdown-divider">
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Separated link</a>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div class="btn-group">
+                    <button class="btn btn-secondary waves-effect waves-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                      Small button
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Another action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Something else here</a>
+                      </li>
+                      <li>
+                        <hr class="dropdown-divider">
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Separated link</a>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div class="btn-group">
+                    <button class="btn btn-secondary waves-effect waves-light btn-sm" type="button">
+                      Small split button
+                    </button>
+                    <button type="button" class="btn waves-effect waves-light btn-sm btn-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                      <span class="visually-hidden">Toggle Dropdown</span>
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Another action</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Something else here</a>
+                      </li>
+                      <li>
+                        <hr class="dropdown-divider">
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Separated link</a>
+                      </li>
+                    </ul>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-4">
+            <div class="card">
+              <div class="card-header border-0 pb-0">
+                <h6 class="card-title mb-0">Dark dropdowns</h6>
+              </div>
+              <div class="card-body">
+                <div class="dropdown">
+                  <button class="btn btn-secondary waves-effect waves-light dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Dropdown button
+                  </button>
+                  <ul class="dropdown-menu dropdown-menu-dark">
+                    <li>
+                      <a class="dropdown-item active" href="javascript:void(0);">Action</a>
+                    </li>
+                    <li>
+                      <a class="dropdown-item" href="javascript:void(0);">Another action</a>
+                    </li>
+                    <li>
+                      <a class="dropdown-item" href="javascript:void(0);">Something else here</a>
+                    </li>
+                    <li>
+                      <hr class="dropdown-divider">
+                    </li>
+                    <li>
+                      <a class="dropdown-item" href="javascript:void(0);">Separated link</a>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-8">
+            <div class="card">
+              <div class="card-header border-0 pb-0 border-0 pb-0">
+                <h6 class="card-title mb-0">Auto close behavior</h6>
+              </div>
+              <div class="card-body">
+                <div class="d-flex flex-wrap gap-2">
+                  <div class="btn-group">
+                    <button class="btn btn-primary waves-effect waves-light dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false">
+                      Default dropdown
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div class="btn-group">
+                    <button class="btn btn-primary waves-effect waves-light dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="inside" aria-expanded="false">
+                      Clickable inside
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div class="btn-group">
+                    <button class="btn btn-primary waves-effect waves-light dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                      Clickable outside
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div class="btn-group">
+                    <button class="btn btn-primary waves-effect waves-light dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="false" aria-expanded="false">
+                      Manual close
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                    </ul>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-4">
+            <div class="card">
+              <div class="card-header border-0 pb-0">
+                <h6 class="card-title mb-0">Dropdown with icon</h6>
+              </div>
+              <div class="card-body">
+                <div class="d-flex flex-wrap gap-2">
+                  <div class="btn-group">
+                    <button class="btn btn-primary btn-icon waves-effect waves-light dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="false" aria-expanded="false">
+                      <i class="fi fi-rr-menu-dots"></i>
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="btn-group">
+                    <button class="btn btn-subtle-primary btn-icon waves-effect waves-light dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="false" aria-expanded="false">
+                      <i class="fi fi-rr-menu-dots"></i>
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="btn-group">
+                    <button class="btn btn-white btn-shadow btn-icon waves-effect waves-light dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="false" aria-expanded="false">
+                      <i class="fi fi-rr-menu-dots"></i>
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="javascript:void(0);">Menu item</a>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </main>
+
+    <!-- begin::UrbanHub Footer -->
+    <footer class="footer-wrapper">
+      <div class="container-fluid">
+        <div class="row g-3">
+          <div class="col-md-8 text-center text-md-start">
+            <p class="mb-0">© <span class="currentYear">2026</span> UrbanHub. Proudly powered by <a href="javascript:void(0);">LayoutDrop</a>.</p>
+          </div>
+          <div class="col-md-4">
+            <ul class="d-flex list-inline mb-0 gap-4 flex-wrap justify-content-center justify-content-md-end">
+              <li>
+                <a class="text-body" href="http://../index.html">Home</a>
+              </li>
+              <li>
+                <a class="text-body" href="http://../pages/faq.html">Faq's</a>
+              </li>
+              <li>
+                <a class="text-body" href="http://../pages/faq.html">Support</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </footer>
+    <!-- end::UrbanHub Footer -->
+
+  </div>
+  <!-- begin::UrbanHub Page Scripts -->
+  <script src="../../..//assets/libs/global/global.min.js"></script>
+  <script src="../../..//assets/js/appSettings.js"></script>
+  <script src="../../..//assets/js/main.js"></script>
+  <!-- end::UrbanHub Page Scripts -->
+</body>
+
+
+<!-- Mirrored from urbanhub.layoutdrop.com/demo/components/dropdowns.html by HTTrack Website Copier/3.x [XR&CO'2014], Tue, 02 Jun 2026 09:58:00 GMT -->
+</html>

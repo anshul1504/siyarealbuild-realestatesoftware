@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Company Details - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head">
+    <h1 class="app-page-title mb-0">Company Details</h1>
+    <p class="text-body mb-0">Owner-managed company registration and business details.</p>
+</div>
+<section class="profile-panel">
+    <form method="post" class="profile-form">
+        {% csrf_token %}
+        <div class="row g-3">
+            {% for field in form %}
+            <div class="{% if field.name == 'address' %}col-12{% else %}col-md-6{% endif %}">
+                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+            </div>
+            {% endfor %}
+            <div class="col-12 d-flex justify-content-end">
+                <button class="btn btn-primary" type="submit">Save Company</button>
+            </div>
+        </div>
+    </form>
+</section>
+{% endblock %}

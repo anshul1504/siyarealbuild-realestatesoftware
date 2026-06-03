@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Login - Siya Real Build{% endblock %}
+{% block content %}
+<div class="page-layout">
+  <div class="auth-frame-wrapper">
+    <div class="inner-wrap">
+      <div class="mb-4 text-center">
+        <a href="{% url 'accounts:login' %}" aria-label="Siya Real Build logo">
+          <img class="auth-brand-logo" src="{% static 'assets/images/siya-builder-logo-transparent.png' %}" alt="Siya Real Build">
+        </a>
+      </div>
+      <div class="text-center mb-5">
+        <h5 class="mb-1">Welcome to Siya Real Build</h5>
+        <p>Sign in with your approved email to receive an OTP.</p>
+      </div>
+      <form method="post" action="{% url 'accounts:login' %}">
+        {% csrf_token %}
+        <div class="mb-4">
+          <label class="form-label" for="{{ form.email.id_for_label }}">Email Address</label>
+          {{ form.email }}
+          {% for error in form.email.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+        </div>
+        <div class="mb-3">
+          <button type="submit" class="btn btn-primary w-100">Send OTP</button>
+        </div>
+        <p class="mb-0 text-center">Don't have an account? <a class="text-dark" href="{% url 'accounts:signup' %}">Sign Up here</a></p>
+      </form>
+      <p class="auth-credit">Design and developed by <a href="https://www.thewebfix.in/" target="_blank" rel="noopener noreferrer">The Webfix</a></p>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ code }} - {{ title }}{% endblock %}
+{% block content %}
+<div class="page-layout">
+  <div class="auth-frame-wrapper">
+    <div class="inner-wrap error-card">
+      <div class="mb-4 text-center">
+        <a href="{% url 'accounts:login' %}" aria-label="Siya Real Build logo">
+          <img class="auth-brand-logo" src="{% static 'assets/images/siya-builder-logo-transparent.png' %}" alt="Siya Real Build">
+        </a>
+      </div>
+      <div class="error-code">{{ code }}</div>
+      <div class="text-center">
+        <h5 class="mb-2">{{ title }}</h5>
+        <p class="mb-4">{{ message }}</p>
+      </div>
+      <div class="d-grid gap-2">
+        {% if user.is_authenticated %}
+          <a class="btn btn-primary" href="{% url 'properties:dashboard' %}">Back to dashboard</a>
+        {% else %}
+          <a class="btn btn-primary" href="{% url 'accounts:login' %}">Back to login</a>
+        {% endif %}
+        <button class="btn btn-outline-primary" type="button" onclick="window.history.back()">Go back</button>
+      </div>
+      <p class="auth-credit">Design and developed by <a href="https://www.thewebfix.in/" target="_blank" rel="noopener noreferrer">The Webfix</a></p>
+    </div>
+  </div>
+</div>
+{% endblock %}

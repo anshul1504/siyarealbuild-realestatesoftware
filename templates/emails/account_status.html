@@ -1,0 +1,71 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ title }}</title>
+</head>
+<body style="margin:0;background:#f4efe6;font-family:Arial,'Helvetica Neue',sans-serif;color:#181511;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4efe6;padding:34px 12px;">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:620px;background:#ffffff;border:1px solid #eadcc1;border-radius:18px;overflow:hidden;box-shadow:0 22px 58px rgba(58,43,22,.14);">
+                    <tr>
+                        <td style="padding:0;background:#181511;">
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                                <tr>
+                                    <td style="padding:26px 30px;text-align:left;">
+                                        <img src="cid:siya-logo" width="165" alt="Siya Real Build" style="display:block;max-width:165px;width:100%;height:auto;border:0;">
+                                    </td>
+                                    <td style="padding:26px 30px;text-align:right;vertical-align:middle;">
+                                        <span style="display:inline-block;padding:8px 12px;border:1px solid rgba(255,255,255,.24);border-radius:999px;color:#ffd39e;font-size:12px;line-height:1;font-weight:700;text-transform:uppercase;">{{ badge }}</span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:34px 34px 14px;text-align:center;">
+                            <p style="margin:0 0 10px;color:#c2680f;font-size:12px;line-height:1.4;text-transform:uppercase;font-weight:800;letter-spacing:1px;">Siya Real Build Pvt. Ltd.</p>
+                            <h1 style="margin:0 0 12px;color:#181511;font-size:30px;line-height:1.16;font-weight:800;">{{ title }}</h1>
+                            <p style="margin:0 auto 24px;max-width:450px;color:#665d51;font-size:15px;line-height:1.65;">{{ intro }}</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:0 34px 30px;">
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fff3df;border:1px solid #e4c781;border-radius:16px;">
+                                <tr>
+                                    <td style="padding:24px;text-align:left;">
+                                        <p style="margin:0;color:#3f3428;font-size:15px;line-height:1.75;">{{ body }}</p>
+                                        {% if cta_text %}
+                                            <p style="margin:20px 0 0;padding:12px 15px;background:#181511;border-radius:12px;color:#fff;font-size:14px;line-height:1.5;font-weight:800;text-align:center;">{{ cta_text }}</p>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:0 34px 34px;">
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fbf7ef;border:1px solid #eadcc1;border-radius:14px;">
+                                <tr>
+                                    <td style="padding:17px 19px;text-align:left;">
+                                        <p style="margin:0;color:#6a5b47;font-size:13px;line-height:1.65;">{{ footer_note }}</p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:20px 28px 24px;background:#fffaf2;border-top:1px solid #eadcc1;text-align:center;">
+                            <p style="margin:0 0 4px;color:#181511;font-size:13px;line-height:1.5;font-weight:800;">Siya Real Build account notification</p>
+                            <p style="margin:0 0 4px;color:#857668;font-size:12px;line-height:1.5;">Please keep this email for your records.</p>
+                            <p style="margin:0;color:#c2680f;font-size:12px;line-height:1.5;font-weight:800;">Design and developed by <a href="https://www.thewebfix.in/" target="_blank" style="color:#c2680f;text-decoration:none;">The Webfix</a></p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Properties - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div class="clearfix">
+        <h1 class="app-page-title mb-0">Properties</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="{% url 'properties:dashboard' %}" class="text-body"><i class="fi fi-rr-home"></i> Home</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Properties</li>
+            </ol>
+        </nav>
+    </div>
+    <a class="btn btn-primary" href="{% url 'properties:create' %}">
+        <i class="fi fi-rr-plus me-2"></i>Add Property
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-header border-0">
+        <h5 class="card-title mb-0">Property Inventory</h5>
+        <small class="text-body">Manage all active and closed listings</small>
+    </div>
+    <div class="card-body pt-0">
+        {% include "properties/partials/property_table.html" %}
+    </div>
+</div>
+{% endblock %}

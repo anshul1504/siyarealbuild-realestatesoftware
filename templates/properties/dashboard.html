@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div class="clearfix">
+        <h1 class="app-page-title mb-0">Dashboard</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="{% url 'properties:dashboard' %}" class="text-body d-inline-flex align-items-center gap-1"><span class="ui-icon breadcrumb-icon"><svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10.5V20h14v-9.5"/></svg></span> Home</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Dashboard</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-xxl-3 col-md-6">
+        <div class="card stat-card">
+            <div class="card-body d-flex align-items-center justify-content-between">
+                <div>
+                    <h6 class="text-body mb-1">Total Properties</h6>
+                    <h2 class="fw-bold mb-0">{{ stats.total_properties|default:0 }}</h2>
+                </div>
+                <div class="avatar avatar-md rounded-2 bg-primary-subtle text-primary"><span class="ui-icon"><svg viewBox="0 0 24 24"><path d="M4 21V7l8-4 8 4v14"/><path d="M9 21v-7h6v7"/><path d="M8 9h.01M12 9h.01M16 9h.01"/></svg></span></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xxl-3 col-md-6">
+        <div class="card stat-card">
+            <div class="card-body d-flex align-items-center justify-content-between">
+                <div>
+                    <h6 class="text-body mb-1">Active Listings</h6>
+                    <h2 class="fw-bold mb-0">{{ active_count }}</h2>
+                </div>
+                <div class="avatar avatar-md rounded-2 bg-success-subtle text-success"><span class="ui-icon"><svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10.5V20h14v-9.5"/><path d="M10 20v-5h4v5"/></svg></span></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xxl-3 col-md-6">
+        <div class="card stat-card">
+            <div class="card-body d-flex align-items-center justify-content-between">
+                <div>
+                    <h6 class="text-body mb-1">Total Value</h6>
+                    <h2 class="fw-bold mb-0">Rs {{ stats.total_value|default:0 }}</h2>
+                </div>
+                <div class="avatar avatar-md rounded-2 bg-warning-subtle text-warning"><span class="ui-icon"><svg viewBox="0 0 24 24"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"/></svg></span></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xxl-3 col-md-6">
+        <div class="card stat-card">
+            <div class="card-body d-flex align-items-center justify-content-between">
+                <div>
+                    <h6 class="text-body mb-1">Leads</h6>
+                    <h2 class="fw-bold mb-0">{{ lead_total }}</h2>
+                </div>
+                <div class="avatar avatar-md rounded-2 bg-info-subtle text-info"><span class="ui-icon"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
