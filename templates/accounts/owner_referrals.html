@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Referral Settings - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head">
+    <h1 class="app-page-title mb-0">Referral System</h1>
+    <p class="text-body mb-0">All roles can refer. Rewards are released only when the referred signup is approved as Channel Partner.</p>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-3"><div class="profile-panel h-100"><span class="text-body small">Reward Status</span><h2 class="mb-0">{{ setting.is_active|yesno:"Active,Off" }}</h2></div></div>
+    <div class="col-md-3"><div class="profile-panel h-100"><span class="text-body small">Active Rewards</span><h2 class="mb-0">{{ referral_stats.active_rewards }}</h2></div></div>
+    <div class="col-md-3"><div class="profile-panel h-100"><span class="text-body small">Referrer Payout</span><h2 class="mb-0">Rs. {{ referral_stats.total_referrer_amount }}</h2></div></div>
+    <div class="col-md-3"><div class="profile-panel h-100"><span class="text-body small">Referred Payout</span><h2 class="mb-0">Rs. {{ referral_stats.total_referred_amount }}</h2></div></div>
+</div>
+
+<section class="profile-panel mb-3">
+    <div class="profile-panel-head">
+        <div>
+            <h2>Reward Settings</h2>
+            <p>Set separate optional benefits. For each person choose either reward amount or coupon, not both.</p>
+        </div>
+    </div>
+    <form method="post" class="profile-form">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        <div class="row g-3">
+            {% for field in form %}
+            <div class="col-md-6">
+                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {{ field.errors }}
+            </div>
+            {% endfor %}
+            <div class="col-12 d-flex justify-content-end">
+                <button class="btn btn-primary">Save Referral Settings</button>
+            </div>
+        </div>
+    </form>
+</section>
+
+<section class="profile-panel employee-directory-panel">
+    <div class="profile-panel-head invite-list-head">
+        <div>
+            <h2>Reward History</h2>
+            <p>{{ referral_stats.pending_references }} referral reference(s) are still waiting for signup approval or OTP verification.</p>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th>Referrer</th>
+                    <th>Referred Channel Partner</th>
+                    <th>Code</th>
+                    <th>Referrer Reward</th>
+                    <th>Channel Partner Reward</th>
+                    <th>Status</th>
+                    <th>Activated</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for reward in rewards %}
+                <tr>
+                    <td>
+                        <strong>{{ reward.referrer.get_full_name|default:reward.referrer.email }}</strong><br>
+                        <span class="text-body small">{{ reward.referrer.profile.employee_code|default:"-" }}</span>
+                    </td>
+                    <td>
+                        <strong>{{ reward.referred_user.get_full_name|default:reward.referred_user.email }}</strong><br>
+                        <span class="text-body small">{{ reward.referred_user.email }}</span>
+                    </td>
+                    <td>{{ reward.referral_code }}</td>
+                    <td>Rs. {{ reward.referrer_reward_amount }}<br><span class="text-body small">{{ reward.referrer_coupon_code|default:"-" }}</span></td>
+                    <td>Rs. {{ reward.referred_reward_amount }}<br><span class="text-body small">{{ reward.referred_coupon_code|default:"-" }}</span></td>
+                    <td>{{ reward.get_status_display }}</td>
+                    <td>{{ reward.activated_at|date:"d M Y, h:i A" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="text-center text-body py-4">No referral rewards released yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% include "accounts/partials/pagination.html" with page_obj=page_obj %}
+</section>
+{% endblock %}

@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Signup Request List - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head company-update-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">Signup Request List</h1>
+        <p class="text-body mb-0">Search, filter, and review the complete signup request history.</p>
+    </div>
+    <a class="btn btn-outline-primary" href="{% url 'accounts:owner_requests' %}">Approval Queue</a>
+</div>
+
+<section class="profile-panel approval-panel">
+    <form method="get" class="signup-list-filter">
+        <input class="form-control" type="search" name="q" value="{{ query }}" placeholder="Search name, email, phone">
+        <select class="form-control" name="status">
+            <option value="">All Status</option>
+            {% for value, label in status_choices %}
+                <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <select class="form-control" name="role">
+            <option value="">All Roles</option>
+            {% for value, label in role_choices %}
+                <option value="{{ value }}" {% if selected_role == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <button class="btn btn-primary" type="submit">Filter</button>
+        <a class="btn btn-light" href="{% url 'accounts:owner_signup_request_list' %}">Reset</a>
+    </form>
+
+    <form method="post" action="{% url 'accounts:owner_signup_request_bulk_delete' %}" class="signup-request-bulk-form" data-delete-confirm="Delete selected signup request(s)? Related OTP and invite records for the same email will also be removed.">
+        {% csrf_token %}
+        <div class="employee-bulk-toolbar signup-bulk-toolbar">
+            <label class="employee-bulk-select">
+                <input type="checkbox" data-employee-select-all>
+                <span>Select all visible requests</span>
+            </label>
+            <button class="btn btn-outline-danger" type="submit">Delete Selected</button>
+        </div>
+    <div class="table-responsive mt-3">
+        <table class="table align-middle approval-table">
+            <thead>
+                <tr>
+                    <th class="approval-check"></th>
+                    <th>Applicant</th>
+                    <th>Requested Role</th>
+                    <th>Approved Role</th>
+                    <th>Status</th>
+                    <th>Email</th>
+                    <th>Requested</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for signup in page_obj %}
+                <tr>
+                    <td><input class="form-check-input" type="checkbox" name="signup_ids" value="{{ signup.id }}" data-employee-checkbox></td>
+                    <td>
+                        <strong><a href="{% url 'accounts:owner_signup_request_detail' signup.id %}">{{ signup.name }}</a></strong>
+                        {% if signup.phone %}<small>{{ signup.phone }}</small>{% endif %}
+                    </td>
+                    <td>{{ signup.get_requested_role_display }}</td>
+                    <td>{% if signup.approved_role %}{{ signup.get_approved_role_display }}{% else %}-{% endif %}</td>
+                    <td>
+                        <span class="approval-status {% if signup.status == 'approved' or signup.status == 'pending_approval' and signup.is_email_verified %}ready{% elif signup.status == 'otp_pending' %}waiting{% elif signup.status == 'rejected' %}danger{% endif %}">
+                            {{ signup.get_status_display }}
+                        </span>
+                    </td>
+                    <td>
+                        <span>{{ signup.email }}</span>
+                        <small>{{ signup.is_email_verified|yesno:"Verified,Not verified" }}</small>
+                    </td>
+                    <td>{{ signup.created_at|date:"d M Y" }}</td>
+                    <td><a class="btn btn-sm btn-outline-primary" href="{% url 'accounts:owner_signup_request_detail' signup.id %}">Open</a></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="8" class="text-center text-body py-4">No signup requests found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    </form>
+
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="signup-pagination">
+        <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        <div>
+            {% if page_obj.has_previous %}
+                <a class="btn btn-sm btn-light" href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+            {% endif %}
+            {% if page_obj.has_next %}
+                <a class="btn btn-sm btn-light" href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

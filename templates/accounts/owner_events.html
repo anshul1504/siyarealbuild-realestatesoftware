@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Event List - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head company-update-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">Company Events</h1>
+        <p class="text-body mb-0">Manage event posts, popup announcements, visibility, and bulk publishing status.</p>
+    </div>
+    <div class="company-page-actions">
+        <a class="btn btn-primary" href="{% url 'accounts:owner_event_create' %}">Create Event</a>
+    </div>
+</div>
+
+<section class="profile-panel event-list-panel">
+    <nav class="event-period-tabs event-period-tabs-panel" aria-label="Event filters">
+        <a class="{% if selected_period == 'upcoming' %}active{% endif %}" href="?period=upcoming"><span>Upcoming</span><small>{{ event_stats.upcoming }}</small></a>
+        <a class="{% if selected_period == 'past' %}active{% endif %}" href="?period=past"><span>Past</span><small>{{ event_stats.past }}</small></a>
+        <a class="{% if selected_period == 'active' %}active{% endif %}" href="?period=active"><span>Active</span><small>{{ event_stats.active }}</small></a>
+        <a class="{% if selected_period == 'inactive' %}active{% endif %}" href="?period=inactive"><span>Inactive</span><small>{{ event_stats.inactive }}</small></a>
+        <a class="{% if selected_period == 'popup' %}active{% endif %}" href="?period=popup"><span>Popup</span><small>{{ event_stats.popup }}</small></a>
+        <a class="{% if selected_period == 'all' %}active{% endif %}" href="?period=all"><span>All</span><small>{{ event_stats.total }}</small></a>
+    </nav>
+
+    <form id="eventBulkForm" method="post" data-delete-confirm="Apply selected event bulk action?">
+        {% csrf_token %}
+        <input type="hidden" name="form_kind" value="event_bulk">
+    </form>
+
+    <div class="event-board-toolbar event-bulk-panel">
+        <label class="employee-bulk-select event-bulk-select">
+            <input type="checkbox" data-employee-select-all>
+            <span>Select all visible events</span>
+        </label>
+        <div class="event-bulk-controls">
+            <select class="form-select form-select-sm" name="action" form="eventBulkForm" required aria-label="Bulk action">
+                <option value="">Choose bulk action</option>
+                <option value="activate">Activate selected</option>
+                <option value="deactivate">Deactivate selected</option>
+                <option value="popup_on">Enable popup</option>
+                <option value="popup_off">Disable popup</option>
+                <option value="delete">Delete selected</option>
+            </select>
+            <button class="btn btn-sm btn-primary" type="submit" form="eventBulkForm">Apply Action</button>
+        </div>
+    </div>
+
+    <div class="event-list-table">
+        {% for event in events %}
+        <article class="event-list-row">
+            <div class="event-list-select">
+                <input type="checkbox" name="event_ids" value="{{ event.id }}" form="eventBulkForm" data-employee-checkbox aria-label="Select {{ event.title }}">
+            </div>
+            <a class="event-list-media" href="{% url 'accounts:owner_event_detail' event.id %}">
+                {% if event.cover_image %}
+                    <img src="{{ event.cover_image.url }}" alt="{{ event.title }}">
+                {% else %}
+                    <span>{{ event.title|slice:":1"|upper }}</span>
+                {% endif %}
+            </a>
+            <div class="event-list-copy">
+                <div class="event-post-badges">
+                    <span class="badge bg-primary-subtle text-primary">{% if event.is_global %}All roles{% else %}Role wise{% endif %}</span>
+                    <span class="badge bg-light text-dark">{{ event.is_active|yesno:"Active,Inactive" }}</span>
+                    {% if event.show_as_popup %}<span class="badge bg-warning-subtle text-warning">Popup</span>{% endif %}
+                </div>
+                <h2><a href="{% url 'accounts:owner_event_detail' event.id %}">{{ event.title }}</a></h2>
+                <p>{{ event.caption|default:event.description|truncatechars:150 }}</p>
+                <span>By {{ event.created_by.get_full_name|default:event.created_by.email|default:"Siya Real Build" }}</span>
+            </div>
+            <div class="event-list-meta">
+                <div><span>From</span><strong>{{ event.starts_at|date:"d M Y" }}</strong></div>
+                <div><span>To</span><strong>{% if event.ends_at %}{{ event.ends_at|date:"d M Y" }}{% else %}{{ event.starts_at|date:"d M Y" }}{% endif %}</strong></div>
+                <div><span>Audience</span><strong>{% if event.is_global %}All roles{% else %}Selected roles{% endif %}</strong></div>
+            </div>
+            <div class="event-row-actions event-list-actions">
+                <a class="btn btn-sm btn-primary" href="{% url 'accounts:owner_event_detail' event.id %}">Open</a>
+                <a class="btn btn-sm btn-outline-primary" href="{% url 'accounts:owner_event_edit' event.id %}">Edit</a>
+            </div>
+        </article>
+        {% empty %}
+        <div class="event-empty-state">
+            <strong>No events found</strong>
+            <span>This tab does not have any event posts yet.</span>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% include "accounts/partials/pagination.html" %}
+</section>
+{% endblock %}

@@ -1,0 +1,53 @@
+<form method="post" enctype="multipart/form-data" class="profile-form" id="edit-event">
+    {% csrf_token %}
+    <input type="hidden" name="form_kind" value="event">
+    {% for error in form.non_field_errors %}<div class="alert alert-danger">{{ error }}</div>{% endfor %}
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label class="form-label" for="{{ form.title.id_for_label }}">Title</label>
+            {{ form.title }}
+            {% for error in form.title.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+        </div>
+        <div class="col-md-6">
+            <label class="form-label" for="{{ form.caption.id_for_label }}">Caption</label>
+            {{ form.caption }}
+            {% for error in form.caption.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+        </div>
+        <div class="col-12">
+            <label class="form-label" for="{{ form.description.id_for_label }}">Description</label>
+            {{ form.description }}
+            {% for error in form.description.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+        </div>
+        <div class="col-md-4">
+            <label class="form-label" for="{{ form.cover_image.id_for_label }}">Cover Image</label>
+            {{ form.cover_image }}
+            {% for error in form.cover_image.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+        </div>
+        <div class="col-md-3">
+            <label class="form-label" for="{{ form.starts_at.id_for_label }}">Starts At</label>
+            {{ form.starts_at }}
+            {% for error in form.starts_at.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+        </div>
+        <div class="col-md-3">
+            <label class="form-label" for="{{ form.ends_at.id_for_label }}">Ends At</label>
+            {{ form.ends_at }}
+            {% for error in form.ends_at.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+        </div>
+        <div class="col-12">
+            <div class="event-toggle-grid">
+                <label class="form-check">{{ form.is_active }} <span class="form-check-label">Active</span></label>
+                <label class="form-check">{{ form.is_global }} <span class="form-check-label">Visible to all roles</span></label>
+                <label class="form-check">{{ form.show_as_popup }} <span class="form-check-label">Show as popup post</span></label>
+            </div>
+        </div>
+        <div class="col-12">
+            <label class="form-label">Role Visibility</label>
+            <div class="event-role-picker">{{ form.roles }}</div>
+            {% for error in form.roles.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+        </div>
+        <div class="col-12 d-flex justify-content-end gap-2">
+            <a class="btn btn-outline-primary" href="{% url 'accounts:owner_events' %}">Back to List</a>
+            <button class="btn btn-primary">{{ submit_label }}</button>
+        </div>
+    </div>
+</form>

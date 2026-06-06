@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}My Referrals - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head">
+    <h1 class="app-page-title mb-0">My Referrals</h1>
+    <p class="text-body mb-0">Share this link with people who want to join as Channel Partner.</p>
+</div>
+
+<section class="profile-panel mb-3">
+    <div class="profile-panel-head">
+        <div>
+            <h2>Channel Partner Referral Link</h2>
+            <p>This link creates a Channel Partner signup request. Benefits are optional and controlled by company settings.</p>
+        </div>
+    </div>
+    <div class="row g-3 align-items-end">
+        <div class="col-lg-8">
+            <label class="form-label" for="referralLink">Referral Link</label>
+            <input id="referralLink" class="form-control" value="{{ referral_url }}" readonly>
+        </div>
+        <div class="col-lg-4 d-flex gap-2">
+            <button class="btn btn-primary w-100" type="button" data-copy-referral>Copy Link</button>
+            <a class="btn btn-outline-primary w-100" href="{{ referral_url }}" target="_blank" rel="noopener noreferrer">Open</a>
+        </div>
+        <div class="col-12">
+            <span class="text-body small">Your referral code: <strong>{{ referral_code }}</strong></span>
+        </div>
+    </div>
+</section>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-3"><div class="profile-panel h-100"><span class="text-body small">Program</span><h2 class="mb-0">{{ setting.is_active|yesno:"Active,Off,Off" }}</h2></div></div>
+    <div class="col-md-3"><div class="profile-panel h-100"><span class="text-body small">Earned</span><h2 class="mb-0">Rs. {{ referral_stats.earned }}</h2></div></div>
+    <div class="col-md-3"><div class="profile-panel h-100"><span class="text-body small">Friend Reward</span><h2 class="mb-0">Rs. {{ referral_stats.received }}</h2></div></div>
+    <div class="col-md-3"><div class="profile-panel h-100"><span class="text-body small">Pending</span><h2 class="mb-0">{{ referral_stats.pending }}</h2></div></div>
+</div>
+<section class="profile-panel mb-3">
+    <div class="profile-panel-head">
+        <div>
+            <h2>Program Policy</h2>
+            <p>Referral tracking works only after company referral program is active. Reward or coupon may be blank if owner has not assigned a benefit.</p>
+        </div>
+    </div>
+    <div class="row g-3">
+        <div class="col-md-6"><span class="text-body small">Referrer benefit</span><h3 class="mb-0">Rs. {{ setting.referrer_reward_amount|default:"0.00" }} / {{ setting.referrer_coupon_code|default:"No coupon" }}</h3></div>
+        <div class="col-md-6"><span class="text-body small">New Channel Partner benefit</span><h3 class="mb-0">Rs. {{ setting.referred_reward_amount|default:"0.00" }} / {{ setting.referred_coupon_code|default:"No coupon" }}</h3></div>
+    </div>
+</section>
+
+<section class="profile-panel employee-directory-panel mb-3">
+    <div class="profile-panel-head">
+        <div>
+            <h2>Rewards Released</h2>
+            <p>Rewards appear here after owner approval of the Channel Partner signup.</p>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead><tr><th>Channel Partner</th><th>Your Reward</th><th>Friend Reward</th><th>Status</th><th>Activated</th></tr></thead>
+            <tbody>
+                {% for reward in rewards_given %}
+                <tr>
+                    <td>{{ reward.referred_user.get_full_name|default:reward.referred_user.email }}</td>
+                    <td>Rs. {{ reward.referrer_reward_amount }}<br><span class="text-body small">{{ reward.referrer_coupon_code|default:"-" }}</span></td>
+                    <td>Rs. {{ reward.referred_reward_amount }}<br><span class="text-body small">{{ reward.referred_coupon_code|default:"-" }}</span></td>
+                    <td>{{ reward.get_status_display }}</td>
+                    <td>{{ reward.activated_at|date:"d M Y, h:i A" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center text-body py-4">No rewards released yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="profile-panel employee-directory-panel">
+    <div class="profile-panel-head">
+        <div>
+            <h2>Pending Channel Partner Requests</h2>
+            <p>These people used your link but approval is not complete yet.</p>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Requested</th></tr></thead>
+            <tbody>
+                {% for signup in pending_referred %}
+                <tr>
+                    <td>{{ signup.name }}</td>
+                    <td>{{ signup.email }}</td>
+                    <td>{{ signup.get_status_display }}</td>
+                    <td>{{ signup.updated_at|date:"d M Y, h:i A" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="text-center text-body py-4">No pending referral requests.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const copyButton = document.querySelector("[data-copy-referral]");
+    const input = document.getElementById("referralLink");
+    copyButton?.addEventListener("click", async () => {
+      if (!input) return;
+      await navigator.clipboard.writeText(input.value);
+      copyButton.textContent = "Copied";
+      window.setTimeout(() => { copyButton.textContent = "Copy Link"; }, 1400);
+    });
+  });
+</script>
+{% endblock %}

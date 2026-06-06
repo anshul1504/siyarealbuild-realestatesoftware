@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Signup Request - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head company-update-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">Signup Request</h1>
+        <p class="text-body mb-0">Review applicant details, update decision notes, and contact the applicant.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-outline-primary" href="{% url 'accounts:owner_signup_request_list' %}">Signup Request List</a>
+        <a class="btn btn-outline-primary" href="{% url 'accounts:owner_requests' %}">Back to Approvals</a>
+    </div>
+</div>
+
+<section class="profile-panel signup-detail-hero">
+    <div>
+        <span class="page-kicker">Applicant</span>
+        <h2>{{ signup.name }}</h2>
+        <p>{{ signup.email }}{% if signup.phone %} / {{ signup.phone }}{% endif %}</p>
+    </div>
+    <div class="signup-detail-status">
+        <span class="approval-status {% if signup.status == 'pending_approval' and signup.is_email_verified %}ready{% elif signup.status == 'otp_pending' %}waiting{% elif signup.status == 'rejected' %}danger{% endif %}">
+            {{ signup.get_status_display }}
+        </span>
+        <span class="approval-status {% if signup.is_email_verified %}ready{% else %}waiting{% endif %}">
+            {{ signup.is_email_verified|yesno:"Email Verified,Email Pending" }}
+        </span>
+    </div>
+</section>
+
+<div class="signup-detail-layout">
+    <section class="profile-panel profile-overview-single">
+        <div class="profile-overview-section">
+            <h2>Request Details</h2>
+            <div class="profile-overview-grid">
+                <div><span>Name</span><strong>{{ signup.name }}</strong></div>
+                <div><span>Email</span><strong>{{ signup.email }}</strong></div>
+                <div><span>Phone</span><strong>{{ signup.phone|default:"Not added" }}</strong></div>
+                <div><span>Requested Role</span><strong>{{ signup.get_requested_role_display }}</strong></div>
+                <div><span>Approved Role</span><strong>{% if signup.approved_role %}{{ signup.get_approved_role_display }}{% else %}Not selected{% endif %}</strong></div>
+                <div><span>Channel Partner Ref</span><strong>{{ signup.channel_partner_reference|default:"Not added" }}</strong></div>
+                <div><span>Created</span><strong>{{ signup.created_at|date:"d M Y, h:i A" }}</strong></div>
+                <div><span>Updated</span><strong>{{ signup.updated_at|date:"d M Y, h:i A" }}</strong></div>
+            </div>
+        </div>
+
+        <div class="profile-overview-section">
+            <h2>Review Decision</h2>
+            <form method="post" class="signup-review-form">
+                {% csrf_token %}
+                <div class="row g-3">
+                    <div class="col-md-5">
+                        <label class="form-label" for="{{ review_form.approved_role.id_for_label }}">Approved Role</label>
+                        {{ review_form.approved_role }}
+                        {% for error in review_form.approved_role.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="{{ review_form.admin_note.id_for_label }}">Review Note</label>
+                        {{ review_form.admin_note }}
+                        {% for error in review_form.admin_note.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                    </div>
+                    <div class="col-12 signup-action-row">
+                        <button class="btn btn-light" type="submit" name="action" value="save_review">Save Review</button>
+                        <button class="btn btn-primary" type="submit" name="action" value="approve">Approve Request</button>
+                        <button class="btn btn-outline-danger" type="submit" name="action" value="reject">Reject Request</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <aside class="profile-panel signup-message-panel">
+        <div class="profile-panel-head">
+            <div>
+                <h2>Custom Email</h2>
+                <p>Send a direct message to this applicant.</p>
+            </div>
+        </div>
+        <form method="post" class="signup-review-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="send_email">
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label" for="{{ email_form.subject.id_for_label }}">Subject</label>
+                    {{ email_form.subject }}
+                    {% for error in email_form.subject.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="col-12">
+                    <label class="form-label" for="{{ email_form.message.id_for_label }}">Message</label>
+                    {{ email_form.message }}
+                    {% for error in email_form.message.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="col-12">
+                    <button class="btn btn-primary w-100" type="submit">Send Email</button>
+                </div>
+            </div>
+        </form>
+
+        <div class="signup-message-history">
+            <h3>Email History</h3>
+            {% for item in messages_sent %}
+                <div>
+                    <strong>{{ item.subject }}</strong>
+                    <span>{{ item.created_at|date:"d M Y, h:i A" }}</span>
+                    <p>{{ item.message|truncatechars:110 }}</p>
+                </div>
+            {% empty %}
+                <p class="text-body mb-0">No custom emails sent yet.</p>
+            {% endfor %}
+        </div>
+    </aside>
+</div>
+{% endblock %}

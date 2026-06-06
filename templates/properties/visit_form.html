@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}{% if mode == "edit" %}Edit Visit{% else %}Add Visit{% endif %} - {{ property_obj.title }}{% endblock %}
+{% block content %}
+<div class="app-page-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">{% if mode == "edit" %}Edit Visit{% else %}Add Visit{% endif %}</h1>
+        <p class="text-body mb-0">{{ property_obj.title }} / {{ property_obj.city }}{% if property_obj.locality %}, {{ property_obj.locality }}{% endif %}</p>
+    </div>
+    <a href="{% if visit %}{% url 'properties:visit_detail' visit.id %}{% else %}{% url 'properties:detail' property_obj.id %}{% endif %}" class="btn btn-light">Back</a>
+</div>
+
+<form method="post" class="profile-panel">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+    <div class="profile-panel-head"><div><h2>Visit Information</h2><p>Schedule and maintain employee-wise site visit records.</p></div></div>
+    <div class="row g-3">
+        <div class="col-md-4">
+            <label class="form-label" for="{{ form.client_name.id_for_label }}">Client Name</label>
+            {{ form.client_name }}{{ form.client_name.errors }}
+        </div>
+        <div class="col-md-4">
+            <label class="form-label" for="{{ form.client_phone.id_for_label }}">Client Phone</label>
+            {{ form.client_phone }}{{ form.client_phone.errors }}
+        </div>
+        <div class="col-md-4">
+            <label class="form-label" for="{{ form.client_email.id_for_label }}">Client Email</label>
+            {{ form.client_email }}{{ form.client_email.errors }}
+        </div>
+        <div class="col-md-4">
+            <label class="form-label" for="{{ form.visit_at.id_for_label }}">Visit Date & Time</label>
+            {{ form.visit_at }}{{ form.visit_at.errors }}
+        </div>
+        <div class="col-md-4">
+            <label class="form-label" for="{{ form.assigned_employee.id_for_label }}">Assigned Employee</label>
+            {{ form.assigned_employee }}{{ form.assigned_employee.errors }}
+        </div>
+        <div class="col-md-4">
+            <label class="form-label" for="{{ form.plot.id_for_label }}">Specific Plot</label>
+            {{ form.plot }}{{ form.plot.errors }}
+        </div>
+        <div class="col-md-4">
+            <label class="form-label" for="{{ form.status.id_for_label }}">Status</label>
+            {{ form.status }}{{ form.status.errors }}
+        </div>
+        <div class="col-md-4">
+            <label class="form-label" for="{{ form.outcome.id_for_label }}">Outcome</label>
+            {{ form.outcome }}{{ form.outcome.errors }}
+        </div>
+        <div class="col-md-4">
+            <label class="form-label" for="{{ form.follow_up_at.id_for_label }}">Follow-up Date & Time</label>
+            {{ form.follow_up_at }}{{ form.follow_up_at.errors }}
+        </div>
+        <div class="col-12">
+            <label class="form-label" for="{{ form.notes.id_for_label }}">Notes</label>
+            {{ form.notes }}{{ form.notes.errors }}
+        </div>
+    </div>
+    <div class="d-flex justify-content-end gap-2 mt-4">
+        <a href="{% url 'properties:detail' property_obj.id %}" class="btn btn-light">Cancel</a>
+        <button class="btn btn-primary" type="submit">{% if mode == "edit" %}Update Visit{% else %}Save Visit{% endif %}</button>
+    </div>
+</form>
+{% endblock %}

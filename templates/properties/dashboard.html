@@ -11,6 +11,12 @@
             </ol>
         </nav>
     </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <span class="badge rounded-pill bg-primary-subtle text-primary px-3 py-2">{{ dashboard_role_label|default:"Team member" }}</span>
+        {% if dashboard_can_add_property %}
+            <a class="btn btn-primary" href="{% url 'properties:create' %}"><i class="fi fi-rr-plus me-2"></i>Add Property</a>
+        {% endif %}
+    </div>
 </div>
 
 <div class="row g-4">
@@ -59,5 +65,239 @@
         </div>
     </div>
 </div>
+
+<div class="row g-4 mt-1">
+    <div class="col-xl-8">
+        <div class="card">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <div>
+                    <h5 class="card-title mb-0">Recent Properties</h5>
+                    <p class="text-body mb-0">Latest records connected with your account.</p>
+                </div>
+                <a class="btn btn-sm btn-outline-primary" href="{% url 'properties:list' %}">View All</a>
+            </div>
+            <div class="card-body">
+                {% if properties %}
+                    {% include "properties/partials/property_table.html" %}
+                {% else %}
+                    <div class="text-center py-5">
+                        <h5 class="mb-1">No properties added yet</h5>
+                        <p class="text-body mb-3">Your role dashboard is ready. Start by adding the first property record.</p>
+                        {% if dashboard_can_add_property %}
+                            <a class="btn btn-primary" href="{% url 'properties:create' %}">Add Property</a>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4">
+        <div class="card h-100">
+            <div class="card-header border-0">
+                <h5 class="card-title mb-0">Role Workspace</h5>
+                <p class="text-body mb-0">Available actions for {{ dashboard_role_label|default:"your role" }}.</p>
+            </div>
+            <div class="card-body pt-0">
+                <div class="list-group list-group-smooth list-group-unlined">
+                    <a class="list-group-item d-flex align-items-center justify-content-between" href="{% url 'accounts:profile' %}">
+                        <span><i class="fi fi-rr-user me-2 text-primary"></i>Profile Details</span>
+                        <i class="fi fi-rr-angle-small-right"></i>
+                    </a>
+                    <a class="list-group-item d-flex align-items-center justify-content-between" href="{% url 'accounts:company_detail' %}">
+                        <span><i class="fi fi-rr-building me-2 text-primary"></i>Company Overview</span>
+                        <i class="fi fi-rr-angle-small-right"></i>
+                    </a>
+                    {% if dashboard_can_manage_team %}
+                    <a class="list-group-item d-flex align-items-center justify-content-between" href="{% url 'accounts:employee_invites' %}">
+                        <span><i class="fi fi-rr-users-alt me-2 text-primary"></i>Team Invites</span>
+                        <i class="fi fi-rr-angle-small-right"></i>
+                    </a>
+                    {% endif %}
+                    {% if dashboard_can_manage_access %}
+                    <a class="list-group-item d-flex align-items-center justify-content-between" href="{% url 'accounts:access_control' %}">
+                        <span><i class="fi fi-rr-shield-check me-2 text-primary"></i>Access Control</span>
+                        <i class="fi fi-rr-angle-small-right"></i>
+                    </a>
+                    <a class="list-group-item d-flex align-items-center justify-content-between" href="{% url 'accounts:owner_requests' %}">
+                        <span><i class="fi fi-rr-check-circle me-2 text-primary"></i>Bulk Approvals</span>
+                        <i class="fi fi-rr-angle-small-right"></i>
+                    </a>
+                    <a class="list-group-item d-flex align-items-center justify-content-between" href="{% url 'accounts:owner_meetings' %}">
+                        <span><i class="fi fi-rr-calendar me-2 text-primary"></i>Meetings & Events</span>
+                        <i class="fi fi-rr-angle-small-right"></i>
+                    </a>
+                    <a class="list-group-item d-flex align-items-center justify-content-between" href="{% url 'accounts:owner_popups' %}">
+                        <span><i class="fi fi-rr-picture me-2 text-primary"></i>Offer Popups</span>
+                        <i class="fi fi-rr-angle-small-right"></i>
+                    </a>
+                    <a class="list-group-item d-flex align-items-center justify-content-between" href="{% url 'accounts:owner_role_matrix' %}">
+                        <span><i class="fi fi-rr-apps me-2 text-primary"></i>Role Matrix</span>
+                        <i class="fi fi-rr-angle-small-right"></i>
+                    </a>
+                    <a class="list-group-item d-flex align-items-center justify-content-between" href="{% url 'accounts:owner_support' %}">
+                        <span><i class="fi fi-rr-interrogation me-2 text-primary"></i>Support Tickets</span>
+                        <i class="fi fi-rr-angle-small-right"></i>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if visible_events %}
+<section class="profile-panel mt-4">
+    <div class="profile-panel-head">
+        <div>
+            <h2>Events For Your Role</h2>
+            <p>Latest announcements shared with your workspace access level.</p>
+        </div>
+    </div>
+    <div class="event-post-grid event-post-grid-large">
+        {% for event in visible_events %}
+        <article class="event-post-card">
+            <a class="event-post-cover" href="{% url 'accounts:event_detail' event.id %}">
+                {% if event.cover_image %}
+                    <img src="{{ event.cover_image.url }}" alt="{{ event.title }}">
+                {% else %}
+                    <span>{{ event.title|slice:":1"|upper }}</span>
+                {% endif %}
+            </a>
+            <div class="event-post-body">
+                <div class="event-post-meta">
+                    <strong>{{ event.title }}</strong>
+                    <span>{{ event.starts_at|date:"d M Y, h:i A" }}</span>
+                </div>
+                <p>{{ event.caption|default:event.description|truncatechars:140 }}</p>
+                <div class="event-post-badges">
+                    <span class="badge bg-primary-subtle text-primary">{% if event.is_global %}All roles{% else %}Role wise{% endif %}</span>
+                    {% if event.show_as_popup %}<span class="badge bg-warning-subtle text-warning">Important</span>{% endif %}
+                </div>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+{% if is_company_owner %}
+<div class="row g-4 mt-1">
+    <div class="col-xl-6">
+        <div class="card">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <div>
+                    <h5 class="card-title mb-0">Pending Signup Requests</h5>
+                    <p class="text-body mb-0">Email-verified users waiting for approval.</p>
+                </div>
+                <a class="btn btn-sm btn-outline-primary" href="{% url 'accounts:owner_requests' %}">Review Requests</a>
+            </div>
+            <div class="card-body">
+                {% if pending_signup_requests %}
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Role</th>
+                                    <th>Requested</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for signup in pending_signup_requests %}
+                                    <tr>
+                                        <td>{{ signup.name }}</td>
+                                        <td>{{ signup.email }}</td>
+                                        <td>{{ signup.get_requested_role_display }}</td>
+                                        <td>{{ signup.created_at|date:"d M Y" }}</td>
+                                        <td><a class="btn btn-sm btn-outline-primary" href="{% url 'accounts:owner_signup_request_detail' signup.id %}">Review</a></td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-body mb-0">No signup requests are pending approval.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-6">
+        <div class="card">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <div>
+                    <h5 class="card-title mb-0">Authentication Support</h5>
+                    <p class="text-body mb-0">Recent unresolved support requests.</p>
+                </div>
+                <a class="btn btn-sm btn-outline-primary" href="{% url 'admin:accounts_authenticationsupportrequest_changelist' %}">Open Admin</a>
+            </div>
+            <div class="card-body">
+                {% if support_requests %}
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Contact</th>
+                                    <th>Issue</th>
+                                    <th>Submitted</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for support in support_requests %}
+                                    <tr>
+                                        <td>{{ support.name }}</td>
+                                        <td>{{ support.contact|default:"-" }}</td>
+                                        <td>{{ support.issue|truncatechars:45 }}</td>
+                                        <td>{{ support.created_at|date:"d M Y" }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-body mb-0">No unresolved authentication support requests.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if dashboard_offer_popup %}
+<div class="offer-login-popup" data-offer-popup-id="offer-popup-{{ dashboard_offer_popup.id }}">
+    <div class="offer-login-popup-backdrop" data-offer-popup-close></div>
+    <article class="offer-login-popup-card" role="dialog" aria-modal="true" aria-labelledby="offerPopupTitle{{ dashboard_offer_popup.id }}">
+        <button class="offer-login-popup-close" type="button" aria-label="Close offer popup" data-offer-popup-close>&times;</button>
+        <div class="offer-login-popup-image">
+            <img src="{{ dashboard_offer_popup.offer_image.url }}" alt="{{ dashboard_offer_popup.title }}">
+        </div>
+        <div class="offer-login-popup-body">
+            {% if dashboard_offer_popup.deal_label %}<span>{{ dashboard_offer_popup.deal_label }}</span>{% endif %}
+            <h2 id="offerPopupTitle{{ dashboard_offer_popup.id }}">{{ dashboard_offer_popup.title }}</h2>
+            <p>{{ dashboard_offer_popup.message }}</p>
+        </div>
+    </article>
+</div>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    var popup = document.querySelector("[data-offer-popup-id]");
+    if (!popup) return;
+    var key = popup.getAttribute("data-offer-popup-id");
+    if (window.localStorage && localStorage.getItem(key) === "closed") {
+      popup.remove();
+      return;
+    }
+    popup.classList.add("show");
+    popup.querySelectorAll("[data-offer-popup-close]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        if (window.localStorage) localStorage.setItem(key, "closed");
+        popup.classList.remove("show");
+      });
+    });
+  });
+</script>
+{% endif %}
 
 {% endblock %}

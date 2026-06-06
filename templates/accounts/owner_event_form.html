@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Create Event - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head company-update-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">Create Event</h1>
+        <p class="text-body mb-0">Publish a polished role-wise event poster with photo, title, caption, description, and timing.</p>
+    </div>
+    <div class="company-page-actions">
+        <a class="btn btn-outline-primary" href="{% url 'accounts:owner_events' %}">Event List</a>
+    </div>
+</div>
+
+<section class="event-editor-shell event-editor-shell-pro">
+    <div class="event-editor-main profile-panel">
+        <div class="profile-panel-head">
+            <div>
+                <h2>Event Details</h2>
+                <p>Keep the title scan-friendly, use caption as the social post line, and put full notes in description.</p>
+            </div>
+        </div>
+        {% include "accounts/partials/event_form.html" %}
+    </div>
+    <aside class="event-editor-side">
+        <div class="profile-panel event-editor-note">
+            <span class="text-body small">Publishing Rules</span>
+            <strong>Audience</strong>
+            <p>Use all roles for company-wide posts. For private posts, uncheck all roles and select only the target roles.</p>
+            <strong>Popup</strong>
+            <p>Enable popup only for high-priority posts that should appear like an announcement card.</p>
+            <strong>Poster</strong>
+            <p>Use one strong poster image. The card and detail page will use this as the cover visual.</p>
+        </div>
+    </aside>
+</section>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}{{ event.title }} - Event{% endblock %}
+{% block content %}
+<div class="app-page-head company-update-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">Event</h1>
+        <p class="text-body mb-0">Role-wise event announcement shared with your workspace.</p>
+    </div>
+    <a class="btn btn-outline-primary" href="{% url 'properties:dashboard' %}">Back to Dashboard</a>
+</div>
+
+<article class="event-detail-post event-user-post">
+    <div class="event-detail-media">
+        {% if event.cover_image %}
+            <img src="{{ event.cover_image.url }}" alt="{{ event.title }}">
+        {% else %}
+            <span>{{ event.title|slice:":1"|upper }}</span>
+        {% endif %}
+    </div>
+    <div class="event-detail-content">
+        <div class="event-post-badges">
+            <span class="badge bg-primary-subtle text-primary">{% if event.is_global %}All roles{% else %}Role wise{% endif %}</span>
+            {% if event.show_as_popup %}<span class="badge bg-warning-subtle text-warning">Important</span>{% endif %}
+        </div>
+        <h2>{{ event.title }}</h2>
+        <span class="text-body small">{{ event.starts_at|date:"d M Y, h:i A" }}{% if event.ends_at %} - {{ event.ends_at|date:"d M Y, h:i A" }}{% endif %}</span>
+        {% if event.caption %}<p class="event-detail-caption">{{ event.caption }}</p>{% endif %}
+        {% if event.description %}<p class="event-detail-description">{{ event.description }}</p>{% endif %}
+    </div>
+</article>
+{% endblock %}

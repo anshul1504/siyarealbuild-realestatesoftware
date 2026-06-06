@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Sent Team Emails - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head company-update-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">Sent Team Emails</h1>
+        <p class="text-body mb-0">View email history and recipient snapshots.</p>
+    </div>
+    <div class="company-page-actions">
+        <a class="btn btn-primary" href="{% url 'accounts:team_emails' %}">Send New Email</a>
+        <a class="btn btn-outline-primary" href="{% url 'accounts:team_profiles' %}">Employee Directory</a>
+    </div>
+</div>
+
+<section class="profile-panel employee-directory-panel">
+    <div class="employee-directory-table-wrap">
+        <table class="table align-middle employee-directory-table">
+            <thead>
+                <tr>
+                    <th>Subject</th>
+                    <th>Target</th>
+                    <th>Recipients</th>
+                    <th>Sent By</th>
+                    <th>Sent At</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for email in page_obj.object_list %}
+                <tr>
+                    <td><strong>{{ email.subject }}</strong><small>{{ email.message|truncatechars:80 }}</small></td>
+                    <td><strong>{{ email.get_role_display|default:"All visible roles" }}</strong><small>{{ email.department|default:"All departments" }}</small></td>
+                    <td>{{ email.sent_count }}</td>
+                    <td>{{ email.sent_by.get_full_name|default:email.sent_by.email|default:"System" }}</td>
+                    <td>{{ email.created_at|date:"d M Y, h:i A" }}</td>
+                    <td><a class="btn btn-sm btn-outline-primary" href="{% url 'accounts:team_email_detail' email.id %}">View</a></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="text-center text-body py-4">No team emails sent yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="signup-pagination">
+        <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        <div>
+            {% if page_obj.has_previous %}
+                <a class="btn btn-sm btn-outline-primary" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+            {% endif %}
+            {% if page_obj.has_next %}
+                <a class="btn btn-sm btn-outline-primary" href="?page={{ page_obj.next_page_number }}">Next</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

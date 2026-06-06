@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Role Access - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head company-update-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">Role Access</h1>
+        <p class="text-body mb-0">Review role distribution and manage employee role change requests.</p>
+    </div>
+    <div class="company-page-actions">
+        <a class="btn btn-primary" href="{% url 'accounts:role_change_request_create' %}">New Role Change</a>
+        <a class="btn btn-outline-primary" href="{% url 'accounts:role_change_request_list' %}">Request List</a>
+    </div>
+</div>
+
+<section class="profile-panel employee-directory-panel">
+    <div class="profile-panel-head">
+        <div>
+            <h2>Role Summary</h2>
+            <p>{{ pending_count }} pending role change request(s).</p>
+        </div>
+    </div>
+    <div class="profile-overview-grid">
+        {% for item in role_counts %}
+            <div><span>{{ item.label }}</span><strong>{{ item.total }}</strong></div>
+        {% empty %}
+            <div><span>Team</span><strong>No members yet</strong></div>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="profile-panel employee-directory-panel mt-3">
+    <div class="profile-panel-head">
+        <div>
+            <h2>Recent Role Requests</h2>
+            <p>Open a request to approve, reject, and notify the employee.</p>
+        </div>
+    </div>
+    <div class="employee-directory-table-wrap">
+        <table class="table align-middle employee-directory-table">
+            <thead>
+                <tr>
+                    <th>Employee</th>
+                    <th>Role Change</th>
+                    <th>Status</th>
+                    <th>Requested</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in recent_requests %}
+                <tr>
+                    <td><strong>{{ item.employee.get_full_name|default:item.employee.email }}</strong><small>{{ item.employee.profile.employee_code|default:"Code pending" }}</small></td>
+                    <td><strong>{{ item.get_current_role_display }} to {{ item.get_requested_role_display }}</strong><small>{{ item.reason|default:"No reason added"|truncatechars:70 }}</small></td>
+                    <td><span class="badge {% if item.status == 'approved' %}text-bg-success{% elif item.status == 'rejected' %}text-bg-danger{% else %}text-bg-warning{% endif %}">{{ item.get_status_display }}</span></td>
+                    <td>{{ item.created_at|date:"d M Y, h:i A" }}</td>
+                    <td><a class="btn btn-sm btn-outline-primary" href="{% url 'accounts:role_change_request_detail' item.id %}">Open</a></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center text-body py-4">No role change requests yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

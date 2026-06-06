@@ -27,11 +27,43 @@
       </form>
       <form method="post" action="{% url 'accounts:resend_email_change_otp' %}" class="mt-3">
         {% csrf_token %}
-        <button type="submit" class="btn btn-outline-primary w-100">Resend OTP</button>
+        <button
+          type="submit"
+          class="btn btn-outline-primary w-100"
+          data-resend-otp-button
+          data-wait-seconds="{{ resend_remaining_seconds|default:0 }}"
+          {% if resend_remaining_seconds %}disabled{% endif %}
+        >
+          {% if resend_remaining_seconds %}Resend OTP in {{ resend_remaining_seconds }}s{% else %}Resend OTP{% endif %}
+        </button>
       </form>
       <p class="mb-0 mt-3 text-center"><a class="text-dark" href="{% url 'accounts:profile' %}">Back to profile</a></p>
       <p class="auth-credit">Design and developed by <a href="https://www.thewebfix.in/" target="_blank" rel="noopener noreferrer">The Webfix</a></p>
     </div>
   </div>
 </div>
+<script>
+  (function () {
+    var button = document.querySelector("[data-resend-otp-button]");
+    if (!button) return;
+
+    var remaining = parseInt(button.getAttribute("data-wait-seconds") || "0", 10);
+    if (!remaining) return;
+
+    var tick = function () {
+      if (remaining <= 0) {
+        button.disabled = false;
+        button.textContent = "Resend OTP";
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = "Resend OTP in " + remaining + "s";
+      remaining -= 1;
+      window.setTimeout(tick, 1000);
+    };
+
+    tick();
+  })();
+</script>
 {% endblock %}

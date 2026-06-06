@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}Invite Detail - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head company-update-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">Invite Detail</h1>
+        <p class="text-body mb-0">Review employee invite, verification, approval, and account status.</p>
+    </div>
+    <div class="company-page-actions">
+        <a class="btn btn-outline-primary" href="{% url 'accounts:employee_invite_list' %}">Back to Invite List</a>
+        {% if invite.status != "approved" %}<a class="btn btn-outline-primary" href="{% url 'accounts:employee_invite_edit' invite.id %}">Edit Invite</a>{% endif %}
+        {% if invite.accepted_user_id %}<a class="btn btn-outline-primary" href="{% url 'accounts:team_profile_detail' invite.accepted_user.profile.id %}">Employee Profile</a>{% endif %}
+        {% if invite.is_email_verified and invite.status != "approved" and invite.status != "rejected" %}
+        <form method="post" action="{% url 'accounts:employee_invite_approve' invite.id %}">
+            {% csrf_token %}
+            <button class="btn btn-primary" type="submit">Approve Invite</button>
+        </form>
+        {% endif %}
+        {% if can_resend_invite %}
+        <form method="post" action="{% url 'accounts:employee_invite_resend' invite.id %}">
+            {% csrf_token %}
+            <button class="btn btn-outline-primary" type="submit">Resend Verification</button>
+        </form>
+        {% elif invite.status != "approved" %}
+        <button class="btn btn-outline-secondary" type="button" disabled data-invite-resend-countdown="{{ resend_remaining_seconds }}">Resend in {{ resend_remaining_seconds }}s</button>
+        {% endif %}
+        {% if can_delete_invite %}
+        <form method="post" action="{% url 'accounts:employee_invite_delete' invite.id %}" data-delete-confirm="Delete this invite record?">
+            {% csrf_token %}
+            <button class="btn btn-outline-danger" type="submit">Delete Invite</button>
+        </form>
+        {% else %}
+        <button class="btn btn-outline-secondary" type="button" disabled>Approved Invite Locked</button>
+        {% endif %}
+    </div>
+</div>
+
+<section class="profile-panel profile-overview-single employee-detail-panel">
+    <div class="employee-detail-head">
+        <span>{{ invite.email|default:invite.name|slice:":1"|upper }}</span>
+        <div>
+            <h2>{{ invite.name }}</h2>
+            <p>{{ invite.email }}</p>
+            <div class="d-flex gap-2 flex-wrap">
+                <span class="badge rounded-pill bg-primary-subtle text-primary">{{ invite.get_role_display }}</span>
+                <span class="badge rounded-pill bg-light text-dark">{{ invite.employee_code|default:"Code pending" }}</span>
+                <span class="approval-status {% if invite.status == 'approved' %}ready{% elif invite.status == 'rejected' %}danger{% else %}waiting{% endif %}">
+                    {{ invite.get_status_display }}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div class="profile-overview-section">
+        <h2>Invite Details</h2>
+        <div class="profile-overview-grid">
+            <div><span>Phone</span><strong>{{ invite.phone|default:"Not added" }}</strong></div>
+            <div><span>Role</span><strong>{{ invite.get_role_display }}</strong></div>
+            <div><span>Employee Code</span><strong>{{ invite.employee_code|default:"Not added" }}</strong></div>
+            <div><span>Email Verification</span><strong>{{ invite.is_email_verified|yesno:"Verified,Pending" }}</strong></div>
+            <div><span>Current Status</span><strong>{{ invite.get_status_display }}</strong></div>
+            <div><span>Signup Record</span><strong>{% if signup %}{{ signup.get_status_display }}{% else %}Not created{% endif %}</strong></div>
+            {% if invite.note %}<div class="profile-overview-wide"><span>Invite Note</span><strong>{{ invite.note }}</strong></div>{% endif %}
+        </div>
+    </div>
+
+    {% if not invite.is_email_verified and invite.status != "approved" and invite.status != "rejected" %}
+    <div class="profile-overview-section">
+        <h2>Email OTP Verification</h2>
+        <form method="post" action="{% url 'accounts:employee_invite_verify_otp' invite.id %}" class="invite-otp-form">
+            {% csrf_token %}
+            <div class="invite-otp-field">
+                <label for="inviteOtpCode">Invite OTP</label>
+                <input id="inviteOtpCode" class="form-control otp-input" type="text" name="code" maxlength="6" inputmode="numeric" autocomplete="one-time-code" placeholder="000000" required>
+            </div>
+            <button class="btn btn-primary" type="submit">Verify OTP</button>
+            {% if can_resend_invite %}
+            <button class="btn btn-outline-primary" type="submit" formaction="{% url 'accounts:employee_invite_resend' invite.id %}" formnovalidate>Resend OTP</button>
+            {% elif resend_remaining_seconds %}
+            <button class="btn btn-outline-secondary" type="button" disabled data-invite-resend-countdown="{{ resend_remaining_seconds }}">Resend in {{ resend_remaining_seconds }}s</button>
+            {% endif %}
+        </form>
+    </div>
+    {% endif %}
+
+    <div class="profile-overview-section">
+        <h2>Invite Activity</h2>
+        <div class="profile-overview-grid">
+            <div><span>Invited By</span><strong>{{ invite.invited_by.get_full_name|default:invite.invited_by.email|default:invite.invited_by.username }}</strong></div>
+            <div><span>Invite Sent</span><strong>{{ invite.last_invite_sent_at|date:"d M Y, h:i A"|default:"Not sent" }}</strong></div>
+            <div><span>Resend Count</span><strong>{{ invite.resend_count }}</strong></div>
+            <div><span>Created</span><strong>{{ invite.created_at|date:"d M Y, h:i A" }}</strong></div>
+            <div><span>Updated</span><strong>{{ invite.updated_at|date:"d M Y, h:i A" }}</strong></div>
+            <div><span>Resend Availability</span><strong {% if invite.status != "approved" and resend_remaining_seconds %}data-invite-resend-availability="{{ resend_remaining_seconds }}"{% endif %}>{% if invite.status == "approved" %}Locked{% elif resend_remaining_seconds %}{{ resend_remaining_seconds }}s remaining{% else %}Available{% endif %}</strong></div>
+        </div>
+    </div>
+
+    <div class="profile-overview-section">
+        <h2>Approval & Account</h2>
+        <div class="profile-overview-grid">
+            <div><span>Approved By</span><strong>{% if invite.approved_by_id %}{{ invite.approved_by.get_full_name|default:invite.approved_by.email|default:invite.approved_by.username }}{% else %}Not approved{% endif %}</strong></div>
+            <div><span>Approved At</span><strong>{{ invite.approved_at|date:"d M Y, h:i A"|default:"Not approved" }}</strong></div>
+            <div><span>Linked Account</span><strong>{% if invite.accepted_user_id %}{{ invite.accepted_user.email }}{% else %}Not created{% endif %}</strong></div>
+            <div><span>Account Name</span><strong>{% if invite.accepted_user_id %}{{ invite.accepted_user.get_full_name|default:invite.accepted_user.email|default:invite.accepted_user.username }}{% else %}Not created{% endif %}</strong></div>
+            <div class="profile-overview-wide"><span>Access Rule</span><strong>Employee can login only after email verification and owner approval are complete.</strong></div>
+        </div>
+    </div>
+</section>
+{% if invite.status != "approved" and resend_remaining_seconds %}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    var seconds = parseInt("{{ resend_remaining_seconds|default:0 }}", 10) || 0;
+    var countdownEls = Array.from(document.querySelectorAll("[data-invite-resend-countdown]"));
+    var availabilityEls = Array.from(document.querySelectorAll("[data-invite-resend-availability]"));
+    if (!seconds || !countdownEls.length && !availabilityEls.length) return;
+    var render = function () {
+      countdownEls.forEach(function (el) {
+        el.textContent = seconds > 0 ? "Resend in " + seconds + "s" : "Resend available";
+      });
+      availabilityEls.forEach(function (el) {
+        el.textContent = seconds > 0 ? seconds + "s remaining" : "Available";
+      });
+      if (seconds <= 0) {
+        window.clearInterval(timer);
+        window.location.reload();
+      }
+      seconds -= 1;
+    };
+    render();
+    var timer = window.setInterval(render, 1000);
+  });
+</script>
+{% endif %}
+{% endblock %}

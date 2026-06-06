@@ -6,3 +6,10 @@ media/
 staticfiles/
 *.log
 .env
+.env.*
+!.env.example
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/

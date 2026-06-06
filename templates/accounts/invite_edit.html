@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Edit Invite - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head company-update-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">Edit Invite</h1>
+        <p class="text-body mb-0">Update pending onboarding details before employee approval.</p>
+    </div>
+    <div class="company-page-actions">
+        <a class="btn btn-outline-primary" href="{% url 'accounts:employee_invite_detail' invite.id %}">Invite Detail</a>
+        <a class="btn btn-outline-secondary" href="{% url 'accounts:employee_invite_list' %}">Invite List</a>
+    </div>
+</div>
+
+<section class="profile-panel profile-detail-panel invite-form-panel mt-3">
+    <form method="post" class="profile-detail-form invite-employee-form">
+        {% csrf_token %}
+        <div class="profile-form-section invite-form-section">
+            <div class="invite-form-head">
+                <div>
+                    <h3>{{ invite.name }}</h3>
+                    <p>Changing the email resets verification and sends a new OTP.</p>
+                </div>
+            </div>
+            <div class="invite-form-grid">
+                {% for field in form %}
+                <div class="{% if field.name == 'note' %}invite-form-wide{% else %}invite-form-field{% endif %}">
+                    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="profile-detail-actions invite-form-actions">
+            <a class="btn btn-outline-secondary" href="{% url 'accounts:employee_invite_detail' invite.id %}">Cancel</a>
+            <button class="btn btn-primary" type="submit">Save Changes</button>
+        </div>
+    </form>
+</section>
+{% endblock %}

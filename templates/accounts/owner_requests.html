@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Signup Approvals - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head company-update-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">Signup Approvals</h1>
+        <p class="text-body mb-0">Action queue for pending signup approvals.</p>
+    </div>
+    <a class="btn btn-outline-primary" href="{% url 'accounts:owner_signup_request_list' %}">View Signup List</a>
+</div>
+
+<div class="approval-metrics">
+    <div><span>Verified Signups</span><strong>{{ request_counts.signup_pending|default:0 }}</strong></div>
+    <div><span>Signup OTP Pending</span><strong>{{ request_counts.signup_otp|default:0 }}</strong></div>
+    <div><span>Approved Signups</span><strong>{{ request_counts.signup_approved|default:0 }}</strong></div>
+    <div><span>Rejected Signups</span><strong>{{ request_counts.signup_rejected|default:0 }}</strong></div>
+</div>
+
+<div class="approval-workflow">
+    <section class="profile-panel approval-panel">
+        <div class="profile-panel-head approval-panel-head">
+            <div>
+                <h2>Signup Requests</h2>
+                <p>Approve only email-verified users. Full history is available in Signup Request List.</p>
+            </div>
+        </div>
+        <form method="post" class="approval-form">
+            {% csrf_token %}
+            <input type="hidden" name="form_kind" value="signup">
+            <div class="approval-toolbar">
+                {{ signup_form.action }}
+                <button class="btn btn-primary" type="submit">Apply to Selected</button>
+            </div>
+            <div class="table-responsive">
+                <table class="table align-middle approval-table">
+                    <thead>
+                        <tr>
+                            <th class="approval-check"></th>
+                            <th>Applicant</th>
+                            <th>Requested Role</th>
+                            <th>Status</th>
+                            <th>Requested</th>
+                            <th>Note</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for signup in signups %}
+                        <tr>
+                            <td><input class="form-check-input" type="checkbox" name="signup-signup_ids" value="{{ signup.id }}"></td>
+                            <td>
+                                <strong><a href="{% url 'accounts:owner_signup_request_detail' signup.id %}">{{ signup.name }}</a></strong>
+                                <span>{{ signup.email }}</span>
+                                {% if signup.phone %}<small>{{ signup.phone }}</small>{% endif %}
+                            </td>
+                            <td>{{ signup.get_requested_role_display }}</td>
+                            <td>
+                                <span class="approval-status {% if signup.status == 'approved' or signup.status == 'pending_approval' and signup.is_email_verified %}ready{% elif signup.status == 'otp_pending' %}waiting{% elif signup.status == 'rejected' %}danger{% endif %}">
+                                    {{ signup.get_status_display }}
+                                </span>
+                            </td>
+                            <td>{{ signup.created_at|date:"d M Y" }}</td>
+                            <td>{{ signup.admin_note|default:"-"|truncatechars:48 }}</td>
+                            <td><a class="btn btn-sm btn-outline-primary" href="{% url 'accounts:owner_signup_request_detail' signup.id %}">Open</a></td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="6" class="text-center text-body py-4">No signup requests found.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </form>
+    </section>
+
+</div>
+{% endblock %}

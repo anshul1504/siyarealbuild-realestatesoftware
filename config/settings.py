@@ -13,6 +13,15 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 import os
 from pathlib import Path
 
+
+def env_bool(name, default=False):
+    return os.environ.get(name, str(default)).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def env_list(name, default=""):
+    return [item.strip() for item in os.environ.get(name, default).split(",") if item.strip()]
+
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -21,12 +30,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-k4@4_$r()^4pl05qqb$6dfxm8$k*zrtm-q$)8++kx&k+v37))&"
+SECRET_KEY = os.environ.get("SIYA_SECRET_KEY", "django-insecure-local-development-only")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env_bool("SIYA_DEBUG", True)
 
-ALLOWED_HOSTS = ["127.0.0.1", "localhost", "testserver"]
+ALLOWED_HOSTS = env_list("SIYA_ALLOWED_HOSTS", "127.0.0.1,localhost,testserver")
+CSRF_TRUSTED_ORIGINS = env_list("SIYA_CSRF_TRUSTED_ORIGINS")
 
 
 # Application definition
@@ -58,23 +68,6 @@ JAZZMIN_SETTINGS = {
     "navigation_expanded": True,
 }
 
-JAZZMIN_UI_TWEAKS = {
-    "theme": "sandstone",
-    "dark_mode_theme": "darkly",
-    "navbar": "navbar-dark",
-    "accent": "accent-warning",
-    "sidebar": "sidebar-dark-warning",
-    "brand_colour": "navbar-dark",
-    "button_classes": {
-        "primary": "btn-warning",
-        "secondary": "btn-dark",
-        "info": "btn-info",
-        "warning": "btn-warning",
-        "danger": "btn-danger",
-        "success": "btn-success",
-    },
-}
-
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -97,6 +90,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "accounts.context_processors.dashboard_access",
             ],
         },
     },
@@ -164,7 +158,7 @@ LOGOUT_REDIRECT_URL = "accounts:login"
 
 EMAIL_BACKEND = os.environ.get(
     "SIYA_EMAIL_BACKEND",
-    "django.core.mail.backends.console.EmailBackend",
+    "django.core.mail.backends.smtp.EmailBackend",
 )
 EMAIL_HOST = os.environ.get("SIYA_EMAIL_HOST", "mail.thewebfix.in")
 EMAIL_PORT = int(os.environ.get("SIYA_EMAIL_PORT", "465"))
@@ -175,3 +169,11 @@ DEFAULT_FROM_EMAIL = os.environ.get(
     "SIYA_DEFAULT_FROM_EMAIL",
     "Siya Real Build <noreply@thewebfix.in>",
 )
+
+SECURE_SSL_REDIRECT = env_bool("SIYA_SECURE_SSL_REDIRECT", False)
+SESSION_COOKIE_SECURE = env_bool("SIYA_SESSION_COOKIE_SECURE", False)
+CSRF_COOKIE_SECURE = env_bool("SIYA_CSRF_COOKIE_SECURE", False)
+SECURE_HSTS_SECONDS = int(os.environ.get("SIYA_SECURE_HSTS_SECONDS", "0"))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool("SIYA_SECURE_HSTS_INCLUDE_SUBDOMAINS", False)
+SECURE_HSTS_PRELOAD = env_bool("SIYA_SECURE_HSTS_PRELOAD", False)
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

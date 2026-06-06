@@ -12,10 +12,13 @@
       </div>
       <div class="text-center mb-5">
         <h5 class="mb-1">Create your account</h5>
-        <p>Verify your email first. Admin approval is required before login.</p>
+        <p>{% if is_referral_signup %}Referral link is valid only for Channel Partner signup requests.{% else %}Verify your email first. Admin approval is required before login.{% endif %}</p>
       </div>
       <form method="post" action="{% url 'accounts:signup' %}">
         {% csrf_token %}
+        {% if is_referral_signup %}
+          <input type="hidden" name="referral_code" value="{{ referral_code }}">
+        {% endif %}
         <div class="mb-4">
           <label class="form-label" for="{{ form.name.id_for_label }}">Name</label>
           {{ form.name }}
@@ -33,9 +36,22 @@
         </div>
         <div class="mb-4">
           <label class="form-label" for="{{ form.requested_role.id_for_label }}">Requested Role</label>
-          {{ form.requested_role }}
+          {% if is_referral_signup %}
+            <input type="hidden" name="{{ form.requested_role.html_name }}" value="channel_partner">
+            <input class="form-control" type="text" value="Channel Partner" readonly>
+            <div class="text-body small mt-1">This role is locked because this signup came through a referral link.</div>
+          {% else %}
+            {{ form.requested_role }}
+          {% endif %}
           {% for error in form.requested_role.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
         </div>
+        {% if is_referral_signup %}
+        <div class="mb-4">
+          <label class="form-label">Referral Code</label>
+          <input class="form-control" type="text" value="{{ referral_code }}" readonly>
+          {% for error in form.channel_partner_reference.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+        </div>
+        {% endif %}
         <div class="mb-3">
           <button type="submit" class="btn btn-primary w-100">Send Signup OTP</button>
         </div>

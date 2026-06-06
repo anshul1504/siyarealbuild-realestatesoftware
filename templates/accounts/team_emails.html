@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Team Email - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head company-update-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">Team Email</h1>
+        <p class="text-body mb-0">Send branded email updates to employees by role or department.</p>
+    </div>
+    <div class="company-page-actions">
+        <a class="btn btn-outline-primary" href="{% url 'accounts:team_email_list' %}">Sent Emails</a>
+        <a class="btn btn-outline-primary" href="{% url 'accounts:team_profiles' %}">Employee Directory</a>
+    </div>
+</div>
+
+<div class="team-email-layout">
+    <section class="profile-panel employee-email-panel">
+        <form method="post" class="profile-detail-form">
+            {% csrf_token %}
+            <div class="profile-form-section">
+                <h3>Recipients</h3>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label" for="{{ form.role.id_for_label }}">Role</label>
+                        {{ form.role }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="{{ form.department.id_for_label }}">Department</label>
+                        {{ form.department }}
+                    </div>
+                </div>
+            </div>
+            <div class="profile-form-section">
+                <h3>Email Content</h3>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label" for="{{ form.subject.id_for_label }}">Subject</label>
+                        {{ form.subject }}
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="{{ form.message.id_for_label }}">Message</label>
+                        {{ form.message }}
+                    </div>
+                </div>
+            </div>
+            <div class="profile-detail-actions">
+                <button class="btn btn-primary" type="submit">Send Email</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="profile-panel team-email-history-panel">
+        <div class="profile-panel-head">
+            <div>
+                <h2>Recent Sent Emails</h2>
+                <p>Latest team messages sent from this workspace.</p>
+            </div>
+        </div>
+        <div class="team-email-history-list">
+            {% for email in email_history %}
+            <a href="{% url 'accounts:team_email_detail' email.id %}">
+                <strong>{{ email.subject }}</strong>
+                <span>{{ email.sent_count }} recipient(s) · {{ email.created_at|date:"d M Y, h:i A" }}</span>
+            </a>
+            {% empty %}
+            <div class="text-body">No team emails sent yet.</div>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+{% endblock %}

@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}Employee Directory - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head company-update-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">Employee Directory</h1>
+        <p class="text-body mb-0">Review employee work, KYC, emergency, and bank profile details.</p>
+    </div>
+    <div class="company-page-actions">
+        {% if user_profile.role == "company_owner" or user_profile.role == "manager" %}
+        {% if user_profile.role == "company_owner" %}<a class="btn btn-primary" href="{% url 'accounts:add_employee' %}">Add Employee</a>{% endif %}
+        <a class="btn btn-outline-primary" href="{% url 'accounts:employee_invites' %}">Invite Employee</a>
+        {% endif %}
+        <a class="btn btn-outline-primary" href="{% url 'accounts:team_emails' %}">Send Team Email</a>
+        <a class="btn btn-outline-primary" href="{% url 'accounts:team_profiles_export' 'csv' %}{% if query_string %}?{{ query_string }}{% endif %}">Export CSV</a>
+        <a class="btn btn-outline-primary" href="{% url 'accounts:team_profiles_export' 'xls' %}{% if query_string %}?{{ query_string }}{% endif %}">Export Excel</a>
+    </div>
+</div>
+
+<section class="profile-panel employee-directory-panel">
+    <form class="employee-directory-filter" method="get">
+        <input class="form-control" type="search" name="q" value="{{ query }}" placeholder="Search name, email, phone, code">
+        <select class="form-select" name="role">
+            <option value="">All roles</option>
+            {% for value, label in role_choices %}
+            <option value="{{ value }}" {% if selected_role == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <select class="form-select" name="department">
+            <option value="">All departments</option>
+            {% for department in departments %}
+            <option value="{{ department }}" {% if selected_department == department %}selected{% endif %}>{{ department }}</option>
+            {% endfor %}
+        </select>
+        <button class="btn btn-primary" type="submit">Filter</button>
+        <a class="btn btn-outline-primary" href="{% url 'accounts:team_profiles' %}">Reset</a>
+    </form>
+
+    {% if can_delete_employee_profiles %}
+    <form class="employee-bulk-form" method="post" action="{% url 'accounts:team_profiles_bulk_delete' %}" data-delete-confirm="Delete selected employees permanently from database?">
+        {% csrf_token %}
+        <div class="employee-bulk-toolbar">
+            <label class="employee-bulk-select">
+                <input type="checkbox" data-employee-select-all>
+                <span>Select all visible</span>
+            </label>
+            <button class="btn btn-sm btn-outline-danger" type="submit">Delete Selected</button>
+        </div>
+    {% endif %}
+
+    <div class="employee-directory-table-wrap">
+        <table class="table align-middle employee-directory-table">
+            <thead>
+                <tr>
+                    {% if can_delete_employee_profiles %}<th class="employee-select-col"></th>{% endif %}
+                    <th>Employee</th>
+                    <th>Role</th>
+                    <th>Contact</th>
+                    <th>Department</th>
+                    <th>KYC</th>
+                    <th>Manager</th>
+                    <th>Joining</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for profile in profiles %}
+                <tr>
+                    {% if can_delete_employee_profiles %}
+                    <td class="employee-select-col">
+                        {% if profile.id != user_profile.id %}
+                        <input type="checkbox" name="profile_ids" value="{{ profile.id }}" data-employee-checkbox>
+                        {% endif %}
+                    </td>
+                    {% endif %}
+                    <td>
+                        <a class="employee-cell" href="{% url 'accounts:team_profile_detail' profile.id %}">
+                            {% if profile.profile_image %}
+                                <img src="{{ profile.profile_image.url }}" alt="{{ profile.user.get_full_name|default:profile.user.email }}">
+                            {% else %}
+                                <span>{{ profile.user.email|default:profile.user.username|slice:":1"|upper }}</span>
+                            {% endif %}
+                            <strong>{{ profile.user.get_full_name|default:profile.user.email|default:profile.user.username }}</strong>
+                            <small>{{ profile.employee_code|default:"Code pending" }}</small>
+                        </a>
+                    </td>
+                    <td><span class="badge rounded-pill bg-primary-subtle text-primary">{{ profile.get_role_display }}</span></td>
+                    <td><strong>{{ profile.phone|default:"Not added" }}</strong><small>{{ profile.user.email|default:"Email not added" }}</small></td>
+                    <td><strong>{{ profile.department|default:"Not added" }}</strong><small>{{ profile.designation|default:"Designation pending" }}</small></td>
+                    <td>
+                        <strong>{% if can_view_sensitive_profile_data %}{{ profile.aadhaar_number|default:"Aadhaar pending" }}{% else %}{{ profile.masked_aadhaar_number }}{% endif %}</strong>
+                        <small>{% if can_view_sensitive_profile_data %}{{ profile.pan_number|default:"PAN pending" }}{% else %}{{ profile.masked_pan_number }}{% endif %}</small>
+                        {% if not can_view_sensitive_profile_data %}<small>Documents: Owner only</small>{% endif %}
+                    </td>
+                    <td>{{ profile.reporting_manager|default:"Not added" }}</td>
+                    <td>{{ profile.joining_date|date:"d M Y"|default:"Not added" }}</td>
+                    <td>
+                        <div class="employee-row-actions">
+                            <a class="btn btn-sm btn-outline-primary" href="{% url 'accounts:team_profile_detail' profile.id %}">View</a>
+                            {% if user_profile.role == "company_owner" and profile.id != user_profile.id %}
+                            <form method="post" action="{% url 'accounts:team_profile_delete' profile.id %}" data-delete-confirm="Delete this employee permanently from database?">
+                                {% csrf_token %}
+                                <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="{% if can_delete_employee_profiles %}9{% else %}8{% endif %}" class="text-center text-body py-4">No employee profiles found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if can_delete_employee_profiles %}
+    </form>
+    {% endif %}
+
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="signup-pagination">
+        <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        <div>
+            {% if page_obj.has_previous %}
+                <a class="btn btn-sm btn-outline-primary" href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+            {% endif %}
+            {% if page_obj.has_next %}
+                <a class="btn btn-sm btn-outline-primary" href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

@@ -1,12 +1,122 @@
 from django.core import mail
-from django.test import TestCase, override_settings
+from django.contrib.auth import get_user_model
+from django.contrib.admin.sites import AdminSite
+from django.db import IntegrityError
+from django.urls import reverse
+from django.utils import timezone
 
-from .forms import SignupRequestForm
-from .models import Role, SignupRequest, SignupRequestStatus
+from .admin import CompanyProfileAdmin
+from django.test import TestCase, override_settings
+from datetime import timedelta
+
+from .forms import AddEmployeeForm, SignupRequestForm
+from .models import AuthenticationSupportRequest, CompanyProfile, EmailOTP, EmployeeEmailChangeRequest, EmployeeInvite, EmployeeRoleChangeRequest, Role, SignupRequest, SignupRequestOwnerMessage, SignupRequestStatus, TeamEmailMessage, UserProfile
 
 
 @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
 class SignupApprovalEmailTests(TestCase):
+    def test_owner_can_edit_pending_invite_and_email_change_resets_verification(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        invite = EmployeeInvite.objects.create(
+            company=company,
+            invited_by=owner,
+            name="Executive",
+            email="old@example.com",
+            role=Role.EXECUTIVE,
+            is_email_verified=True,
+            status=EmployeeInvite.Status.PENDING_APPROVAL,
+        )
+        self.client.force_login(owner)
+
+        response = self.client.post(
+            reverse("accounts:employee_invite_edit", args=[invite.id]),
+            data={"name": "Updated Executive", "email": "new@example.com", "phone": "", "role": Role.EXECUTIVE, "employee_code": "EXE-1", "note": "Updated"},
+        )
+
+        invite.refresh_from_db()
+        self.assertRedirects(response, reverse("accounts:employee_invite_detail", args=[invite.id]))
+        self.assertEqual(invite.email, "new@example.com")
+        self.assertFalse(invite.is_email_verified)
+        self.assertEqual(invite.status, EmployeeInvite.Status.PENDING_VERIFICATION)
+        self.assertTrue(EmailOTP.objects.filter(email="new@example.com").exists())
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_approved_invite_cannot_be_edited(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        invite = EmployeeInvite.objects.create(company=company, invited_by=owner, name="Executive", email="exec@example.com", role=Role.EXECUTIVE, is_email_verified=True, status=EmployeeInvite.Status.APPROVED)
+        self.client.force_login(owner)
+
+        response = self.client.get(reverse("accounts:employee_invite_edit", args=[invite.id]))
+
+        self.assertRedirects(response, reverse("accounts:employee_invite_detail", args=[invite.id]))
+
+    def test_signup_request_sends_signup_otp_email(self):
+        response = self.client.post(
+            reverse("accounts:signup"),
+            data={
+                "name": "Anshul Sharma",
+                "phone": "+91 9999999999",
+                "email": "anshul@example.com",
+                "requested_role": Role.MANAGER,
+                "channel_partner_reference": "",
+            },
+        )
+
+        self.assertRedirects(response, reverse("accounts:verify"))
+        signup = SignupRequest.objects.get(email="anshul@example.com")
+        self.assertEqual(signup.status, SignupRequestStatus.OTP_PENDING)
+        self.assertFalse(signup.is_email_verified)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["anshul@example.com"])
+        self.assertEqual(mail.outbox[0].subject, "Verify your Siya Real Build signup")
+
+    def test_authentication_support_request_is_saved_for_admin(self):
+        response = self.client.post(
+            reverse("accounts:support_request"),
+            data={
+                "support_name": "Anshul Sharma",
+                "support_contact": "anshul@example.com",
+                "support_issue": "I need help with signup approval.",
+                "page_url": "/auth/signup/",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        support_request = AuthenticationSupportRequest.objects.get()
+        self.assertEqual(support_request.name, "Anshul Sharma")
+        self.assertEqual(support_request.contact, "anshul@example.com")
+        self.assertEqual(support_request.page_url, "/auth/signup/")
+
+    def test_signup_otp_verification_sends_pending_review_email(self):
+        self.client.post(
+            reverse("accounts:signup"),
+            data={
+                "name": "Anshul Sharma",
+                "phone": "+91 9999999999",
+                "email": "anshul@example.com",
+                "requested_role": Role.MANAGER,
+                "channel_partner_reference": "",
+            },
+        )
+        mail.outbox = []
+        signup = SignupRequest.objects.get(email="anshul@example.com")
+        otp = signup.emailotp_set.latest("created_at")
+
+        response = self.client.post(reverse("accounts:verify"), data={"code": otp.code})
+
+        self.assertRedirects(response, reverse("accounts:login"))
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["anshul@example.com"])
+        self.assertEqual(mail.outbox[0].subject, "Your Siya Real Build signup request is under review")
+        signup.refresh_from_db()
+        self.assertEqual(signup.status, SignupRequestStatus.PENDING_APPROVAL)
+
     def test_approval_sends_confirmation_and_welcome_emails(self):
         signup = SignupRequest.objects.create(
             name="Anshul Sharma",
@@ -87,3 +197,1241 @@ class SignupApprovalEmailTests(TestCase):
 
         self.assertFalse(form.is_valid())
         self.assertIn("email", form.errors)
+
+    def test_signup_form_allows_unverified_otp_pending_email_retry(self):
+        SignupRequest.objects.create(
+            name="Anshul Sharma",
+            phone="+91 9999999999",
+            email="anshul@example.com",
+            requested_role=Role.MANAGER,
+            status=SignupRequestStatus.OTP_PENDING,
+            is_email_verified=False,
+        )
+        form = SignupRequestForm(
+            data={
+                "name": "Anshul Sharma",
+                "phone": "+91 8888888888",
+                "email": "anshul@example.com",
+                "requested_role": Role.EXECUTIVE,
+                "channel_partner_reference": "",
+            }
+        )
+
+        self.assertTrue(form.is_valid())
+
+    def test_company_details_are_shared_and_read_only_for_non_owner(self):
+        User = get_user_model()
+        user = User.objects.create_user(username="manager@example.com", email="manager@example.com")
+        UserProfile.objects.create(user=user, role=Role.MANAGER)
+        company = CompanyProfile.objects.create(
+            name="Siya Real Build Pvt. Ltd.",
+            phone="+91 9999999999",
+            email="company@example.com",
+            gst_number="GST123",
+            rera_number="RERA123",
+            city="Indore",
+            state="Madhya Pradesh",
+        )
+
+        self.client.force_login(user)
+        response = self.client.get(reverse("accounts:company_detail"))
+
+        self.assertContains(response, "Siya Real Build Pvt. Ltd.")
+        self.assertContains(response, "GST123")
+        user.profile.refresh_from_db()
+        self.assertEqual(user.profile.company, company)
+
+        response = self.client.post(reverse("accounts:company_settings"), data={"company-name": "Changed"})
+        self.assertRedirects(response, reverse("accounts:company_detail"))
+        company.refresh_from_db()
+        self.assertEqual(company.name, "Siya Real Build Pvt. Ltd.")
+
+    def test_authenticated_user_can_export_company_details(self):
+        User = get_user_model()
+        user = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        company = CompanyProfile.objects.create(
+            name="Siya Real Build Pvt. Ltd.",
+            email="company@example.com",
+            gst_number="GST123",
+            bank_ifsc="HDFC0123456",
+            weekly_off_days="Sunday",
+            holiday_notes="Diwali closed",
+        )
+        UserProfile.objects.create(user=user, role=Role.COMPANY_OWNER, company=company)
+        self.client.force_login(user)
+
+        csv_response = self.client.get(reverse("accounts:company_export", args=["csv"]))
+        self.assertEqual(csv_response.status_code, 200)
+        self.assertEqual(csv_response["Content-Type"], "text/csv")
+        self.assertIn('filename="company-details.csv"', csv_response["Content-Disposition"])
+        self.assertContains(csv_response, "Siya Real Build Pvt. Ltd.")
+        self.assertContains(csv_response, "GST123")
+
+        excel_response = self.client.get(reverse("accounts:company_export", args=["xls"]))
+        self.assertEqual(excel_response.status_code, 200)
+        self.assertEqual(excel_response["Content-Type"], "application/vnd.ms-excel")
+        self.assertIn('filename="company-details.xls"', excel_response["Content-Disposition"])
+        self.assertContains(excel_response, "HDFC0123456")
+        self.assertContains(excel_response, "Sunday")
+
+    def test_company_owner_can_update_company_master_details(self):
+        User = get_user_model()
+        user = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        company = CompanyProfile.objects.create(name="Old Company", email="old@example.com")
+        UserProfile.objects.create(user=user, role=Role.COMPANY_OWNER, company=company)
+
+        self.client.force_login(user)
+        response = self.client.post(
+            reverse("accounts:company_settings"),
+            data={
+                "company-name": "Siya Real Build Pvt. Ltd.",
+                "company-tagline": "Real estate growth platform",
+                "company-description": "Company profile",
+                "company-phone": "+91 9999999999",
+                "company-phone_2": "",
+                "company-phone_3": "",
+                "company-email": "info@siyarealbuild.com",
+                "company-email_2": "",
+                "company-email_3": "",
+                "company-website": "siyarealbuild.com",
+                "company-gst_number": "23ABCDE1234F1Z5",
+                "company-rera_number": "RERA123",
+                "company-cin_number": "",
+                "company-pan_number": "ABCDE1234F",
+                "company-bank_name": "HDFC Bank",
+                "company-bank_account_name": "Siya Real Build Pvt Ltd",
+                "company-bank_account_number": "123456789012",
+                "company-bank_ifsc": "HDFC0123456",
+                "company-upi_id": "siya@hdfc",
+                "company-opening_time": "10:00",
+                "company-closing_time": "19:00",
+                "company-weekly_off_days": "Sunday",
+                "company-holiday_notes": "National holidays closed",
+                "company-address": "Main Road",
+                "company-city": "Indore",
+                "company-state": "Madhya Pradesh",
+                "company-pincode": "452001",
+            },
+        )
+
+        self.assertRedirects(response, reverse("accounts:company_settings"))
+        company.refresh_from_db()
+        self.assertEqual(company.name, "Siya Real Build Pvt. Ltd.")
+        self.assertEqual(company.website, "https://siyarealbuild.com")
+        self.assertEqual(company.gst_number, "23ABCDE1234F1Z5")
+        self.assertEqual(company.pan_number, "ABCDE1234F")
+        self.assertEqual(company.bank_ifsc, "HDFC0123456")
+        self.assertEqual(company.opening_time.strftime("%H:%M"), "10:00")
+        self.assertEqual(company.closing_time.strftime("%H:%M"), "19:00")
+        self.assertEqual(company.weekly_off_days, "Sunday")
+
+    def test_user_can_update_full_profile_details(self):
+        User = get_user_model()
+        user = User.objects.create_user(username="executive@example.com", email="executive@example.com")
+        profile = UserProfile.objects.create(user=user, role=Role.EXECUTIVE)
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse("accounts:profile_edit"),
+            data={
+                "profile-full_name": "Amit Verma",
+                "profile-email": "executive@example.com",
+                "profile-phone": "+91 9999999999",
+                "profile-designation": "Sales Executive",
+                "profile-date_of_birth": "1995-05-12",
+                "profile-gender": UserProfile.Gender.MALE,
+                "profile-blood_group": "B+",
+                "profile-marital_status": UserProfile.MaritalStatus.SINGLE,
+                "profile-personal_email": "amit.personal@example.com",
+                "profile-aadhaar_number": "1234 5678 9012",
+                "profile-pan_number": "ABCDE1234F",
+                "profile-emergency_contact_name": "Ravi Verma",
+                "profile-emergency_contact_phone": "+91 8888888888",
+                "profile-department": "Sales",
+                "profile-reporting_manager": "Team Lead",
+                "profile-joining_date": "2026-01-01",
+                "profile-work_location": "Indore Office",
+                "profile-territory": "Indore East",
+                "profile-channel_partner_reference": "",
+                "profile-bank_name": "HDFC Bank",
+                "profile-bank_account_name": "Amit Verma",
+                "profile-bank_account_number": "123456789012",
+                "profile-bank_ifsc": "HDFC0123456",
+                "profile-address": "Main Road",
+                "profile-city": "Indore",
+                "profile-state": "Madhya Pradesh",
+                "profile-pincode": "452001",
+            },
+        )
+
+        self.assertRedirects(response, reverse("accounts:profile"))
+        profile.refresh_from_db()
+        user.refresh_from_db()
+        self.assertEqual(user.get_full_name(), "Amit Verma")
+        self.assertEqual(profile.aadhaar_number, "123456789012")
+        self.assertEqual(profile.pan_number, "ABCDE1234F")
+        self.assertEqual(profile.department, "Sales")
+        self.assertEqual(profile.bank_ifsc, "HDFC0123456")
+        self.assertEqual(profile.emergency_contact_phone, "+91 8888888888")
+
+    def test_any_role_email_change_creates_request_and_updates_after_otp(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        user = User.objects.create_user(username="executive@example.com", email="executive@example.com", first_name="Amit")
+        UserProfile.objects.create(user=user, role=Role.EXECUTIVE, company=company)
+        SignupRequest.objects.create(
+            name="Amit",
+            phone="+91 9999999999",
+            email="executive@example.com",
+            requested_role=Role.EXECUTIVE,
+            approved_role=Role.EXECUTIVE,
+            status=SignupRequestStatus.APPROVED,
+            is_email_verified=True,
+            user=user,
+        )
+        self.client.force_login(user)
+        mail.outbox = []
+
+        response = self.client.post(
+            reverse("accounts:profile_edit"),
+            data={
+                "profile-full_name": "Amit Verma",
+                "profile-email": "new-executive@example.com",
+                "profile-phone": "+91 9999999999",
+                "profile-designation": "Sales Executive",
+                "profile-date_of_birth": "",
+                "profile-gender": "",
+                "profile-blood_group": "",
+                "profile-marital_status": "",
+                "profile-personal_email": "",
+                "profile-aadhaar_number": "",
+                "profile-pan_number": "",
+                "profile-emergency_contact_name": "",
+                "profile-emergency_contact_phone": "",
+                "profile-department": "",
+                "profile-reporting_manager": "",
+                "profile-joining_date": "",
+                "profile-work_location": "",
+                "profile-territory": "",
+                "profile-channel_partner_reference": "",
+                "profile-bank_name": "",
+                "profile-bank_account_name": "",
+                "profile-bank_account_number": "",
+                "profile-bank_ifsc": "",
+                "profile-address": "",
+                "profile-city": "",
+                "profile-state": "",
+                "profile-pincode": "",
+            },
+        )
+
+        self.assertRedirects(response, reverse("accounts:verify_email_change"))
+        change = EmployeeEmailChangeRequest.objects.get(employee=user)
+        self.assertEqual(change.requested_email, "new-executive@example.com")
+        self.assertFalse(change.is_email_verified)
+        user.refresh_from_db()
+        self.assertEqual(user.email, "executive@example.com")
+        self.assertEqual(mail.outbox[0].subject, "Verify your new Siya Real Build email")
+
+        otp = EmailOTP.objects.get(email="new-executive@example.com")
+        mail.outbox = []
+        response = self.client.post(reverse("accounts:verify_email_change"), data={"code": otp.code})
+
+        self.assertRedirects(response, reverse("accounts:profile"))
+        user.refresh_from_db()
+        change.refresh_from_db()
+        signup = SignupRequest.objects.get(user=user)
+        self.assertEqual(user.email, "new-executive@example.com")
+        self.assertEqual(user.username, "new-executive@example.com")
+        self.assertEqual(signup.email, "new-executive@example.com")
+        self.assertTrue(change.is_email_verified)
+        self.assertEqual(change.status, EmployeeEmailChangeRequest.Status.APPROVED)
+        self.assertEqual(mail.outbox[0].subject, "Your Siya Real Build email has been updated")
+
+    def test_owner_manual_email_change_requires_otp_before_update(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        employee = User.objects.create_user(username="exec@example.com", email="exec@example.com", first_name="Executive")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        UserProfile.objects.create(user=employee, role=Role.EXECUTIVE, company=company)
+        self.client.force_login(owner)
+        mail.outbox = []
+
+        response = self.client.post(
+            reverse("accounts:owner_email_change_create"),
+            data={
+                "emailchange-employee": employee.id,
+                "emailchange-requested_email": "manual-exec@example.com",
+                "emailchange-reason": "Employee requested by phone.",
+            },
+        )
+
+        self.assertRedirects(response, reverse("accounts:owner_email_changes"))
+        change = EmployeeEmailChangeRequest.objects.get(employee=employee)
+        self.assertEqual(change.requested_by, owner)
+        self.assertFalse(change.is_email_verified)
+        self.assertEqual(mail.outbox[0].subject, "Verify your new Siya Real Build email")
+
+        response = self.client.post(reverse("accounts:owner_email_changes"), data={"approve_request": change.id})
+
+        self.assertRedirects(response, reverse("accounts:owner_email_changes"))
+        employee.refresh_from_db()
+        self.assertEqual(employee.email, "exec@example.com")
+
+        otp = EmailOTP.objects.get(email="manual-exec@example.com")
+        mail.outbox = []
+        response = self.client.post(
+            reverse("accounts:owner_email_changes"),
+            data={"verify_request": change.id, "otp_code": otp.code},
+        )
+
+        self.assertRedirects(response, reverse("accounts:owner_email_changes"))
+        employee.refresh_from_db()
+        change.refresh_from_db()
+        self.assertEqual(employee.email, "exec@example.com")
+        self.assertTrue(change.is_email_verified)
+        self.assertEqual(change.status, EmployeeEmailChangeRequest.Status.PENDING)
+
+        response = self.client.post(reverse("accounts:owner_email_changes"), data={"approve_request": change.id})
+
+        self.assertRedirects(response, reverse("accounts:owner_email_changes"))
+        employee.refresh_from_db()
+        change.refresh_from_db()
+        self.assertEqual(employee.email, "manual-exec@example.com")
+        self.assertEqual(employee.username, "manual-exec@example.com")
+        self.assertTrue(change.is_email_verified)
+        self.assertEqual(change.status, EmployeeEmailChangeRequest.Status.APPROVED)
+        self.assertEqual(change.approved_by, owner)
+        self.assertEqual(mail.outbox[0].subject, "Your Siya Real Build email has been updated")
+        self.assertIn("New email: manual-exec@example.com", mail.outbox[0].body)
+
+    def test_owner_email_change_list_filters_and_searches_requests(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        manager = User.objects.create_user(username="manager@example.com", email="manager@example.com", first_name="Manager")
+        executive = User.objects.create_user(username="exec@example.com", email="exec@example.com", first_name="Executive")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        UserProfile.objects.create(user=manager, role=Role.MANAGER, company=company, employee_code="MGR-0001")
+        UserProfile.objects.create(user=executive, role=Role.EXECUTIVE, company=company, employee_code="EXE-0001")
+        EmployeeEmailChangeRequest.objects.create(
+            company=company,
+            employee=manager,
+            requested_by=owner,
+            requested_email="new-manager@example.com",
+            is_email_verified=True,
+        )
+        EmployeeEmailChangeRequest.objects.create(
+            company=company,
+            employee=executive,
+            requested_by=owner,
+            requested_email="new-exec@example.com",
+        )
+        self.client.force_login(owner)
+
+        response = self.client.get(reverse("accounts:owner_email_changes"), data={"q": "MGR-0001", "otp": "verified"})
+
+        self.assertContains(response, "new-manager@example.com")
+        self.assertNotContains(response, "new-exec@example.com")
+        self.assertContains(response, "New Email Change Request")
+
+    def test_supervisor_can_view_allowed_employee_profiles_with_masked_ids(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        manager = User.objects.create_user(username="manager@example.com", email="manager@example.com")
+        executive = User.objects.create_user(username="exec@example.com", email="exec@example.com", first_name="Executive")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com", first_name="Owner")
+        UserProfile.objects.create(user=manager, role=Role.MANAGER, company=company)
+        UserProfile.objects.create(user=executive, role=Role.EXECUTIVE, company=company, aadhaar_number="123456789012", pan_number="ABCDE1234F")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        self.client.force_login(manager)
+
+        response = self.client.get(reverse("accounts:team_profiles"))
+
+        self.assertContains(response, "Executive")
+        self.assertContains(response, "XXXX XXXX 9012")
+        self.assertContains(response, "ABCXXXXF")
+        self.assertContains(response, "Owner only")
+        self.assertNotContains(response, "123456789012")
+        self.assertNotContains(response, "owner@example.com")
+
+    def test_company_owner_can_view_full_employee_profile_ids(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com", first_name="Owner")
+        executive = User.objects.create_user(username="exec@example.com", email="exec@example.com", first_name="Executive")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        UserProfile.objects.create(user=executive, role=Role.EXECUTIVE, company=company, aadhaar_number="123456789012", pan_number="ABCDE1234F")
+        self.client.force_login(owner)
+
+        response = self.client.get(reverse("accounts:team_profiles"))
+
+        self.assertContains(response, "123456789012")
+        self.assertContains(response, "ABCDE1234F")
+
+    def test_direct_add_employee_does_not_allow_company_owner_role(self):
+        form = AddEmployeeForm(
+            data={
+                "name": "Second Owner",
+                "email": "second-owner@example.com",
+                "phone": "",
+                "role": Role.COMPANY_OWNER,
+                "employee_code": "",
+                "personal_email": "",
+                "gender": "",
+                "blood_group": "",
+                "marital_status": "",
+                "designation": "",
+                "department": "",
+                "reporting_manager": "",
+                "office_location": "",
+                "custom_work_location": "",
+                "aadhaar_number": "",
+                "pan_number": "",
+                "emergency_contact_name": "",
+                "emergency_contact_phone": "",
+                "bank_name": "",
+                "bank_account_name": "",
+                "bank_account_number": "",
+                "bank_ifsc": "",
+                "address": "",
+                "city": "",
+                "state": "",
+                "pincode": "",
+            }
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("role", form.errors)
+
+    def test_owner_can_request_and_approve_employee_role_change(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com", first_name="Owner")
+        executive = User.objects.create_user(username="exec@example.com", email="exec@example.com", first_name="Executive")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        executive_profile = UserProfile.objects.create(user=executive, role=Role.EXECUTIVE, company=company, employee_code="EXE-0001")
+        self.client.force_login(owner)
+        mail.outbox = []
+
+        response = self.client.post(
+            reverse("accounts:role_change_request_create"),
+            data={
+                "rolechange-employee": executive.id,
+                "rolechange-requested_role": Role.TL,
+                "rolechange-reason": "Promoted to team lead.",
+            },
+        )
+
+        change = EmployeeRoleChangeRequest.objects.get(employee=executive)
+        self.assertRedirects(response, reverse("accounts:role_change_request_detail", args=[change.id]))
+        self.assertEqual(change.current_role, Role.EXECUTIVE)
+        self.assertEqual(change.requested_role, Role.TL)
+        self.assertEqual(mail.outbox[0].subject, "Your Siya Real Build role change request is under review")
+
+        response = self.client.post(
+            reverse("accounts:role_change_request_detail", args=[change.id]),
+            data={"action": "approve", "review_note": "Approved for new responsibility."},
+        )
+
+        self.assertRedirects(response, reverse("accounts:role_change_request_detail", args=[change.id]))
+        executive_profile.refresh_from_db()
+        change.refresh_from_db()
+        self.assertEqual(executive_profile.role, Role.TL)
+        self.assertEqual(change.status, EmployeeRoleChangeRequest.Status.APPROVED)
+        self.assertEqual(change.reviewed_by, owner)
+        self.assertEqual(mail.outbox[-1].subject, "Your Siya Real Build role has been updated")
+
+    def test_role_change_request_list_and_detail_render(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        executive = User.objects.create_user(username="exec@example.com", email="exec@example.com", first_name="Executive")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        UserProfile.objects.create(user=executive, role=Role.EXECUTIVE, company=company, employee_code="EXE-0001")
+        change = EmployeeRoleChangeRequest.objects.create(
+            company=company,
+            employee=executive,
+            current_role=Role.EXECUTIVE,
+            requested_role=Role.MANAGER,
+            requested_by=owner,
+            reason="Leadership move.",
+        )
+        self.client.force_login(owner)
+
+        list_response = self.client.get(reverse("accounts:role_change_request_list"), data={"q": "EXE-0001", "status": "pending"})
+        detail_response = self.client.get(reverse("accounts:role_change_request_detail", args=[change.id]))
+
+        self.assertContains(list_response, "Executive to Manager")
+        self.assertContains(detail_response, "Leadership move.")
+
+    def test_company_owner_can_delete_employee_from_directory(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com", first_name="Owner")
+        executive = User.objects.create_user(username="exec@example.com", email="exec@example.com", first_name="Executive")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        employee_profile = UserProfile.objects.create(user=executive, role=Role.EXECUTIVE, company=company)
+        self.client.force_login(owner)
+
+        response = self.client.post(reverse("accounts:team_profile_delete", args=[employee_profile.id]))
+
+        self.assertRedirects(response, reverse("accounts:team_profiles"))
+        self.assertFalse(User.objects.filter(email="exec@example.com").exists())
+        self.assertFalse(UserProfile.objects.filter(id=employee_profile.id).exists())
+
+    def test_employee_delete_removes_signup_invite_and_email_references(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com", first_name="Owner")
+        executive = User.objects.create_user(username="exec@example.com", email="exec@example.com", first_name="Executive")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        employee_profile = UserProfile.objects.create(user=executive, role=Role.EXECUTIVE, company=company)
+        signup = SignupRequest.objects.create(
+            name="Executive",
+            phone="+91 9999999999",
+            email="exec@example.com",
+            requested_role=Role.EXECUTIVE,
+            approved_role=Role.EXECUTIVE,
+            status=SignupRequestStatus.APPROVED,
+            is_email_verified=True,
+            user=executive,
+        )
+        SignupRequestOwnerMessage.objects.create(signup_request=signup, sent_by=owner, subject="Note", message="Old note")
+        EmailOTP.create_for_email("exec@example.com", signup_request=signup)
+        EmployeeInvite.objects.create(
+            company=company,
+            invited_by=owner,
+            name="Executive",
+            email="exec@example.com",
+            role=Role.EXECUTIVE,
+            accepted_user=executive,
+            status=EmployeeInvite.Status.APPROVED,
+            is_email_verified=True,
+        )
+        EmployeeEmailChangeRequest.objects.create(company=company, employee=executive, requested_email="new-exec@example.com")
+        team_email = TeamEmailMessage.objects.create(
+            company=company,
+            sent_by=owner,
+            subject="Team",
+            message="Message",
+            recipients=[
+                {"name": "Executive", "email": "exec@example.com", "role": "Executive", "department": ""},
+                {"name": "Other", "email": "other@example.com", "role": "Executive", "department": ""},
+            ],
+            sent_count=2,
+        )
+        self.client.force_login(owner)
+
+        response = self.client.post(reverse("accounts:team_profile_delete", args=[employee_profile.id]))
+
+        self.assertRedirects(response, reverse("accounts:team_profiles"))
+        self.assertFalse(User.objects.filter(email="exec@example.com").exists())
+        self.assertFalse(SignupRequest.objects.filter(email="exec@example.com").exists())
+        self.assertFalse(SignupRequestOwnerMessage.objects.filter(signup_request=signup).exists())
+        self.assertFalse(EmailOTP.objects.filter(email="exec@example.com").exists())
+        self.assertFalse(EmployeeInvite.objects.filter(email="exec@example.com").exists())
+        self.assertFalse(EmployeeEmailChangeRequest.objects.filter(employee=executive).exists())
+        team_email.refresh_from_db()
+        self.assertEqual(team_email.sent_count, 1)
+        self.assertEqual(team_email.recipients[0]["email"], "other@example.com")
+
+    def test_supervisor_cannot_delete_employee_from_directory(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        manager = User.objects.create_user(username="manager@example.com", email="manager@example.com")
+        executive = User.objects.create_user(username="exec@example.com", email="exec@example.com")
+        UserProfile.objects.create(user=manager, role=Role.MANAGER, company=company)
+        employee_profile = UserProfile.objects.create(user=executive, role=Role.EXECUTIVE, company=company)
+        self.client.force_login(manager)
+
+        response = self.client.post(reverse("accounts:team_profile_delete", args=[employee_profile.id]))
+
+        self.assertRedirects(response, reverse("accounts:team_profiles"))
+        self.assertTrue(User.objects.filter(email="exec@example.com").exists())
+        self.assertTrue(UserProfile.objects.filter(id=employee_profile.id).exists())
+
+    def test_company_owner_can_bulk_delete_employees_from_directory(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        executive = User.objects.create_user(username="exec@example.com", email="exec@example.com")
+        tl = User.objects.create_user(username="tl@example.com", email="tl@example.com")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        executive_profile = UserProfile.objects.create(user=executive, role=Role.EXECUTIVE, company=company)
+        tl_profile = UserProfile.objects.create(user=tl, role=Role.TL, company=company)
+        self.client.force_login(owner)
+
+        response = self.client.post(
+            reverse("accounts:team_profiles_bulk_delete"),
+            data={"profile_ids": [str(executive_profile.id), str(tl_profile.id)]},
+        )
+
+        self.assertRedirects(response, reverse("accounts:team_profiles"))
+        self.assertFalse(User.objects.filter(email="exec@example.com").exists())
+        self.assertFalse(User.objects.filter(email="tl@example.com").exists())
+        self.assertFalse(UserProfile.objects.filter(id__in=[executive_profile.id, tl_profile.id]).exists())
+
+    def test_bulk_employee_delete_removes_signup_and_invite_records(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        executive = User.objects.create_user(username="exec@example.com", email="exec@example.com")
+        tl = User.objects.create_user(username="tl@example.com", email="tl@example.com")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        executive_profile = UserProfile.objects.create(user=executive, role=Role.EXECUTIVE, company=company)
+        tl_profile = UserProfile.objects.create(user=tl, role=Role.TL, company=company)
+        SignupRequest.objects.create(name="Executive", phone="+91 9999999999", email="exec@example.com", requested_role=Role.EXECUTIVE, status=SignupRequestStatus.APPROVED, is_email_verified=True, user=executive)
+        SignupRequest.objects.create(name="TL", phone="+91 8888888888", email="tl@example.com", requested_role=Role.TL, status=SignupRequestStatus.APPROVED, is_email_verified=True, user=tl)
+        EmployeeInvite.objects.create(company=company, invited_by=owner, name="Executive", email="exec@example.com", role=Role.EXECUTIVE, accepted_user=executive, status=EmployeeInvite.Status.APPROVED, is_email_verified=True)
+        EmployeeInvite.objects.create(company=company, invited_by=owner, name="TL", email="tl@example.com", role=Role.TL, accepted_user=tl, status=EmployeeInvite.Status.APPROVED, is_email_verified=True)
+        self.client.force_login(owner)
+
+        response = self.client.post(
+            reverse("accounts:team_profiles_bulk_delete"),
+            data={"profile_ids": [str(executive_profile.id), str(tl_profile.id)]},
+        )
+
+        self.assertRedirects(response, reverse("accounts:team_profiles"))
+        self.assertFalse(SignupRequest.objects.filter(email__in=["exec@example.com", "tl@example.com"]).exists())
+        self.assertFalse(EmployeeInvite.objects.filter(email__in=["exec@example.com", "tl@example.com"]).exists())
+
+    def test_supervisor_cannot_bulk_delete_employees_from_directory(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        manager = User.objects.create_user(username="manager@example.com", email="manager@example.com")
+        executive = User.objects.create_user(username="exec@example.com", email="exec@example.com")
+        UserProfile.objects.create(user=manager, role=Role.MANAGER, company=company)
+        employee_profile = UserProfile.objects.create(user=executive, role=Role.EXECUTIVE, company=company)
+        self.client.force_login(manager)
+
+        response = self.client.post(reverse("accounts:team_profiles_bulk_delete"), data={"profile_ids": [str(employee_profile.id)]})
+
+        self.assertRedirects(response, reverse("accounts:team_profiles"))
+        self.assertTrue(User.objects.filter(email="exec@example.com").exists())
+        self.assertTrue(UserProfile.objects.filter(id=employee_profile.id).exists())
+
+    def test_owner_can_send_bulk_employee_email_by_role(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        executive = User.objects.create_user(username="exec@example.com", email="exec@example.com")
+        manager = User.objects.create_user(username="manager@example.com", email="manager@example.com")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        UserProfile.objects.create(user=executive, role=Role.EXECUTIVE, company=company)
+        UserProfile.objects.create(user=manager, role=Role.MANAGER, company=company)
+        self.client.force_login(owner)
+
+        response = self.client.post(
+            reverse("accounts:team_profiles_bulk_email"),
+            data={"role": Role.EXECUTIVE, "department": "", "subject": "Team Update", "message": "Please check dashboard."},
+        )
+
+        self.assertRedirects(response, reverse("accounts:team_profiles"))
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["exec@example.com"])
+        self.assertEqual(mail.outbox[0].subject, "Team Update")
+
+    def test_team_email_page_sends_and_records_email_history(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        executive = User.objects.create_user(username="exec@example.com", email="exec@example.com", first_name="Executive")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        UserProfile.objects.create(user=executive, role=Role.EXECUTIVE, company=company, department="Sales")
+        self.client.force_login(owner)
+
+        response = self.client.post(
+            reverse("accounts:team_emails"),
+            data={"role": Role.EXECUTIVE, "department": "Sales", "subject": "Sales Update", "message": "Follow up today."},
+        )
+
+        team_email = TeamEmailMessage.objects.get(subject="Sales Update")
+        self.assertRedirects(response, reverse("accounts:team_email_detail", args=[team_email.id]))
+        self.assertEqual(team_email.sent_count, 1)
+        self.assertEqual(team_email.recipients[0]["email"], "exec@example.com")
+        self.assertEqual(len(mail.outbox), 1)
+
+        detail_response = self.client.get(reverse("accounts:team_email_detail", args=[team_email.id]))
+        self.assertContains(detail_response, "Sales Update")
+        self.assertContains(detail_response, "exec@example.com")
+
+    def test_company_owner_can_approve_verified_signup_request(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        signup = SignupRequest.objects.create(
+            name="Approved User",
+            phone="+91 9999999999",
+            email="approved@example.com",
+            requested_role=Role.EXECUTIVE,
+            status=SignupRequestStatus.PENDING_APPROVAL,
+            is_email_verified=True,
+        )
+        self.client.force_login(owner)
+
+        response = self.client.post(
+            reverse("accounts:owner_requests"),
+            data={
+                "form_kind": "signup",
+                "signup-action": "approve",
+                "signup-signup_ids": [str(signup.id)],
+            },
+        )
+
+        self.assertRedirects(response, reverse("accounts:owner_requests"))
+        signup.refresh_from_db()
+        self.assertEqual(signup.status, SignupRequestStatus.APPROVED)
+        self.assertTrue(User.objects.filter(email="approved@example.com").exists())
+
+    def test_company_owner_cannot_approve_unverified_signup_request(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        signup = SignupRequest.objects.create(
+            name="OTP Pending User",
+            phone="+91 9999999999",
+            email="otp@example.com",
+            requested_role=Role.EXECUTIVE,
+            status=SignupRequestStatus.OTP_PENDING,
+            is_email_verified=False,
+        )
+        self.client.force_login(owner)
+
+        response = self.client.post(
+            reverse("accounts:owner_requests"),
+            data={
+                "form_kind": "signup",
+                "signup-action": "approve",
+                "signup-signup_ids": [str(signup.id)],
+            },
+        )
+
+        self.assertRedirects(response, reverse("accounts:owner_requests"))
+        signup.refresh_from_db()
+        self.assertEqual(signup.status, SignupRequestStatus.OTP_PENDING)
+        self.assertFalse(User.objects.filter(email="otp@example.com").exists())
+
+    def test_invite_email_verification_waits_for_owner_approval(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        invite = EmployeeInvite.objects.create(
+            company=company,
+            invited_by=owner,
+            name="Invite User",
+            email="invite@example.com",
+            role=Role.EXECUTIVE,
+            employee_code="EXE-0007",
+        )
+        otp = EmailOTP.create_for_email(invite.email)
+
+        response = self.client.post(
+            reverse("accounts:verify_invite_email"),
+            data={"email": invite.email, "code": otp.code},
+        )
+
+        self.assertRedirects(response, reverse("accounts:login"))
+        invite.refresh_from_db()
+        self.assertTrue(invite.is_email_verified)
+        self.assertEqual(invite.status, EmployeeInvite.Status.PENDING_APPROVAL)
+        self.assertFalse(User.objects.filter(email="invite@example.com").exists())
+        signup = SignupRequest.objects.get(email="invite@example.com")
+        self.assertEqual(signup.status, SignupRequestStatus.PENDING_APPROVAL)
+        self.assertTrue(signup.is_email_verified)
+        self.assertIsNone(signup.user)
+
+    def test_company_owner_can_approve_verified_invite(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        invite = EmployeeInvite.objects.create(
+            company=company,
+            invited_by=owner,
+            name="Invite User",
+            email="invite@example.com",
+            phone="+91 9999999999",
+            role=Role.EXECUTIVE,
+            employee_code="EXE-0007",
+            is_email_verified=True,
+            status=EmployeeInvite.Status.PENDING_APPROVAL,
+        )
+        self.client.force_login(owner)
+        mail.outbox = []
+
+        response = self.client.post(reverse("accounts:employee_invite_approve", args=[invite.id]))
+
+        self.assertRedirects(response, reverse("accounts:employee_invite_detail", args=[invite.id]))
+        invite.refresh_from_db()
+        self.assertEqual(invite.status, EmployeeInvite.Status.APPROVED)
+        user = User.objects.get(email="invite@example.com")
+        self.assertEqual(user.profile.company, company)
+        self.assertEqual(user.profile.role, Role.EXECUTIVE)
+        self.assertEqual(user.profile.employee_code, "EXE-0007")
+        signup = SignupRequest.objects.get(email="invite@example.com")
+        self.assertEqual(signup.status, SignupRequestStatus.APPROVED)
+        self.assertEqual(signup.user, user)
+        self.assertEqual(invite.approved_by, owner)
+        self.assertIsNotNone(invite.approved_at)
+        self.assertEqual(len(mail.outbox), 2)
+
+    def test_manager_cannot_invite_manager_or_owner_roles(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        manager = User.objects.create_user(username="manager@example.com", email="manager@example.com")
+        UserProfile.objects.create(user=manager, role=Role.MANAGER, company=company)
+        self.client.force_login(manager)
+
+        response = self.client.post(
+            reverse("accounts:employee_invites"),
+            data={
+                "invite-name": "Bad Invite",
+                "invite-email": "bad@example.com",
+                "invite-phone": "+91 9999999999",
+                "invite-role": Role.MANAGER,
+                "invite-employee_code": "MGR-0002",
+                "invite-note": "",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(EmployeeInvite.objects.filter(email="bad@example.com").exists())
+        self.assertContains(response, "Select a valid choice.")
+
+    def test_invite_allows_email_with_old_signup_request_but_no_active_account(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        SignupRequest.objects.create(
+            name="Old Signup",
+            phone="+91 9999999999",
+            email="thewebfixofficial@gmail.com",
+            requested_role=Role.EXECUTIVE,
+            status=SignupRequestStatus.PENDING_APPROVAL,
+            is_email_verified=True,
+        )
+        self.client.force_login(owner)
+
+        response = self.client.post(
+            reverse("accounts:employee_invites"),
+            data={
+                "invite-name": "The Webfix",
+                "invite-email": "thewebfixofficial@gmail.com",
+                "invite-phone": "+91 9999999999",
+                "invite-role": Role.EXECUTIVE,
+                "invite-employee_code": "EXE-0099",
+                "invite-note": "",
+            },
+        )
+
+        invite = EmployeeInvite.objects.get(email="thewebfixofficial@gmail.com")
+        self.assertRedirects(response, reverse("accounts:employee_invite_detail", args=[invite.id]))
+        self.assertEqual(invite.employee_code, "EXE-0099")
+        self.assertFalse(User.objects.filter(email="thewebfixofficial@gmail.com").exists())
+
+    def test_owner_can_verify_invite_otp_from_invite_detail(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        invite = EmployeeInvite.objects.create(
+            company=company,
+            invited_by=owner,
+            name="Detail Verify",
+            email="detail-verify@example.com",
+            role=Role.EXECUTIVE,
+            status=EmployeeInvite.Status.PENDING_VERIFICATION,
+        )
+        otp = EmailOTP.create_for_email(invite.email)
+        self.client.force_login(owner)
+
+        detail_response = self.client.get(reverse("accounts:employee_invite_detail", args=[invite.id]))
+        self.assertContains(detail_response, "Email OTP Verification")
+        self.assertContains(detail_response, "Verify OTP")
+
+        response = self.client.post(reverse("accounts:employee_invite_verify_otp", args=[invite.id]), data={"code": otp.code})
+
+        self.assertRedirects(response, reverse("accounts:employee_invite_detail", args=[invite.id]))
+        invite.refresh_from_db()
+        self.assertTrue(invite.is_email_verified)
+        self.assertEqual(invite.status, EmployeeInvite.Status.PENDING_APPROVAL)
+        signup = SignupRequest.objects.get(email="detail-verify@example.com")
+        self.assertEqual(signup.status, SignupRequestStatus.PENDING_APPROVAL)
+        self.assertTrue(signup.is_email_verified)
+
+    def test_invite_detail_filters_and_cooldown_are_enforced(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        invite = EmployeeInvite.objects.create(
+            company=company,
+            invited_by=owner,
+            name="Cooldown User",
+            email="cooldown@example.com",
+            role=Role.EXECUTIVE,
+            status=EmployeeInvite.Status.PENDING_VERIFICATION,
+            last_invite_sent_at=timezone.now(),
+        )
+        EmployeeInvite.objects.create(
+            company=company,
+            invited_by=owner,
+            name="Approved User",
+            email="approved-invite@example.com",
+            role=Role.TL,
+            status=EmployeeInvite.Status.APPROVED,
+            is_email_verified=True,
+        )
+        self.client.force_login(owner)
+
+        detail_response = self.client.get(reverse("accounts:employee_invite_detail", args=[invite.id]))
+        self.assertContains(detail_response, "Cooldown User")
+        self.assertContains(detail_response, "Resend in")
+        self.assertContains(detail_response, "data-invite-resend-countdown")
+
+        resend_response = self.client.post(reverse("accounts:employee_invite_resend", args=[invite.id]))
+        self.assertRedirects(resend_response, reverse("accounts:employee_invite_detail", args=[invite.id]))
+        invite.refresh_from_db()
+        self.assertEqual(invite.resend_count, 0)
+
+        filtered_response = self.client.get(reverse("accounts:employee_invite_list"), {"status": EmployeeInvite.Status.APPROVED})
+        self.assertContains(filtered_response, "Approved User")
+        self.assertNotContains(filtered_response, "Cooldown User")
+
+    def test_invite_list_is_paginated(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        for index in range(12):
+            EmployeeInvite.objects.create(
+                company=company,
+                invited_by=owner,
+                name=f"Invite {index}",
+                email=f"invite{index}@example.com",
+                role=Role.EXECUTIVE,
+            )
+        self.client.force_login(owner)
+
+        response = self.client.get(reverse("accounts:employee_invite_list"))
+
+        self.assertContains(response, "Invite List")
+        self.assertContains(response, "Page 1 of 2")
+
+    def test_invite_list_bulk_delete_and_resend(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        delete_invite = EmployeeInvite.objects.create(
+            company=company,
+            invited_by=owner,
+            name="Delete Invite",
+            email="delete-invite@example.com",
+            role=Role.EXECUTIVE,
+        )
+        resend_invite = EmployeeInvite.objects.create(
+            company=company,
+            invited_by=owner,
+            name="Resend Invite",
+            email="resend-invite@example.com",
+            role=Role.EXECUTIVE,
+            last_invite_sent_at=timezone.now() - timedelta(minutes=5),
+        )
+        self.client.force_login(owner)
+        mail.outbox = []
+
+        delete_response = self.client.post(
+            reverse("accounts:employee_invite_bulk_action"),
+            data={"bulk_action": "delete", "invite_ids": [str(delete_invite.id)]},
+        )
+        self.assertRedirects(delete_response, reverse("accounts:employee_invite_list"))
+        self.assertFalse(EmployeeInvite.objects.filter(id=delete_invite.id).exists())
+
+        resend_response = self.client.post(
+            reverse("accounts:employee_invite_bulk_action"),
+            data={"bulk_action": "resend", "invite_ids": [str(resend_invite.id)]},
+        )
+        self.assertRedirects(resend_response, reverse("accounts:employee_invite_list"))
+        resend_invite.refresh_from_db()
+        self.assertEqual(resend_invite.resend_count, 1)
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_invite_list_bulk_approves_verified_invite(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        invite = EmployeeInvite.objects.create(
+            company=company,
+            invited_by=owner,
+            name="Bulk Approve",
+            email="bulk-approve@example.com",
+            role=Role.EXECUTIVE,
+            employee_code="EXE-0100",
+            is_email_verified=True,
+            status=EmployeeInvite.Status.PENDING_APPROVAL,
+        )
+        self.client.force_login(owner)
+
+        response = self.client.post(
+            reverse("accounts:employee_invite_bulk_action"),
+            data={"bulk_action": "approve", "invite_ids": [str(invite.id)]},
+        )
+
+        self.assertRedirects(response, reverse("accounts:employee_invite_list"))
+        invite.refresh_from_db()
+        self.assertEqual(invite.status, EmployeeInvite.Status.APPROVED)
+        self.assertTrue(User.objects.filter(email="bulk-approve@example.com").exists())
+
+    def test_approved_invite_cannot_be_resent_or_deleted(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        invite = EmployeeInvite.objects.create(
+            company=company,
+            invited_by=owner,
+            name="Approved User",
+            email="approved-lock@example.com",
+            role=Role.EXECUTIVE,
+            status=EmployeeInvite.Status.APPROVED,
+            is_email_verified=True,
+            last_invite_sent_at=timezone.now() - timedelta(minutes=5),
+        )
+        self.client.force_login(owner)
+
+        resend_response = self.client.post(reverse("accounts:employee_invite_resend", args=[invite.id]))
+        self.assertRedirects(resend_response, reverse("accounts:employee_invite_detail", args=[invite.id]))
+        delete_response = self.client.post(reverse("accounts:employee_invite_delete", args=[invite.id]))
+        self.assertRedirects(delete_response, reverse("accounts:employee_invite_detail", args=[invite.id]))
+        self.assertTrue(EmployeeInvite.objects.filter(id=invite.id).exists())
+
+    def test_company_owner_approval_page_lists_signup_and_invites(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        SignupRequest.objects.create(
+            name="Pending Signup",
+            phone="+91 9999999999",
+            email="pending@example.com",
+            requested_role=Role.MANAGER,
+            status=SignupRequestStatus.PENDING_APPROVAL,
+            is_email_verified=True,
+        )
+        SignupRequest.objects.create(
+            name="Approved Signup",
+            phone="+91 8888888888",
+            email="approved-history@example.com",
+            requested_role=Role.EXECUTIVE,
+            approved_role=Role.EXECUTIVE,
+            status=SignupRequestStatus.APPROVED,
+            is_email_verified=True,
+        )
+        EmployeeInvite.objects.create(
+            company=company,
+            invited_by=owner,
+            name="Invite User",
+            email="invite@example.com",
+            role=Role.EXECUTIVE,
+            is_email_verified=True,
+            status=EmployeeInvite.Status.PENDING_APPROVAL,
+        )
+        self.client.force_login(owner)
+
+        response = self.client.get(reverse("accounts:owner_requests"))
+
+        self.assertContains(response, "Pending Signup")
+        self.assertContains(response, "Approved Signups")
+        self.assertNotContains(response, "Invite User")
+        self.assertNotContains(response, "Employee Invites")
+        self.assertContains(response, "Verified Signups")
+
+    def test_company_owner_signup_request_list_has_history_filters_and_pagination(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        for index in range(15):
+            SignupRequest.objects.create(
+                name=f"Applicant {index}",
+                phone="+91 9999999999",
+                email=f"applicant{index}@example.com",
+                requested_role=Role.EXECUTIVE,
+                status=SignupRequestStatus.APPROVED if index % 2 == 0 else SignupRequestStatus.REJECTED,
+                is_email_verified=True,
+            )
+        self.client.force_login(owner)
+
+        response = self.client.get(reverse("accounts:owner_signup_request_list"))
+
+        self.assertContains(response, "Signup Request List")
+        self.assertContains(response, "Page 1 of 2")
+
+        response = self.client.get(reverse("accounts:owner_signup_request_list"), {"status": SignupRequestStatus.REJECTED, "q": "Applicant 1"})
+        self.assertContains(response, "Applicant 1")
+        self.assertNotContains(response, "Applicant 0")
+
+    def test_company_owner_can_bulk_delete_signup_requests_from_list(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        signup = SignupRequest.objects.create(
+            name="Delete Me",
+            phone="+91 9999999999",
+            email="delete-me@example.com",
+            requested_role=Role.EXECUTIVE,
+            status=SignupRequestStatus.PENDING_APPROVAL,
+            is_email_verified=True,
+        )
+        EmailOTP.create_for_email("delete-me@example.com", signup_request=signup)
+        EmployeeInvite.objects.create(
+            company=company,
+            invited_by=owner,
+            name="Delete Me",
+            email="delete-me@example.com",
+            role=Role.EXECUTIVE,
+            status=EmployeeInvite.Status.PENDING_APPROVAL,
+            is_email_verified=True,
+        )
+        keep_signup = SignupRequest.objects.create(
+            name="Keep Me",
+            phone="+91 8888888888",
+            email="keep-me@example.com",
+            requested_role=Role.EXECUTIVE,
+            status=SignupRequestStatus.PENDING_APPROVAL,
+            is_email_verified=True,
+        )
+        self.client.force_login(owner)
+
+        response = self.client.post(reverse("accounts:owner_signup_request_bulk_delete"), data={"signup_ids": [str(signup.id)]})
+
+        self.assertRedirects(response, reverse("accounts:owner_signup_request_list"))
+        self.assertFalse(SignupRequest.objects.filter(email="delete-me@example.com").exists())
+        self.assertFalse(EmployeeInvite.objects.filter(email="delete-me@example.com").exists())
+        self.assertFalse(EmailOTP.objects.filter(email="delete-me@example.com").exists())
+        self.assertTrue(SignupRequest.objects.filter(id=keep_signup.id).exists())
+
+    def test_company_owner_bulk_signup_delete_requires_selection(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        signup = SignupRequest.objects.create(
+            name="Keep Me",
+            phone="+91 8888888888",
+            email="keep-me@example.com",
+            requested_role=Role.EXECUTIVE,
+            status=SignupRequestStatus.PENDING_APPROVAL,
+            is_email_verified=True,
+        )
+        self.client.force_login(owner)
+
+        response = self.client.post(reverse("accounts:owner_signup_request_bulk_delete"), data={})
+
+        self.assertRedirects(response, reverse("accounts:owner_signup_request_list"))
+        self.assertTrue(SignupRequest.objects.filter(id=signup.id).exists())
+
+    def test_company_owner_can_view_signup_request_detail_and_send_custom_email(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        signup = SignupRequest.objects.create(
+            name="Detail User",
+            phone="+91 9999999999",
+            email="detail@example.com",
+            requested_role=Role.EXECUTIVE,
+            status=SignupRequestStatus.PENDING_APPROVAL,
+            is_email_verified=True,
+        )
+        self.client.force_login(owner)
+
+        response = self.client.get(reverse("accounts:owner_signup_request_detail", args=[signup.id]))
+        self.assertContains(response, "Detail User")
+        self.assertContains(response, "Custom Email")
+
+        response = self.client.post(
+            reverse("accounts:owner_signup_request_detail", args=[signup.id]),
+            data={
+                "action": "send_email",
+                "email-subject": "Need more details",
+                "email-message": "Please share your manager reference.",
+            },
+        )
+
+        self.assertRedirects(response, reverse("accounts:owner_signup_request_detail", args=[signup.id]))
+        self.assertEqual(SignupRequestOwnerMessage.objects.filter(signup_request=signup).count(), 1)
+        self.assertEqual(mail.outbox[-1].to, ["detail@example.com"])
+        self.assertEqual(mail.outbox[-1].subject, "Need more details")
+
+    def test_company_owner_can_approve_signup_from_detail_page(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        signup = SignupRequest.objects.create(
+            name="Detail Approval",
+            phone="+91 9999999999",
+            email="detail-approval@example.com",
+            requested_role=Role.EXECUTIVE,
+            status=SignupRequestStatus.PENDING_APPROVAL,
+            is_email_verified=True,
+        )
+        self.client.force_login(owner)
+
+        response = self.client.post(
+            reverse("accounts:owner_signup_request_detail", args=[signup.id]),
+            data={
+                "action": "approve",
+                "review-approved_role": Role.MANAGER,
+                "review-admin_note": "Looks good.",
+            },
+        )
+
+        self.assertRedirects(response, reverse("accounts:owner_signup_request_detail", args=[signup.id]))
+        signup.refresh_from_db()
+        self.assertEqual(signup.status, SignupRequestStatus.APPROVED)
+        self.assertEqual(signup.approved_role, Role.MANAGER)
+
+    def test_only_one_company_profile_can_exist(self):
+        CompanyProfile.objects.create(name="Siya Real Build")
+
+        with self.assertRaises(IntegrityError):
+            CompanyProfile.objects.create(name="Another Company")
+
+    def test_company_admin_add_is_available_only_until_company_exists(self):
+        User = get_user_model()
+        superuser = User.objects.create_superuser(
+            username="admin@example.com",
+            email="admin@example.com",
+            password="password",
+        )
+        request = type("Request", (), {"user": superuser})()
+        company_admin = CompanyProfileAdmin(CompanyProfile, AdminSite())
+
+        self.assertTrue(company_admin.has_add_permission(request))
+        CompanyProfile.objects.create(name="Siya Real Build")
+        self.assertFalse(company_admin.has_add_permission(request))
+
+    def test_company_admin_uses_company_master_fields_without_owner(self):
+        company_admin = CompanyProfileAdmin(CompanyProfile, AdminSite())
+        field_names = [
+            field
+            for _, options in company_admin.fieldsets
+            for field in options["fields"]
+        ]
+
+        self.assertNotIn("owner", field_names)
+        self.assertIn("logo", field_names)
+        self.assertIn("phone_3", field_names)
+        self.assertIn("email_3", field_names)
+        self.assertIn("gst_number", field_names)
+        self.assertIn("rera_number", field_names)

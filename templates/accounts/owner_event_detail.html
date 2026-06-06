@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}{{ event.title }} - Event Detail{% endblock %}
+{% block content %}
+<div class="app-page-head company-update-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">Event Detail</h1>
+        <p class="text-body mb-0">Review the social post preview, status controls, and editable event settings.</p>
+    </div>
+    <div class="company-page-actions">
+        <a class="btn btn-primary" href="{% url 'accounts:owner_event_edit' event.id %}">Edit Event</a>
+        <a class="btn btn-outline-primary" href="{% url 'accounts:owner_events' %}">Event List</a>
+    </div>
+</div>
+
+<section class="event-detail-layout event-detail-layout-pro">
+    <article class="profile-panel event-detail-unified">
+        <div class="event-detail-media">
+            {% if event.cover_image %}
+                <img src="{{ event.cover_image.url }}" alt="{{ event.title }}">
+            {% else %}
+                <span>{{ event.title|slice:":1"|upper }}</span>
+            {% endif %}
+        </div>
+        <div class="event-detail-summary">
+            <div class="profile-panel-head">
+                <div>
+                    <h2>{{ event.title }}</h2>
+                    <p>{{ event.starts_at|date:"d M Y, h:i A" }}{% if event.ends_at %} - {{ event.ends_at|date:"d M Y, h:i A" }}{% endif %}</p>
+                </div>
+            </div>
+            <div class="event-post-badges">
+                <span class="badge bg-primary-subtle text-primary">{% if event.is_global %}All roles{% else %}Role wise{% endif %}</span>
+                <span class="badge bg-light text-dark">{{ event.is_active|yesno:"Active,Inactive" }}</span>
+                {% if event.show_as_popup %}<span class="badge bg-warning-subtle text-warning">Popup</span>{% endif %}
+            </div>
+            <div class="event-detail-box-grid">
+                <div><span>Audience</span><strong>{% if event.is_global %}All roles{% else %}Selected roles{% endif %}</strong></div>
+                <div><span>Status</span><strong>{{ event.is_active|yesno:"Active,Inactive" }}</strong></div>
+                <div><span>Post Type</span><strong>{{ event.show_as_popup|yesno:"Popup,Standard post" }}</strong></div>
+            </div>
+            {% if event.caption %}<div class="event-detail-text-box"><span>Caption</span><p>{{ event.caption }}</p></div>{% endif %}
+            {% if event.description %}<div class="event-detail-text-box"><span>Description</span><p>{{ event.description }}</p></div>{% endif %}
+            <div class="event-row-actions event-detail-actions">
+                <form method="post">{% csrf_token %}<input type="hidden" name="form_kind" value="event_action"><input type="hidden" name="action" value="toggle"><button class="btn btn-light">{{ event.is_active|yesno:"Deactivate,Activate" }}</button></form>
+                <form method="post">{% csrf_token %}<input type="hidden" name="form_kind" value="event_action"><input type="hidden" name="action" value="popup"><button class="btn btn-light">{{ event.show_as_popup|yesno:"Popup Off,Popup On" }}</button></form>
+                <form method="post" data-delete-confirm="Delete this event?">{% csrf_token %}<input type="hidden" name="form_kind" value="event_action"><input type="hidden" name="action" value="delete"><button class="btn btn-outline-danger">Delete</button></form>
+            </div>
+        </div>
+    </article>
+</section>
+{% endblock %}

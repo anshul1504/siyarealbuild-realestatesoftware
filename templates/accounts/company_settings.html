@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Company Settings - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head company-update-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">Company Settings</h1>
+        <p class="text-body mb-0">Update master company information used across the software.</p>
+    </div>
+    <a class="btn btn-outline-primary" href="{% url 'accounts:company_detail' %}">
+        <i class="fi fi-rr-eye me-2"></i>View Details
+    </a>
+</div>
+
+<section class="profile-panel company-update-panel">
+    <form method="post" enctype="multipart/form-data" class="profile-form company-update-form">
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+        {% endif %}
+        <div class="row g-3 align-items-start">
+            {% for field in form %}
+            <div class="{% if field.name == 'description' or field.name == 'address' or field.name == 'holiday_notes' or field.name == 'logo' %}col-12{% else %}col-md-6 col-xl-4{% endif %}">
+                <div class="company-update-field{% if field.errors %} has-error{% endif %}">
+                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.name == "logo" %}
+                    <small class="text-body d-block mt-1">PNG/JPG/WebP, maximum 2 MB.</small>
+                {% endif %}
+                {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+            <div class="col-12 company-update-actions">
+                <a class="btn btn-light" href="{% url 'accounts:company_detail' %}">Cancel</a>
+                <button class="btn btn-primary" type="submit">Save Changes</button>
+            </div>
+        </div>
+    </form>
+</section>
+{% endblock %}

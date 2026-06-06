@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Assigned Code List - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head company-update-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">Assigned Code List</h1>
+        <p class="text-body mb-0">Review, filter, generate, and clear employee codes from one dedicated page.</p>
+    </div>
+    <div class="company-page-actions">
+        <a class="btn btn-outline-primary" href="{% url 'accounts:owner_serial_rules' %}">Serial Rules</a>
+        <a class="btn btn-outline-primary" href="{% url 'accounts:add_employee' %}">Add Employee</a>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="profile-panel h-100">
+            <span class="text-body small">Assigned Codes</span>
+            <h2 class="mb-0">{{ total_codes }}</h2>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="profile-panel h-100">
+            <span class="text-body small">Missing Codes</span>
+            <h2 class="mb-0">{{ missing_codes }}</h2>
+        </div>
+    </div>
+</div>
+
+<section class="profile-panel employee-directory-panel assigned-code-panel">
+    <form class="employee-directory-filter assigned-code-filter" method="get">
+        <input class="form-control" type="search" name="q" value="{{ query }}" placeholder="Search name, email, phone, code">
+        <select class="form-select" name="role">
+            <option value="">All roles</option>
+            {% for value, label in role_choices %}
+            <option value="{{ value }}" {% if selected_role == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <select class="form-select" name="department">
+            <option value="">All departments</option>
+            {% for department in departments %}
+            <option value="{{ department }}" {% if selected_department == department %}selected{% endif %}>{{ department }}</option>
+            {% endfor %}
+        </select>
+        <select class="form-select" name="code_status">
+            <option value="">All code status</option>
+            <option value="assigned" {% if code_status == "assigned" %}selected{% endif %}>Assigned</option>
+            <option value="missing" {% if code_status == "missing" %}selected{% endif %}>Missing</option>
+        </select>
+        <button class="btn btn-primary" type="submit">Filter</button>
+        <a class="btn btn-outline-primary" href="{% url 'accounts:owner_assigned_codes' %}">Reset</a>
+    </form>
+
+    <form class="assigned-code-bulk-form" method="post" data-delete-confirm="Apply selected code bulk action?">
+        {% csrf_token %}
+        <input type="hidden" name="form_kind" value="assigned_bulk">
+        <div class="employee-bulk-toolbar assigned-code-bulk-toolbar">
+            <label class="employee-bulk-select">
+                <input type="checkbox" data-employee-select-all>
+                <span>Select all visible</span>
+            </label>
+            <div class="assigned-code-bulk-actions">
+                <select class="form-select form-select-sm" name="action" required>
+                    <option value="">Bulk action</option>
+                    <option value="generate_missing">Generate missing codes</option>
+                    <option value="clear">Clear selected codes</option>
+                </select>
+                <button class="btn btn-sm btn-primary" type="submit">Apply</button>
+            </div>
+        </div>
+
+        <div class="employee-directory-table-wrap">
+            <table class="table align-middle employee-directory-table">
+                <thead>
+                    <tr>
+                        <th class="employee-select-col"></th>
+                        <th>Employee</th>
+                        <th>Role</th>
+                        <th>Department</th>
+                        <th>Designation</th>
+                        <th>Code</th>
+                        <th>Updated</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for profile in profiles %}
+                    <tr>
+                        <td class="employee-select-col">
+                            <input type="checkbox" name="profile_ids" value="{{ profile.id }}" data-employee-checkbox>
+                        </td>
+                        <td>
+                            <a class="employee-cell" href="{% url 'accounts:team_profile_detail' profile.id %}">
+                                <strong>{{ profile.user.get_full_name|default:profile.user.email|default:profile.user.username }}</strong>
+                                <small>{{ profile.user.email|default:"Email not added" }}</small>
+                            </a>
+                        </td>
+                        <td><span class="badge rounded-pill bg-primary-subtle text-primary">{{ profile.get_role_display }}</span></td>
+                        <td>{{ profile.department|default:"Not added" }}</td>
+                        <td>{{ profile.designation|default:"Not set" }}</td>
+                        <td><span class="badge bg-light text-dark">{{ profile.employee_code|default:"Code pending" }}</span></td>
+                        <td>{{ profile.updated_at|date:"d M Y" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="text-center text-body py-4">No employee codes found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </form>
+
+    {% include "accounts/partials/pagination.html" %}
+</section>
+{% endblock %}

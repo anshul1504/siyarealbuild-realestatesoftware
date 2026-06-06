@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% block title %}{{ property_obj.title }} - Property Detail{% endblock %}
+{% block content %}
+<div class="app-page-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">{{ property_obj.title }}</h1>
+        <p class="text-body mb-0">{{ property_obj.get_category_display }} / {{ property_obj.city }}{% if property_obj.locality %}, {{ property_obj.locality }}{% endif %}</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'properties:list' %}" class="btn btn-light">Property List</a>
+        <a href="https://wa.me/?text={{ share_message|urlencode }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-success">Share on WhatsApp</a>
+        {% if can_manage %}
+        <a href="{% url 'properties:visit_create' property_obj.id %}" class="btn btn-outline-primary">Add Visit</a>
+        <a href="{% url 'properties:edit' property_obj.id %}" class="btn btn-primary">Edit Property</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-3"><div class="profile-panel h-100"><span class="text-body small">Category</span><h2 class="mb-0">{{ property_obj.get_category_display }}</h2></div></div>
+    <div class="col-md-3"><div class="profile-panel h-100"><span class="text-body small">Status</span><h2 class="mb-0">{{ property_obj.get_status_display }}</h2></div></div>
+    <div class="col-md-3"><div class="profile-panel h-100"><span class="text-body small">Price</span><h2 class="mb-0">Rs. {{ property_obj.price }}</h2></div></div>
+    <div class="col-md-3"><div class="profile-panel h-100"><span class="text-body small">Area</span><h2 class="mb-0">{{ property_obj.area_sqft }} sqft</h2></div></div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-4"><div class="profile-panel h-100"><span class="text-body small">Total Visits</span><h2 class="mb-0">{{ visit_stats.total|default:0 }}</h2></div></div>
+    <div class="col-md-4"><div class="profile-panel h-100"><span class="text-body small">Scheduled Visits</span><h2 class="mb-0">{{ visit_stats.scheduled|default:0 }}</h2></div></div>
+    <div class="col-md-4"><div class="profile-panel h-100"><span class="text-body small">Completed Visits</span><h2 class="mb-0">{{ visit_stats.completed|default:0 }}</h2></div></div>
+</div>
+
+<section class="profile-panel mb-3">
+    <div class="profile-panel-head"><div><h2>Core Details</h2><p>Primary inventory and location information.</p></div></div>
+    <div class="profile-overview-grid">
+        <div><span>Listing For</span><strong>{{ property_obj.get_listing_for_display }}</strong></div>
+        <div><span>City</span><strong>{{ property_obj.city }}</strong></div>
+        <div><span>Locality</span><strong>{{ property_obj.locality|default:"-" }}</strong></div>
+        <div><span>Address</span><strong>{{ property_obj.address }}</strong></div>
+        <div><span>Landmark</span><strong>{{ property_obj.landmark|default:"-" }}</strong></div>
+        <div><span>Map Link</span><strong>{% if property_obj.map_link %}<a href="{{ property_obj.map_link }}" target="_blank" rel="noopener noreferrer">Open Map</a>{% else %}-{% endif %}</strong></div>
+        <div><span>Facing</span><strong>{{ property_obj.facing|default:"-" }}</strong></div>
+        <div><span>Road Width</span><strong>{% if property_obj.road_width_ft %}{{ property_obj.road_width_ft }} ft{% else %}-{% endif %}</strong></div>
+    </div>
+</section>
+
+<section class="profile-panel mb-3">
+    <div class="profile-panel-head"><div><h2>Pricing & Structure</h2><p>Area, unit configuration, and construction data.</p></div></div>
+    <div class="profile-overview-grid">
+        <div><span>Price per sqft</span><strong>Rs. {{ property_obj.price_per_sqft }}</strong></div>
+        <div><span>Carpet Area</span><strong>{{ property_obj.carpet_area_sqft }} sqft</strong></div>
+        <div><span>Built-up Area</span><strong>{{ property_obj.builtup_area_sqft }} sqft</strong></div>
+        <div><span>Dimensions</span><strong>{% if property_obj.length_ft and property_obj.width_ft %}{{ property_obj.length_ft }} x {{ property_obj.width_ft }} ft{% else %}-{% endif %}</strong></div>
+        <div><span>Bedrooms</span><strong>{{ property_obj.bedrooms }}</strong></div>
+        <div><span>Bathrooms</span><strong>{{ property_obj.bathrooms }}</strong></div>
+        <div><span>Floor</span><strong>{% if property_obj.floor_number %}{{ property_obj.floor_number }} / {{ property_obj.total_floors|default:"-" }}{% else %}-{% endif %}</strong></div>
+        <div><span>Parking</span><strong>{{ property_obj.parking_count }}</strong></div>
+        <div><span>Furnishing</span><strong>{{ property_obj.furnishing|default:"-" }}</strong></div>
+        <div><span>Construction</span><strong>{{ property_obj.construction_status|default:"-" }}</strong></div>
+        <div><span>Possession</span><strong>{{ property_obj.possession_status|default:"-" }}</strong></div>
+    </div>
+</section>
+
+{% if property_obj.category == "colony" %}
+<section class="profile-panel mb-3">
+    <div class="profile-panel-head"><div><h2>Colony Plot Inventory</h2><p>{{ property_obj.total_plots }} total plots / {{ property_obj.available_plots }} available plots.</p></div></div>
+    <div class="profile-overview-grid mb-3">
+        <div><span>Colony Name</span><strong>{{ property_obj.colony_name|default:"-" }}</strong></div>
+        <div><span>Development</span><strong>{{ property_obj.development_status|default:"-" }}</strong></div>
+        <div><span>Amenity Count</span><strong>{{ property_obj.amenity_count }}</strong></div>
+        <div><span>Garden Count</span><strong>{{ property_obj.garden_count }}</strong></div>
+        <div><span>Corner Plots</span><strong>{{ property_obj.corner_plot_count }}</strong></div>
+        <div><span>Garden-facing Plots</span><strong>{{ property_obj.garden_facing_plot_count }}</strong></div>
+        <div class="profile-overview-wide"><span>Amenities</span><strong>{{ property_obj.amenities|default:"-" }}</strong></div>
+        <div class="profile-overview-wide"><span>PLC Rules</span><strong>{{ property_obj.plc_rules|default:"-" }}</strong></div>
+    </div>
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead><tr><th>Plot No.</th><th>Area</th><th>Dimensions</th><th>Facing</th><th>Road</th><th>Price</th><th>Status</th><th>Notes</th><th></th></tr></thead>
+            <tbody>
+                {% for plot in plots %}
+                <tr>
+                    <td><a href="{% url 'properties:plot_detail' property_obj.id plot.id %}" class="fw-bold text-decoration-none">{{ plot.plot_number }}</a></td>
+                    <td>{{ plot.area_sqft }} sqft</td>
+                    <td>{% if plot.length_ft and plot.width_ft %}{{ plot.length_ft }} x {{ plot.width_ft }} ft{% else %}-{% endif %}</td>
+                    <td>{{ plot.facing|default:"-" }}</td>
+                    <td>{% if plot.road_width_ft %}{{ plot.road_width_ft }} ft{% else %}-{% endif %}</td>
+                    <td>Rs. {{ plot.price }}</td>
+                    <td>{{ plot.get_status_display }}</td>
+                    <td>{{ plot.notes|default:"-" }}</td>
+                    <td class="text-end">{% if can_manage %}<a href="{% url 'properties:plot_visit_create' property_obj.id plot.id %}" class="btn btn-sm btn-light">Add Visit</a>{% endif %}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="9" class="text-center text-body py-4">No plot rows added.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
+
+<section class="profile-panel mb-3">
+    <div class="profile-panel-head"><div><h2>Nearby Infrastructure</h2><p>Residential, commercial, connectivity, and essential services around this property.</p></div></div>
+    <div class="profile-overview-grid">
+        <div class="profile-overview-wide"><span>Nearby Residential</span><strong>{{ property_obj.nearby_residential|default:"-" }}</strong></div>
+        <div class="profile-overview-wide"><span>Nearby Commercial</span><strong>{{ property_obj.nearby_commercial|default:"-" }}</strong></div>
+        <div class="profile-overview-wide"><span>Connectivity</span><strong>{{ property_obj.nearby_connectivity|default:"-" }}</strong></div>
+        <div class="profile-overview-wide"><span>Education</span><strong>{{ property_obj.nearby_education|default:"-" }}</strong></div>
+        <div class="profile-overview-wide"><span>Healthcare</span><strong>{{ property_obj.nearby_healthcare|default:"-" }}</strong></div>
+        <div class="profile-overview-wide"><span>Landmarks</span><strong>{{ property_obj.nearby_landmarks|default:"-" }}</strong></div>
+    </div>
+</section>
+
+<section class="profile-panel mb-3">
+    <div class="profile-panel-head"><div><h2>Client Share</h2><p>Send property details to clients through WhatsApp or email.</p></div></div>
+    <div class="row g-3">
+        <div class="col-lg-5">
+            <a href="https://wa.me/?text={{ share_message|urlencode }}" target="_blank" rel="noopener noreferrer" class="btn btn-success w-100 mb-3">Open WhatsApp Share</a>
+            <textarea class="form-control" rows="10" readonly>{{ share_message }}</textarea>
+        </div>
+        <div class="col-lg-7">
+            <form method="post" action="{% url 'properties:share_email' property_obj.id %}">
+                {% csrf_token %}
+                <label class="form-label" for="{{ share_form.emails.id_for_label }}">Client Email Addresses</label>
+                {{ share_form.emails }}
+                <div class="text-body small mt-1">{{ share_form.emails.help_text }}</div>
+                <label class="form-label mt-3" for="{{ share_form.message.id_for_label }}">Optional Message</label>
+                {{ share_form.message }}
+                <div class="d-flex justify-content-end mt-3">
+                    <button type="submit" class="btn btn-primary">Send Email</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</section>
+
+<section class="profile-panel mb-3">
+    <div class="profile-panel-head">
+        <div><h2>Visit History</h2><p>Employee-wise site visits, client follow-ups, and outcomes.</p></div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-light" href="{% url 'properties:visits' property_obj.id %}">View All</a>
+            {% if can_manage %}<a class="btn btn-primary" href="{% url 'properties:visit_create' property_obj.id %}">Add Visit</a>{% endif %}
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead><tr><th>Date</th><th>Client</th><th>Employee</th><th>Plot</th><th>Status</th><th>Outcome</th><th></th></tr></thead>
+            <tbody>
+                {% for visit in visits %}
+                <tr>
+                    <td>{{ visit.visit_at|date:"d M Y, h:i A" }}</td>
+                    <td>{{ visit.client_name }}<br><small class="text-body">{{ visit.client_phone|default:visit.client_email|default:"-" }}</small></td>
+                    <td>{{ visit.assigned_employee.get_full_name|default:visit.assigned_employee.email|default:"-" }}</td>
+                    <td>{% if visit.plot %}<a href="{% url 'properties:plot_detail' property_obj.id visit.plot.id %}">{{ visit.plot.plot_number }}</a>{% else %}-{% endif %}</td>
+                    <td>{{ visit.get_status_display }}</td>
+                    <td>{{ visit.get_outcome_display }}</td>
+                    <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'properties:visit_detail' visit.id %}">View</a></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="text-center text-body py-4">No visits recorded yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="profile-panel mb-3">
+    <div class="profile-panel-head"><div><h2>Legal Details</h2><p>Approval, registry, and legal status.</p></div></div>
+    <div class="profile-overview-grid">
+        <div><span>RERA</span><strong>{{ property_obj.rera_number|default:"-" }}</strong></div>
+        <div><span>T&CP</span><strong>{{ property_obj.tcp_approval_number|default:"-" }}</strong></div>
+        <div><span>Registry</span><strong>{{ property_obj.registry_status|default:"-" }}</strong></div>
+        <div><span>Khasra / Survey</span><strong>{{ property_obj.khasra_number|default:"-" }}</strong></div>
+        <div><span>Legal Status</span><strong>{{ property_obj.get_legal_status_display|default:"-" }}</strong></div>
+        <div class="profile-overview-wide"><span>Legal Notes</span><strong>{{ property_obj.legal_notes|default:"-" }}</strong></div>
+    </div>
+</section>
+
+<section class="profile-panel mb-3">
+    <div class="profile-panel-head"><div><h2>Photos & Documents</h2><p>Uploaded media and legal files.</p></div></div>
+    <div class="row g-3">
+        <div class="col-lg-6">
+            <h3 class="h6 mb-2">Photos</h3>
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <tbody>
+                        {% for photo in photos %}
+                        <tr><td>{{ photo.caption|default:"Property photo" }}</td><td class="text-end"><a href="{{ photo.image.url }}" target="_blank" rel="noopener noreferrer">Open</a></td></tr>
+                        {% empty %}
+                        <tr><td class="text-body">No photos uploaded.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <h3 class="h6 mb-2">Documents</h3>
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <tbody>
+                        {% for document in documents %}
+                        <tr><td>{{ document.get_document_type_display }}</td><td>{{ document.title|default:"Document" }}</td><td class="text-end"><a href="{{ document.file.url }}" target="_blank" rel="noopener noreferrer">Open</a></td></tr>
+                        {% empty %}
+                        <tr><td class="text-body">No documents uploaded.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="profile-panel">
+    <div class="profile-panel-head"><div><h2>Contact & Notes</h2><p>Owner or sales contact and internal remarks.</p></div></div>
+    <div class="profile-overview-grid">
+        <div><span>Contact Name</span><strong>{{ property_obj.contact_name|default:"-" }}</strong></div>
+        <div><span>Contact Phone</span><strong>{{ property_obj.contact_phone|default:"-" }}</strong></div>
+        <div class="profile-overview-wide"><span>Internal Notes</span><strong>{{ property_obj.internal_notes|default:"-" }}</strong></div>
+    </div>
+</section>
+{% endblock %}

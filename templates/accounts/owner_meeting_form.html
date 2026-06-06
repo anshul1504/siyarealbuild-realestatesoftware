@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}{% if mode == "edit" %}Edit Meeting{% else %}Create Meeting{% endif %} - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head company-update-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">{% if mode == "edit" %}Edit Meeting{% else %}Create Meeting{% endif %}</h1>
+        <p class="text-body mb-0">Create a role-wise online meeting and notify selected roles by email.</p>
+    </div>
+    <div class="company-page-actions">
+        <a class="btn btn-outline-primary" href="{% url 'accounts:owner_meetings' %}">Meeting List</a>
+    </div>
+</div>
+
+<section class="meeting-management-layout">
+    <div class="profile-panel meeting-form-panel">
+        <div class="profile-panel-head">
+            <div>
+                <h2>{% if mode == "edit" %}Meeting Details{% else %}New Online Meeting{% endif %}</h2>
+                <p>Only role-wise online meetings are supported. The meeting email includes the online joining link.</p>
+            </div>
+        </div>
+        <form method="post" class="profile-form meeting-form-grid">
+            {% csrf_token %}
+            {% for error in form.non_field_errors %}<div class="alert alert-danger meeting-field-wide">{{ error }}</div>{% endfor %}
+            <div class="meeting-field meeting-field-title">
+                <label class="form-label" for="{{ form.title.id_for_label }}">Meeting Title</label>
+                {{ form.title }}
+                {% for error in form.title.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="meeting-field">
+                <label class="form-label" for="{{ form.starts_at.id_for_label }}">Starts At</label>
+                {{ form.starts_at }}
+                {% for error in form.starts_at.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="meeting-field">
+                <label class="form-label" for="{{ form.ends_at.id_for_label }}">Ends At</label>
+                {{ form.ends_at }}
+                {% for error in form.ends_at.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="meeting-field meeting-field-wide">
+                <label class="form-label" for="{{ form.meeting_link.id_for_label }}">Online Meeting Link</label>
+                {{ form.meeting_link }}
+                {% for error in form.meeting_link.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="meeting-field meeting-field-wide">
+                <label class="form-label">Notify Roles</label>
+                <div class="meeting-role-picker">{{ form.roles }}</div>
+                {% for error in form.roles.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="meeting-field meeting-field-wide">
+                <label class="form-label" for="{{ form.description.id_for_label }}">Description / Agenda</label>
+                {{ form.description }}
+                {% for error in form.description.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+            </div>
+            <label class="meeting-active-toggle">
+                {{ form.is_active }}
+                <span>Active meeting</span>
+            </label>
+            <div class="meeting-submit">
+                <button class="btn btn-primary">{{ submit_label }}</button>
+            </div>
+        </form>
+    </div>
+</section>
+{% endblock %}

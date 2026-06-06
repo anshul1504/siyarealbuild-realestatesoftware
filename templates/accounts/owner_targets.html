@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}Targets - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head"><h1 class="app-page-title mb-0">Targets</h1><p class="text-body mb-0">Set targets role wise or employee wise.</p></div>
+{% include "accounts/partials/owner_configuration_form_list.html" with form=form rows=targets heading="Set Target" list_heading="Targets" button_label="Save Target" columns="Title,Role,Employee,Target" row_type="target" %}
+{% endblock %}

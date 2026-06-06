@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Employee Invites - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head company-update-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">Employee Invites</h1>
+        <p class="text-body mb-0">Pre-decide role and code, then approve the employee after email verification.</p>
+    </div>
+    <div class="company-page-actions">
+        {% if user_profile.role == "company_owner" %}<a class="btn btn-outline-primary" href="{% url 'accounts:add_employee' %}">Add Employee</a>{% endif %}
+        <a class="btn btn-primary" href="{% url 'accounts:employee_invite_list' %}">Invite List</a>
+        <a class="btn btn-outline-primary" href="{% url 'accounts:team_profiles' %}">Employee Directory</a>
+    </div>
+</div>
+
+<div class="invite-create-layout">
+    <section class="profile-panel invite-flow-panel">
+        <div class="profile-panel-head">
+            <div>
+                <h2>Invite Flow</h2>
+                <p>Employee receives a branded email with OTP and verification link.</p>
+            </div>
+        </div>
+        <div class="invite-flow-grid">
+            <div><span>Step 1</span><strong>Send invite</strong><p>Owner or manager adds employee details, role, and employee code.</p></div>
+            <div><span>Step 2</span><strong>Verify OTP</strong><p>OTP can be verified from invite detail or by the employee from the email link.</p></div>
+            <div><span>Step 3</span><strong>Approve access</strong><p>Owner approves the verified invite before the account becomes login-ready.</p></div>
+        </div>
+    </section>
+
+    <section class="profile-panel profile-detail-panel invite-form-panel">
+        <form method="post" class="profile-detail-form invite-employee-form" data-invite-form>
+            {% csrf_token %}
+            <div class="profile-form-section invite-form-section">
+                <div class="invite-form-head">
+                    <div>
+                        <h3>Invite Employee</h3>
+                        <p>Fill employee identity, contact, access role, and onboarding note.</p>
+                    </div>
+                    <a class="btn btn-outline-primary" href="{% url 'accounts:employee_invite_list' %}">View Invites</a>
+                </div>
+                <div class="invite-form-grid">
+                    {% for field in form %}
+                    <div class="{% if field.name == 'note' %}invite-form-wide{% else %}invite-form-field{% endif %}">
+                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="profile-detail-actions invite-form-actions">
+                <a class="btn btn-outline-secondary" href="{% url 'accounts:employee_invite_list' %}">Cancel</a>
+                <button class="btn btn-primary" type="submit">Send Invite</button>
+            </div>
+        </form>
+    </section>
+</div>
+
+{{ role_code_prefixes|json_script:"role-code-prefixes" }}
+{% endblock %}

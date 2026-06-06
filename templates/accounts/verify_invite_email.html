@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Verify Invite - Siya Real Build{% endblock %}
+{% block content %}
+<div class="auth-frame-wrapper">
+    <div class="inner-wrap">
+        <div class="mb-4 text-center">
+            <h5 class="mb-2">Verify Invite Email</h5>
+            <p class="text-body mb-0">Enter the OTP sent to your invited email address. Your account opens after owner approval.</p>
+        </div>
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label" for="{{ form.email.id_for_label }}">Email</label>
+                {{ form.email }}
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="{{ form.code.id_for_label }}">OTP</label>
+                {{ form.code }}
+            </div>
+            <button class="btn btn-primary w-100" type="submit">Verify Invite</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

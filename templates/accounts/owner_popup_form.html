@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}{% if mode == "edit" %}Edit{% else %}Create{% endif %} Offer Popup - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head company-update-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">{% if mode == "edit" %}Edit Offer Popup{% else %}Create Offer Popup{% endif %}</h1>
+        <p class="text-body mb-0">Upload a clear offer image and select the roles that should see it after login.</p>
+    </div>
+    <a class="btn btn-outline-primary" href="{% url 'accounts:owner_popups' %}">Back to List</a>
+</div>
+
+<section class="profile-panel offer-popup-form-panel">
+    <div class="profile-panel-head">
+        <div>
+            <h2>Popup Details</h2>
+            <p>Use a professional poster image, concise copy, and accurate role visibility.</p>
+        </div>
+    </div>
+    <form method="post" enctype="multipart/form-data" class="profile-form offer-popup-form">
+        {% csrf_token %}
+        {% for error in form.non_field_errors %}<div class="alert alert-danger offer-popup-wide">{{ error }}</div>{% endfor %}
+        <div class="offer-popup-wide">
+            <label class="form-label" for="{{ form.title.id_for_label }}">Title</label>
+            {{ form.title }}
+            {% for error in form.title.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+        </div>
+        <div>
+            <label class="form-label" for="{{ form.deal_label.id_for_label }}">Offer Label</label>
+            {{ form.deal_label }}
+            {% for error in form.deal_label.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+        </div>
+        {% if popup and popup.offer_image %}
+        <div class="offer-popup-preview">
+            <img src="{{ popup.offer_image.url }}" alt="{{ popup.title }}">
+            <span>Current offer image</span>
+        </div>
+        {% endif %}
+        <div>
+            <label class="form-label" for="{{ form.offer_image.id_for_label }}">{% if mode == "edit" %}Replace Offer Image{% else %}Offer Image{% endif %}</label>
+            {{ form.offer_image }}
+            {% for error in form.offer_image.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+        </div>
+        <div>
+            <label class="form-label" for="{{ form.starts_at.id_for_label }}">Starts At</label>
+            {{ form.starts_at }}
+            {% for error in form.starts_at.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+        </div>
+        <div>
+            <label class="form-label" for="{{ form.ends_at.id_for_label }}">Ends At</label>
+            {{ form.ends_at }}
+            {% for error in form.ends_at.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+        </div>
+        <div class="offer-popup-wide">
+            <label class="form-label" for="{{ form.message.id_for_label }}">Message</label>
+            {{ form.message }}
+            {% for error in form.message.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+        </div>
+        <div class="offer-popup-wide">
+            <label class="form-label">Role Visibility</label>
+            <div class="offer-role-picker">{{ form.roles }}</div>
+            {% for error in form.roles.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+        </div>
+        <div class="offer-popup-actions offer-popup-wide">
+            <label class="offer-popup-toggle">
+                {{ form.is_active }}
+                <span>Active popup</span>
+            </label>
+            <div class="d-flex gap-2 flex-wrap">
+                <a class="btn btn-outline-primary" href="{% url 'accounts:owner_popups' %}">Cancel</a>
+                <button class="btn btn-primary">{% if mode == "edit" %}Update Popup{% else %}Save Popup{% endif %}</button>
+            </div>
+        </div>
+    </form>
+</section>
+{% endblock %}

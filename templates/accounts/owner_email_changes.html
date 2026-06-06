@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}Email Changes - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head company-update-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+  <div>
+    <h1 class="app-page-title mb-0">Employee Email Change Requests</h1>
+    <p class="text-body mb-0">Search requests, verify OTP, then approve the employee email update.</p>
+  </div>
+  <a class="btn btn-primary" href="{% url 'accounts:owner_email_change_create' %}">New Email Change Request</a>
+</div>
+
+<section class="profile-panel employee-directory-panel mt-3">
+  <div class="profile-panel-head invite-list-head">
+    <div>
+      <h2>Request List</h2>
+      <p>Approval stays locked until the requested email OTP is verified.</p>
+    </div>
+  </div>
+
+  <form method="get" class="employee-directory-filter invite-filter">
+    <div class="invite-filter-field invite-filter-search">
+      <label for="email-change-q">Search</label>
+      <input id="email-change-q" class="form-control" type="search" name="q" value="{{ query }}" placeholder="Name, current email, new email, employee code">
+    </div>
+    <div class="invite-filter-field">
+      <label for="email-change-status">Status</label>
+      <select id="email-change-status" class="form-select" name="status">
+        <option value="">All status</option>
+        {% for value,label in status_choices %}
+          <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="invite-filter-field">
+      <label for="email-change-otp">OTP</label>
+      <select id="email-change-otp" class="form-select" name="otp">
+        <option value="">All OTP</option>
+        <option value="pending" {% if selected_otp == "pending" %}selected{% endif %}>OTP Pending</option>
+        <option value="verified" {% if selected_otp == "verified" %}selected{% endif %}>OTP Verified</option>
+      </select>
+    </div>
+    <div class="invite-filter-field">
+      <label for="email-change-role">Role</label>
+      <select id="email-change-role" class="form-select" name="role">
+        <option value="">All roles</option>
+        {% for value,label in role_choices %}
+          <option value="{{ value }}" {% if selected_role == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="invite-filter-actions">
+      <button class="btn btn-primary" type="submit">Apply</button>
+      <a class="btn btn-outline-secondary" href="{% url 'accounts:owner_email_changes' %}">Reset</a>
+    </div>
+  </form>
+
+  <div class="table-responsive mt-3">
+    <table class="table align-middle">
+      <thead>
+        <tr>
+          <th>Employee</th>
+          <th>Requested Email</th>
+          <th>Status</th>
+          <th>Requested</th>
+          <th>OTP</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in requests %}
+          <tr>
+            <td>
+              <strong class="d-block">{{ item.employee.get_full_name|default:item.employee.username }}</strong>
+              <span class="text-body small d-block">{{ item.employee.email }}</span>
+              <span class="text-body small">{{ item.employee.profile.get_role_display }}{% if item.employee.profile.employee_code %} · {{ item.employee.profile.employee_code }}{% endif %}</span>
+            </td>
+            <td>{{ item.requested_email }}</td>
+            <td>
+              <span class="badge {% if item.status == 'approved' %}text-bg-success{% elif item.status == 'rejected' %}text-bg-danger{% else %}text-bg-warning{% endif %}">
+                {{ item.get_status_display }}
+              </span>
+              {% if item.is_email_verified %}
+                <span class="badge text-bg-success ms-1">OTP Verified</span>
+              {% elif item.status == 'pending' %}
+                <span class="badge text-bg-secondary ms-1">OTP Pending</span>
+              {% endif %}
+            </td>
+            <td>
+              <span class="d-block small">{{ item.created_at|date:"d M Y, h:i A" }}</span>
+              <span class="text-body small">By {{ item.requested_by.get_full_name|default:item.requested_by.email|default:"System" }}</span>
+            </td>
+            <td>
+              {% if item.status == 'pending' and not item.is_email_verified %}
+                <form method="post" class="d-flex gap-2">
+                  {% csrf_token %}
+                  <input class="form-control form-control-sm" name="otp_code" placeholder="6-digit OTP" inputmode="numeric" maxlength="6" required>
+                  <button class="btn btn-sm btn-primary" name="verify_request" value="{{ item.id }}">Verify</button>
+                </form>
+              {% elif item.is_email_verified %}
+                <span class="text-success small fw-semibold">Verified</span>
+              {% else %}
+                <span class="text-body small">-</span>
+              {% endif %}
+            </td>
+            <td>
+              <form method="post" class="d-flex justify-content-end gap-2">
+                {% csrf_token %}
+                {% if item.status == 'pending' %}
+                  <button class="btn btn-sm btn-outline-secondary" name="resend_request" value="{{ item.id }}">Resend OTP</button>
+                  <button class="btn btn-sm btn-outline-primary" name="approve_request" value="{{ item.id }}" {% if not item.is_email_verified %}disabled title="Verify OTP first"{% endif %}>Approve</button>
+                  <button class="btn btn-sm btn-outline-danger" name="reject_request" value="{{ item.id }}">Reject</button>
+                {% else %}
+                  <span class="text-body small">Closed</span>
+                {% endif %}
+              </form>
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="6" class="text-center text-body py-4">No email change requests found.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if page_obj.has_other_pages %}
+    <nav class="mt-3" aria-label="Email change pagination">
+      <ul class="pagination mb-0 justify-content-end">
+        {% if page_obj.has_previous %}
+          <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if query_string %}&{{ query_string }}{% endif %}">Previous</a></li>
+        {% endif %}
+        <li class="page-item active"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+        {% if page_obj.has_next %}
+          <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if query_string %}&{{ query_string }}{% endif %}">Next</a></li>
+        {% endif %}
+      </ul>
+    </nav>
+  {% endif %}
+</section>
+{% endblock %}

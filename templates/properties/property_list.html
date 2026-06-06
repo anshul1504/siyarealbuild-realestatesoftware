@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Properties - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">Properties</h1>
+        <p class="text-body mb-0">Category-wise inventory with legal, media, and plot-level information.</p>
+    </div>
+    <a class="btn btn-primary" href="{% url 'properties:create' %}">Add Property</a>
+</div>
+
+<section class="profile-panel mb-3">
+    <form method="get" class="row g-3 align-items-end">
+        <div class="col-md-4">
+            <label class="form-label" for="propertySearch">Search</label>
+            <input id="propertySearch" class="form-control" type="search" name="q" value="{{ query }}" placeholder="Title, location, RERA, T&CP">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label" for="propertyCategory">Category</label>
+            <select id="propertyCategory" class="form-control" name="category">
+                <option value="">All</option>
+                {% for value,label in category_choices %}<option value="{{ value }}" {% if selected_category == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label" for="propertyStatus">Status</label>
+            <select id="propertyStatus" class="form-control" name="status">
+                <option value="">All</option>
+                {% for value,label in status_choices %}<option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label" for="propertyFor">For</label>
+            <select id="propertyFor" class="form-control" name="listing_for">
+                <option value="">All</option>
+                {% for value,label in listing_choices %}<option value="{{ value }}" {% if selected_listing_for == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2 d-flex gap-2">
+            <button class="btn btn-primary w-100">Filter</button>
+            <a class="btn btn-light" href="{% url 'properties:list' %}">Clear</a>
+        </div>
+    </form>
+</section>
+
+<section class="profile-panel">
+    <div class="profile-panel-head">
+        <div>
+            <h2>Property Inventory</h2>
+            <p>Manage active and closed listings across colonies, plots, flats, houses, shops, and commercial inventory.</p>
+        </div>
+    </div>
+    {% if can_manage %}
+    <form method="post" action="{% url 'properties:bulk_action' %}" class="mb-0" data-property-bulk-form>
+        {% csrf_token %}
+        <div class="d-flex flex-wrap gap-2 align-items-end mb-3">
+            <div>
+                <label class="form-label" for="bulkAction">Bulk Action</label>
+                <select id="bulkAction" name="bulk_action" class="form-control">
+                    <option value="">Choose action</option>
+                    <option value="available">Mark Available</option>
+                    <option value="hold">Mark Hold</option>
+                    <option value="negotiation">Mark Negotiation</option>
+                    <option value="sold">Mark Sold</option>
+                    <option value="rented">Mark Rented</option>
+                    <option value="delete">Delete Selected</option>
+                </select>
+            </div>
+            <button class="btn btn-primary" type="submit">Apply</button>
+        </div>
+        {% include "properties/partials/property_table.html" %}
+    </form>
+    {% else %}
+        {% include "properties/partials/property_table.html" %}
+    {% endif %}
+    {% include "accounts/partials/pagination.html" with page_obj=page_obj %}
+</section>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const selectAll = document.querySelector("[data-select-all-properties]");
+    if (!selectAll) return;
+    selectAll.addEventListener("change", function () {
+        document.querySelectorAll('input[name="property_ids"]').forEach((box) => {
+            box.checked = selectAll.checked;
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Employee Detail - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head company-update-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">Employee Detail</h1>
+        <p class="text-body mb-0">{{ employee_profile.user.get_full_name|default:employee_profile.user.email|default:employee_profile.user.username }}</p>
+    </div>
+    <div class="company-page-actions">
+        <a class="btn btn-outline-primary" href="{% url 'accounts:team_profiles' %}">Back to Directory</a>
+        {% if user_profile.role == "company_owner" and employee_profile.id != user_profile.id %}
+        <form method="post" action="{% url 'accounts:team_profile_delete' employee_profile.id %}" data-delete-confirm="Delete this employee permanently from database?">
+            {% csrf_token %}
+            <button class="btn btn-outline-danger" type="submit">Delete Employee</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<section class="profile-panel profile-overview-single employee-detail-panel">
+    <div class="employee-detail-head">
+        {% if employee_profile.profile_image %}
+            <img src="{{ employee_profile.profile_image.url }}" alt="{{ employee_profile.user.get_full_name|default:employee_profile.user.email }}">
+        {% else %}
+            <span>{{ employee_profile.user.email|default:employee_profile.user.username|slice:":1"|upper }}</span>
+        {% endif %}
+        <div>
+            <h2>{{ employee_profile.user.get_full_name|default:employee_profile.user.email|default:employee_profile.user.username }}</h2>
+            <p>{{ employee_profile.user.email|default:"Email not added" }}</p>
+            <div class="d-flex gap-2 flex-wrap">
+                <span class="badge rounded-pill bg-primary-subtle text-primary">{{ employee_profile.get_role_display }}</span>
+                <span class="badge rounded-pill bg-light text-dark">{{ employee_profile.employee_code|default:"Code pending" }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="profile-overview-section">
+        <h2>Personal Details</h2>
+        <div class="profile-overview-grid">
+            <div><span>Phone</span><strong>{{ employee_profile.phone|default:"Not added" }}</strong></div>
+            <div><span>Personal Email</span><strong>{{ employee_profile.personal_email|default:"Not added" }}</strong></div>
+            <div><span>Date of Birth</span><strong>{{ employee_profile.date_of_birth|date:"d M Y"|default:"Not added" }}</strong></div>
+            <div><span>Gender</span><strong>{{ employee_profile.get_gender_display|default:"Not added" }}</strong></div>
+            <div><span>Blood Group</span><strong>{{ employee_profile.blood_group|default:"Not added" }}</strong></div>
+            <div><span>Marital Status</span><strong>{{ employee_profile.get_marital_status_display|default:"Not added" }}</strong></div>
+        </div>
+    </div>
+
+    <div class="profile-overview-section">
+        <h2>Work Details</h2>
+        <div class="profile-overview-grid">
+            <div><span>Designation</span><strong>{{ employee_profile.designation|default:"Not added" }}</strong></div>
+            <div><span>Department</span><strong>{{ employee_profile.department|default:"Not added" }}</strong></div>
+            <div><span>Reporting Manager</span><strong>{{ employee_profile.reporting_manager|default:"Not added" }}</strong></div>
+            <div><span>Joining Date</span><strong>{{ employee_profile.joining_date|date:"d M Y"|default:"Not added" }}</strong></div>
+            <div><span>Work Location</span><strong>{{ employee_profile.work_location|default:"Not added" }}</strong></div>
+            <div><span>Territory</span><strong>{{ employee_profile.territory|default:"Not added" }}</strong></div>
+            <div class="profile-overview-wide"><span>Channel Partner Reference</span><strong>{{ employee_profile.channel_partner_reference|default:"Not added" }}</strong></div>
+        </div>
+    </div>
+
+    <div class="profile-overview-section">
+        <h2>KYC & Documents</h2>
+        <div class="profile-overview-grid">
+            <div><span>Aadhaar</span><strong>{% if can_view_sensitive_profile_data %}{{ employee_profile.aadhaar_number|default:"Not added" }}{% else %}{{ employee_profile.masked_aadhaar_number }}{% endif %}</strong></div>
+            <div><span>PAN</span><strong>{% if can_view_sensitive_profile_data %}{{ employee_profile.pan_number|default:"Not added" }}{% else %}{{ employee_profile.masked_pan_number }}{% endif %}</strong></div>
+            <div><span>Aadhaar Document</span><strong>{% if can_view_sensitive_profile_data and employee_profile.aadhaar_document %}<a href="{{ employee_profile.aadhaar_document.url }}" target="_blank" rel="noopener">Open Document</a>{% elif can_view_sensitive_profile_data %}Not uploaded{% else %}Owner only{% endif %}</strong></div>
+            <div><span>PAN Document</span><strong>{% if can_view_sensitive_profile_data and employee_profile.pan_document %}<a href="{{ employee_profile.pan_document.url }}" target="_blank" rel="noopener">Open Document</a>{% elif can_view_sensitive_profile_data %}Not uploaded{% else %}Owner only{% endif %}</strong></div>
+        </div>
+    </div>
+
+    <div class="profile-overview-section">
+        <h2>Emergency, Bank & Address</h2>
+        <div class="profile-overview-grid">
+            <div><span>Emergency Contact</span><strong>{{ employee_profile.emergency_contact_name|default:"Not added" }}</strong></div>
+            <div><span>Emergency Phone</span><strong>{{ employee_profile.emergency_contact_phone|default:"Not added" }}</strong></div>
+            <div><span>Bank Name</span><strong>{{ employee_profile.bank_name|default:"Not added" }}</strong></div>
+            <div><span>Account Name</span><strong>{{ employee_profile.bank_account_name|default:"Not added" }}</strong></div>
+            <div><span>Account Number</span><strong>{{ employee_profile.bank_account_number|default:"Not added" }}</strong></div>
+            <div><span>IFSC</span><strong>{{ employee_profile.bank_ifsc|default:"Not added" }}</strong></div>
+            <div class="profile-overview-wide"><span>Address</span><strong>{{ employee_profile.address|default:"Not added" }}{% if employee_profile.city %}, {{ employee_profile.city }}{% endif %}{% if employee_profile.state %}, {{ employee_profile.state }}{% endif %}{% if employee_profile.pincode %} - {{ employee_profile.pincode }}{% endif %}</strong></div>
+        </div>
+    </div>
+</section>
+{% endblock %}

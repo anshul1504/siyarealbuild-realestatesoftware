@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Plot {{ plot.plot_number }} - {{ property_obj.title }}{% endblock %}
+{% block content %}
+<div class="app-page-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">Plot {{ plot.plot_number }}</h1>
+        <p class="text-body mb-0"><a href="{% url 'properties:detail' property_obj.id %}">{{ property_obj.title }}</a> / {{ property_obj.city }}{% if property_obj.locality %}, {{ property_obj.locality }}{% endif %}</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'properties:detail' property_obj.id %}" class="btn btn-light">Property Detail</a>
+        {% if can_manage %}<a href="{% url 'properties:plot_visit_create' property_obj.id plot.id %}" class="btn btn-primary">Add Visit</a>{% endif %}
+    </div>
+</div>
+
+<section class="profile-panel mb-3">
+    <div class="profile-panel-head"><div><h2>Plot Details</h2><p>Individual plot inventory and pricing information.</p></div></div>
+    <div class="profile-overview-grid">
+        <div><span>Plot Number</span><strong>{{ plot.plot_number }}</strong></div>
+        <div><span>Status</span><strong>{{ plot.get_status_display }}</strong></div>
+        <div><span>Area</span><strong>{{ plot.area_sqft }} sqft</strong></div>
+        <div><span>Dimensions</span><strong>{% if plot.length_ft and plot.width_ft %}{{ plot.length_ft }} x {{ plot.width_ft }} ft{% else %}-{% endif %}</strong></div>
+        <div><span>Facing</span><strong>{{ plot.facing|default:"-" }}</strong></div>
+        <div><span>Road Width</span><strong>{% if plot.road_width_ft %}{{ plot.road_width_ft }} ft{% else %}-{% endif %}</strong></div>
+        <div><span>Price</span><strong>Rs. {{ plot.price }}</strong></div>
+        <div class="profile-overview-wide"><span>Notes</span><strong>{{ plot.notes|default:"-" }}</strong></div>
+    </div>
+</section>
+
+<section class="profile-panel">
+    <div class="profile-panel-head">
+        <div><h2>Plot Visit History</h2><p>All visits connected to this specific plot.</p></div>
+    </div>
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead><tr><th>Date</th><th>Client</th><th>Employee</th><th>Status</th><th>Outcome</th><th></th></tr></thead>
+            <tbody>
+                {% for visit in visits %}
+                <tr>
+                    <td>{{ visit.visit_at|date:"d M Y, h:i A" }}</td>
+                    <td>{{ visit.client_name }}<br><small class="text-body">{{ visit.client_phone|default:visit.client_email|default:"-" }}</small></td>
+                    <td>{{ visit.assigned_employee.get_full_name|default:visit.assigned_employee.email|default:"-" }}</td>
+                    <td>{{ visit.get_status_display }}</td>
+                    <td>{{ visit.get_outcome_display }}</td>
+                    <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'properties:visit_detail' visit.id %}">View</a></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="text-center text-body py-4">No visits recorded for this plot.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

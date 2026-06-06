@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}Add Employee - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head company-update-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">Add Employee</h1>
+        <p class="text-body mb-0">Create a verified employee account with profile, KYC, work, bank, and address details.</p>
+    </div>
+    <div class="company-page-actions">
+        <a class="btn btn-outline-primary" href="{% url 'accounts:team_profiles' %}">Employee Directory</a>
+        <a class="btn btn-outline-primary" href="{% url 'accounts:employee_invites' %}">Invite Employee</a>
+    </div>
+</div>
+
+<section class="profile-panel profile-detail-panel">
+    <form method="post" enctype="multipart/form-data" class="profile-detail-form add-employee-form" data-add-employee-form data-verified-email="{{ add_employee_verified_email }}">
+        {% csrf_token %}
+        <div class="profile-form-section">
+            <h3>Account & Verification</h3>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label" for="{{ form.name.id_for_label }}">Name</label>
+                    {{ form.name }}
+                    {% for error in form.name.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="{{ form.email.id_for_label }}">Email</label>
+                    <div class="add-email-verify-row">
+                        {{ form.email }}
+                        <button class="btn btn-outline-primary" type="button" data-send-add-employee-otp>Verify</button>
+                    </div>
+                    <div class="add-email-otp-row" data-add-employee-otp-panel hidden>
+                        <input class="form-control otp-input" type="text" maxlength="6" inputmode="numeric" placeholder="Enter OTP" data-add-employee-otp>
+                        <button class="btn btn-primary" type="button" data-verify-add-employee-otp>Verify OTP</button>
+                        <button class="btn btn-outline-primary" type="button" data-resend-add-employee-otp disabled>Resend in 30s</button>
+                    </div>
+                    <small class="add-email-status {% if add_employee_verified_email %}is-verified{% endif %}" data-add-employee-email-status>{% if add_employee_verified_email %}Email is verified.{% else %}Email verification required before submit.{% endif %}</small>
+                    {% for error in form.email.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="{{ form.role.id_for_label }}">Role</label>
+                    {{ form.role }}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="{{ form.employee_code.id_for_label }}">Employee Code</label>
+                    {{ form.employee_code }}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="{{ form.phone.id_for_label }}">Phone</label>
+                    {{ form.phone }}
+                </div>
+            </div>
+        </div>
+
+        <div class="profile-form-section">
+            <h3>Personal Details</h3>
+            <div class="row g-3">
+                <div class="col-md-4"><label class="form-label">Personal Email</label>{{ form.personal_email }}</div>
+                <div class="col-md-4"><label class="form-label">Date of Birth</label>{{ form.date_of_birth }}</div>
+                <div class="col-md-4"><label class="form-label">Gender</label>{{ form.gender }}</div>
+                <div class="col-md-4"><label class="form-label">Blood Group</label>{{ form.blood_group }}</div>
+                <div class="col-md-4"><label class="form-label">Marital Status</label>{{ form.marital_status }}</div>
+            </div>
+        </div>
+
+        <div class="profile-form-section">
+            <h3>Work Details</h3>
+            <div class="row g-3">
+                <div class="col-md-4"><label class="form-label">Designation</label>{{ form.designation }}</div>
+                <div class="col-md-4"><label class="form-label">Department</label>{{ form.department }}</div>
+                <div class="col-md-4"><label class="form-label">Reporting Manager</label>{{ form.reporting_manager }}</div>
+                <div class="col-md-4"><label class="form-label">Joining Date</label>{{ form.joining_date }}</div>
+                <div class="col-md-4"><label class="form-label">Office Location</label>{{ form.office_location }}</div>
+                <div class="col-md-4" data-custom-office-wrap hidden><label class="form-label">Custom Location</label>{{ form.custom_work_location }}</div>
+            </div>
+        </div>
+
+        <div class="profile-form-section">
+            <h3>KYC Documents</h3>
+            <div class="row g-3">
+                <div class="col-md-6"><label class="form-label">Aadhaar Number</label>{{ form.aadhaar_number }}</div>
+                <div class="col-md-6"><label class="form-label">Aadhaar Upload</label>{{ form.aadhaar_document }}</div>
+                <div class="col-md-6"><label class="form-label">PAN Number</label>{{ form.pan_number }}</div>
+                <div class="col-md-6"><label class="form-label">PAN Upload</label>{{ form.pan_document }}</div>
+            </div>
+        </div>
+
+        <div class="profile-form-section">
+            <h3>Emergency, Bank & Address</h3>
+            <div class="row g-3">
+                <div class="col-md-6"><label class="form-label">Emergency Contact Name</label>{{ form.emergency_contact_name }}</div>
+                <div class="col-md-6"><label class="form-label">Emergency Contact Phone</label>{{ form.emergency_contact_phone }}</div>
+                <div class="col-md-6"><label class="form-label">Bank Name</label>{{ form.bank_name }}</div>
+                <div class="col-md-6"><label class="form-label">Account Name</label>{{ form.bank_account_name }}</div>
+                <div class="col-md-6"><label class="form-label">Account Number</label>{{ form.bank_account_number }}</div>
+                <div class="col-md-6"><label class="form-label">IFSC</label>{{ form.bank_ifsc }}</div>
+                <div class="col-12"><label class="form-label">Address</label>{{ form.address }}</div>
+                <div class="col-md-4"><label class="form-label">City</label>{{ form.city }}</div>
+                <div class="col-md-4"><label class="form-label">State</label>{{ form.state }}</div>
+                <div class="col-md-4"><label class="form-label">Pincode</label>{{ form.pincode }}</div>
+            </div>
+        </div>
+
+        {% if form.non_field_errors %}
+        <div class="text-danger small">{{ form.non_field_errors }}</div>
+        {% endif %}
+        <div class="profile-detail-actions">
+            <button class="btn btn-primary" type="submit">Add Employee</button>
+        </div>
+    </form>
+</section>
+
+{{ role_code_prefixes|json_script:"role-code-prefixes" }}
+{% endblock %}

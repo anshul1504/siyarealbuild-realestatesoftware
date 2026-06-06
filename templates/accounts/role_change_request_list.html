@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Role Change Requests - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head company-update-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">Role Change Requests</h1>
+        <p class="text-body mb-0">Track requested role changes and review pending approvals.</p>
+    </div>
+    <div class="company-page-actions">
+        <a class="btn btn-primary" href="{% url 'accounts:role_change_request_create' %}">New Role Change</a>
+        <a class="btn btn-outline-primary" href="{% url 'accounts:access_control' %}">Role Access</a>
+    </div>
+</div>
+
+<section class="profile-panel employee-directory-panel">
+    <form method="get" class="employee-directory-filter invite-filter">
+        <input class="form-control" type="search" name="q" value="{{ query }}" placeholder="Search name, email, employee code">
+        <select class="form-select" name="status">
+            <option value="">All status</option>
+            {% for value,label in status_choices %}<option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+        <select class="form-select" name="role">
+            <option value="">All requested roles</option>
+            {% for value,label in role_choices %}<option value="{{ value }}" {% if selected_role == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+        <button class="btn btn-primary" type="submit">Filter</button>
+        <a class="btn btn-outline-primary" href="{% url 'accounts:role_change_request_list' %}">Reset</a>
+    </form>
+
+    <div class="employee-directory-table-wrap mt-3">
+        <table class="table align-middle employee-directory-table">
+            <thead>
+                <tr>
+                    <th>Employee</th>
+                    <th>Role Change</th>
+                    <th>Status</th>
+                    <th>Requested By</th>
+                    <th>Requested At</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in requests %}
+                <tr>
+                    <td><strong>{{ item.employee.get_full_name|default:item.employee.email }}</strong><small>{{ item.employee.profile.employee_code|default:"Code pending" }}</small></td>
+                    <td><strong>{{ item.get_current_role_display }} to {{ item.get_requested_role_display }}</strong><small>{{ item.reason|default:"No reason added"|truncatechars:80 }}</small></td>
+                    <td><span class="badge {% if item.status == 'approved' %}text-bg-success{% elif item.status == 'rejected' %}text-bg-danger{% else %}text-bg-warning{% endif %}">{{ item.get_status_display }}</span></td>
+                    <td>{{ item.requested_by.get_full_name|default:item.requested_by.email|default:"System" }}</td>
+                    <td>{{ item.created_at|date:"d M Y, h:i A" }}</td>
+                    <td><a class="btn btn-sm btn-outline-primary" href="{% url 'accounts:role_change_request_detail' item.id %}">Open</a></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="text-center text-body py-4">No role change requests found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if page_obj.has_other_pages %}
+    <div class="signup-pagination">
+        <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        <div>
+            {% if page_obj.has_previous %}<a class="btn btn-sm btn-outline-primary" href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}
+            {% if page_obj.has_next %}<a class="btn btn-sm btn-outline-primary" href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>{% endif %}
+        </div>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

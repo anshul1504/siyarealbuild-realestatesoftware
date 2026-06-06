@@ -1,7 +1,7 @@
 {% extends "base.html" %}
-{% block title %}Profile - Siya Real Build{% endblock %}
+{% block title %}Profile Overview - Siya Real Build{% endblock %}
 {% block content %}
-<div class="profile-hero">
+<div class="profile-hero profile-hero-compact">
     <div class="profile-hero-main">
         {% if user_profile.profile_image %}
             <img class="profile-avatar" src="{{ user_profile.profile_image.url }}" alt="{{ request.user.get_full_name|default:request.user.username }}">
@@ -9,66 +9,85 @@
             <div class="profile-avatar profile-avatar-fallback">{{ request.user.email|default:request.user.username|slice:":1"|upper }}</div>
         {% endif %}
         <div class="profile-title">
-            <span class="profile-kicker">Profile</span>
+            <span class="profile-kicker">Profile Overview</span>
             <h1>{{ request.user.get_full_name|default:request.user.username }}</h1>
             <p>{{ request.user.email }}</p>
             <div class="d-flex gap-2 flex-wrap">
                 <span class="badge rounded-pill bg-primary-subtle text-primary">{{ user_profile.get_role_display }}</span>
-                {% if user_profile.employee_code %}<span class="badge rounded-pill bg-light text-dark">{{ user_profile.employee_code }}</span>{% endif %}
+                <span class="badge rounded-pill bg-light text-dark">{{ user_profile.employee_code|default:"Code pending" }}</span>
             </div>
         </div>
     </div>
+    <a class="btn btn-primary" href="{% url 'accounts:profile_edit' %}">Edit Profile</a>
 </div>
 
-<div class="profile-grid profile-grid-profile-only">
-    <section class="profile-panel profile-panel-wide">
-        <div class="profile-panel-head">
-            <div>
-                <h2>Personal Details</h2>
-                <p>Update your profile image, contact details, employee code and address.</p>
-            </div>
-        </div>
-        <form method="post" enctype="multipart/form-data" class="profile-form">
-            {% csrf_token %}
-            <div class="row g-3">
-                <div class="col-md-6">
-                    <label class="form-label" for="{{ profile_form.full_name.id_for_label }}">Full Name</label>
-                    {{ profile_form.full_name }}
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label" for="{{ profile_form.email.id_for_label }}">Email</label>
-                    {{ profile_form.email }}
-                    {% for error in profile_form.email.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
-                </div>
-                {% for field in profile_form %}
-                    {% if field.name != "full_name" and field.name != "email" %}
-                    <div class="{% if field.name == 'address' %}col-12{% else %}col-md-6{% endif %}">
-                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                        {{ field }}
-                        {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
-                    </div>
-                    {% endif %}
-                {% endfor %}
-                <div class="col-12 d-flex justify-content-end">
-                    <button class="btn btn-primary" type="submit">Save Profile</button>
-                </div>
-            </div>
-        </form>
-    </section>
-
-    <aside class="profile-panel">
-        <div class="profile-panel-head">
-            <div>
-                <h2>Summary</h2>
-                <p>Your current access information.</p>
-            </div>
-        </div>
-        <div class="profile-summary-list">
-            <div><span>Role</span><strong>{{ user_profile.get_role_display }}</strong></div>
-            <div><span>Employee Code</span><strong>{{ user_profile.employee_code|default:"Not added" }}</strong></div>
+<section class="profile-panel profile-overview-single">
+    <div class="profile-overview-section">
+        <h2>Basic</h2>
+        <div class="profile-overview-grid">
+            <div><span>Full Name</span><strong>{{ request.user.get_full_name|default:request.user.username }}</strong></div>
+            <div><span>Email</span><strong>{{ request.user.email|default:"Not added" }}</strong></div>
             <div><span>Phone</span><strong>{{ user_profile.phone|default:"Not added" }}</strong></div>
+            <div><span>Role</span><strong>{{ user_profile.get_role_display }}</strong></div>
+            <div><span>Employee Code</span><strong>{{ user_profile.employee_code|default:"Code pending" }}</strong></div>
             <div><span>Company</span><strong>{{ company.name|default:"Not added" }}</strong></div>
         </div>
-    </aside>
-</div>
+    </div>
+
+    <div class="profile-overview-section">
+        <h2>Personal</h2>
+        <div class="profile-overview-grid">
+            <div><span>Date of Birth</span><strong>{{ user_profile.date_of_birth|date:"d M Y"|default:"Not added" }}</strong></div>
+            <div><span>Gender</span><strong>{{ user_profile.get_gender_display|default:"Not added" }}</strong></div>
+            <div><span>Blood Group</span><strong>{{ user_profile.blood_group|default:"Not added" }}</strong></div>
+            <div><span>Marital Status</span><strong>{{ user_profile.get_marital_status_display|default:"Not added" }}</strong></div>
+            <div><span>Personal Email</span><strong>{{ user_profile.personal_email|default:"Not added" }}</strong></div>
+        </div>
+    </div>
+
+    <div class="profile-overview-section">
+        <h2>Work</h2>
+        <div class="profile-overview-grid">
+            <div><span>Designation</span><strong>{{ user_profile.designation|default:"Not added" }}</strong></div>
+            <div><span>Department</span><strong>{{ user_profile.department|default:"Not added" }}</strong></div>
+            <div><span>Reporting Manager</span><strong>{{ user_profile.reporting_manager|default:"Not added" }}</strong></div>
+            <div><span>Joining Date</span><strong>{{ user_profile.joining_date|date:"d M Y"|default:"Not added" }}</strong></div>
+            <div><span>Work Location</span><strong>{{ user_profile.work_location|default:"Not added" }}</strong></div>
+            <div><span>Territory</span><strong>{{ user_profile.territory|default:"Not added" }}</strong></div>
+            <div><span>CP Reference</span><strong>{{ user_profile.channel_partner_reference|default:"Not added" }}</strong></div>
+        </div>
+    </div>
+
+    <div class="profile-overview-section">
+        <h2>Aadhaar & PAN</h2>
+        <div class="profile-overview-grid">
+            <div><span>Aadhaar Number</span><strong>{{ user_profile.aadhaar_number|default:"Not added" }}</strong></div>
+            <div><span>PAN Number</span><strong>{{ user_profile.pan_number|default:"Not added" }}</strong></div>
+            <div><span>Aadhaar Document</span><strong>{% if user_profile.aadhaar_document %}<a href="{{ user_profile.aadhaar_document.url }}" target="_blank" rel="noopener">View Aadhaar</a>{% else %}Not uploaded{% endif %}</strong></div>
+            <div><span>PAN Document</span><strong>{% if user_profile.pan_document %}<a href="{{ user_profile.pan_document.url }}" target="_blank" rel="noopener">View PAN</a>{% else %}Not uploaded{% endif %}</strong></div>
+        </div>
+    </div>
+
+    <div class="profile-overview-section">
+        <h2>Bank & Emergency</h2>
+        <div class="profile-overview-grid">
+            <div><span>Bank Name</span><strong>{{ user_profile.bank_name|default:"Not added" }}</strong></div>
+            <div><span>Account Name</span><strong>{{ user_profile.bank_account_name|default:"Not added" }}</strong></div>
+            <div><span>Account Number</span><strong>{{ user_profile.bank_account_number|default:"Not added" }}</strong></div>
+            <div><span>IFSC</span><strong>{{ user_profile.bank_ifsc|default:"Not added" }}</strong></div>
+            <div><span>Emergency Name</span><strong>{{ user_profile.emergency_contact_name|default:"Not added" }}</strong></div>
+            <div><span>Emergency Phone</span><strong>{{ user_profile.emergency_contact_phone|default:"Not added" }}</strong></div>
+        </div>
+    </div>
+
+    <div class="profile-overview-section">
+        <h2>Address</h2>
+        <div class="profile-overview-grid">
+            <div><span>City</span><strong>{{ user_profile.city|default:"Not added" }}</strong></div>
+            <div><span>State</span><strong>{{ user_profile.state|default:"Not added" }}</strong></div>
+            <div><span>Pincode</span><strong>{{ user_profile.pincode|default:"Not added" }}</strong></div>
+            <div class="profile-overview-wide"><span>Address</span><strong>{{ user_profile.address|default:"Not added" }}</strong></div>
+        </div>
+    </div>
+</section>
 {% endblock %}

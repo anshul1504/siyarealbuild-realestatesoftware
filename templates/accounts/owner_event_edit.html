@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ event.title }} - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head company-update-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">Edit Event</h1>
+        <p class="text-body mb-0">Update post copy, timing, audience, poster image, and popup visibility.</p>
+    </div>
+    <div class="company-page-actions">
+        <a class="btn btn-outline-primary" href="{% url 'accounts:owner_event_detail' event.id %}">Event Detail</a>
+        <a class="btn btn-outline-primary" href="{% url 'accounts:owner_events' %}">Event List</a>
+    </div>
+</div>
+
+<section class="event-editor-shell event-editor-shell-pro">
+    <div class="event-editor-main profile-panel">
+        <div class="profile-panel-head">
+            <div>
+                <h2>{{ event.title }}</h2>
+                <p>Keep the event details accurate before publishing changes.</p>
+            </div>
+        </div>
+        {% include "accounts/partials/event_form.html" %}
+    </div>
+    <aside class="event-editor-side">
+        <div class="profile-panel event-editor-note">
+            <span class="text-body small">Current Event</span>
+            <strong>{{ event.is_active|yesno:"Active,Inactive" }}</strong>
+            <p>{{ event.starts_at|date:"d M Y, h:i A" }}{% if event.ends_at %} - {{ event.ends_at|date:"d M Y, h:i A" }}{% endif %}</p>
+            <strong>{{ event.show_as_popup|yesno:"Popup enabled,Standard post" }}</strong>
+            <p>{% if event.is_global %}Visible to all roles.{% else %}Visible to selected roles only.{% endif %}</p>
+        </div>
+    </aside>
+</section>
+{% endblock %}

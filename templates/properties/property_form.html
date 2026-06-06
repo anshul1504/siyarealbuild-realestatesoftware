@@ -1,0 +1,647 @@
+{% extends "base.html" %}
+{% block title %}Add Property - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">{% if mode == "edit" %}Edit Property{% else %}Add Property{% endif %}</h1>
+        <p class="text-body mb-0">Select a category to open the relevant property intake steps.</p>
+    </div>
+    {% if mode == "edit" and property_obj %}
+    <a href="{% url 'properties:detail' property_obj.id %}" class="btn btn-outline-primary">Back to Detail</a>
+    {% else %}
+    <a href="{% url 'properties:list' %}" class="btn btn-outline-primary">Property List</a>
+    {% endif %}
+</div>
+
+<form method="post" enctype="multipart/form-data" class="property-wizard-pro" data-property-wizard>
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+
+    <section class="property-wizard-shell">
+        <div class="property-wizard-title">
+            <div>
+                <span>Property Intake</span>
+                <h2>{% if mode == "edit" %}Update Property Registration{% else %}New Property Registration{% endif %}</h2>
+            </div>
+            <p>Only relevant steps stay visible after category selection.</p>
+        </div>
+
+        <div class="property-stepper" aria-label="Property form steps">
+            <button type="button" class="property-step-dot active" data-step-target="0"><span>1</span><strong>Category</strong><small>Type</small></button>
+            <button type="button" class="property-step-dot" data-step-target="1"><span>2</span><strong>Location</strong><small>Address</small></button>
+            <button type="button" class="property-step-dot" data-step-target="2"><span>3</span><strong>Pricing</strong><small>Area</small></button>
+            <button type="button" class="property-step-dot" data-step-target="3" data-built-step><span>4</span><strong>Built Details</strong><small>Unit</small></button>
+            <button type="button" class="property-step-dot" data-step-target="4" data-colony-step><span>4</span><strong>Plot Inventory</strong><small>Colony</small></button>
+            <button type="button" class="property-step-dot" data-step-target="5"><span>5</span><strong>Legal & Media</strong><small>Docs</small></button>
+            <button type="button" class="property-step-dot" data-step-target="6"><span>6</span><strong>Review</strong><small>Submit</small></button>
+        </div>
+        <div class="property-step-progress"><span data-step-progress-bar></span></div>
+        <div class="property-step-error" data-step-error hidden></div>
+
+        <div class="property-step-panel active" data-step="0">
+            <div class="property-step-head">
+                <h3>Category & Listing Type</h3>
+                <p>The selected category controls which sections are required for this listing.</p>
+            </div>
+            <div class="row g-3">
+                {% for field in form %}
+                    {% if field.name == "title" or field.name == "category" or field.name == "listing_for" or field.name == "status" %}
+                    <div class="col-md-6">
+                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="property-step-panel" data-step="1">
+            <div class="property-step-head">
+                <h3>Location & Map</h3>
+                <p>Add the address, locality, landmark, and Google Maps link.</p>
+            </div>
+            <div class="row g-3">
+                {% for field in form %}
+                    {% if field.name == "city" or field.name == "locality" or field.name == "address" or field.name == "landmark" or field.name == "map_link" %}
+                    <div class="col-md-6">
+                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="property-step-panel" data-step="2">
+            <div class="property-step-head">
+                <h3>Pricing, Area & Dimensions</h3>
+                <p>Land listings use dimensions and road width. Built listings use carpet and built-up area.</p>
+            </div>
+            <div class="row g-3">
+                {% for field in form %}
+                    {% if field.name == "price" or field.name == "price_per_sqft" or field.name == "area_sqft" or field.name == "carpet_area_sqft" or field.name == "builtup_area_sqft" or field.name == "length_ft" or field.name == "width_ft" or field.name == "facing" or field.name == "road_width_ft" %}
+                    <div class="col-md-4" data-field="{{ field.name }}">
+                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="property-step-panel" data-step="3" data-category-section="built">
+            <div class="property-step-head">
+                <h3>Built Property Details</h3>
+                <p>Capture unit details for flats, houses, row houses, villas, shops, offices, and warehouses.</p>
+            </div>
+            <div class="row g-3">
+                {% for field in form %}
+                    {% if field.name == "bedrooms" or field.name == "bathrooms" or field.name == "balconies" or field.name == "floor_number" or field.name == "total_floors" or field.name == "parking_count" or field.name == "furnishing" or field.name == "construction_status" or field.name == "possession_status" %}
+                    <div class="col-md-4" data-field="{{ field.name }}">
+                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="property-step-panel" data-step="4" data-category-section="colony">
+            <div class="property-step-head">
+                <h3>Colony & Individual Plot Inventory</h3>
+                <p>Register total plots and define each plot with dimensions, facing, road width, price, and status.</p>
+            </div>
+            <div class="row g-3 mb-3">
+                {% for field in form %}
+                    {% if field.name == "colony_name" or field.name == "total_plots" or field.name == "available_plots" or field.name == "development_status" or field.name == "amenities" or field.name == "amenity_count" or field.name == "garden_count" or field.name == "corner_plot_count" or field.name == "garden_facing_plot_count" or field.name == "plc_rules" or field.name == "nearby_residential" or field.name == "nearby_commercial" or field.name == "nearby_connectivity" or field.name == "nearby_education" or field.name == "nearby_healthcare" or field.name == "nearby_landmarks" %}
+                    <div class="{% if field.name == 'amenities' or field.name == 'plc_rules' or field.name == 'nearby_residential' or field.name == 'nearby_commercial' or field.name == 'nearby_connectivity' or field.name == 'nearby_education' or field.name == 'nearby_healthcare' or field.name == 'nearby_landmarks' %}col-md-6{% else %}col-md-4{% endif %}">
+                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            {{ plot_formset.management_form }}
+            <div class="property-plot-toolbar">
+                <div>
+                    <strong>Plot Detail Rows</strong>
+                    <span>Rows are generated from Total plots. Fill every active row before moving forward.</span>
+                </div>
+                <button type="button" class="btn btn-outline-primary btn-sm" data-sync-plots>Generate Plot Rows</button>
+            </div>
+            <div class="table-responsive">
+                <table class="table align-middle property-plot-grid">
+                    <thead><tr><th>Plot No.</th><th>Area</th><th>Length</th><th>Width</th><th>Facing</th><th>Road</th><th>Price</th><th>Status</th><th>Notes</th></tr></thead>
+                    <tbody>
+                    {% for plot_form in plot_formset %}
+                        <tr>
+                            {% for hidden in plot_form.hidden_fields %}{{ hidden }}{% endfor %}
+                            <td>{{ plot_form.plot_number }}</td>
+                            <td>{{ plot_form.area_sqft }}</td>
+                            <td>{{ plot_form.length_ft }}</td>
+                            <td>{{ plot_form.width_ft }}</td>
+                            <td>{{ plot_form.facing }}</td>
+                            <td>{{ plot_form.road_width_ft }}</td>
+                            <td>{{ plot_form.price }}</td>
+                            <td>{{ plot_form.status }}</td>
+                            <td>{{ plot_form.notes }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <template data-plot-empty-row>
+            <tr>
+                {% for hidden in plot_formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
+                <td>{{ plot_formset.empty_form.plot_number }}</td>
+                <td>{{ plot_formset.empty_form.area_sqft }}</td>
+                <td>{{ plot_formset.empty_form.length_ft }}</td>
+                <td>{{ plot_formset.empty_form.width_ft }}</td>
+                <td>{{ plot_formset.empty_form.facing }}</td>
+                <td>{{ plot_formset.empty_form.road_width_ft }}</td>
+                <td>{{ plot_formset.empty_form.price }}</td>
+                <td>{{ plot_formset.empty_form.status }}</td>
+                <td>{{ plot_formset.empty_form.notes }}</td>
+            </tr>
+        </template>
+        </div>
+
+        <div class="property-step-panel" data-step="5">
+            <div class="property-step-head">
+                <h3>Legal, Documents, Photos & Contact</h3>
+                <p>Attach RERA, T&CP, registry, legal documents, map/layout files, photos, and contact details.</p>
+            </div>
+            <div class="row g-3">
+                {% for field in form %}
+                    {% if field.name == "rera_number" or field.name == "tcp_approval_number" or field.name == "registry_status" or field.name == "khasra_number" or field.name == "legal_status" or field.name == "legal_notes" or field.name == "contact_name" or field.name == "contact_phone" or field.name == "internal_notes" or field.name == "photos" or field.name == "documents" or field.name == "document_type" %}
+                    <div class="col-md-6">
+                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.help_text %}<div class="text-body small mt-1">{{ field.help_text }}</div>{% endif %}
+                        {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="property-step-panel" data-step="6">
+            <div class="property-step-head">
+                <h3>Review & Submit</h3>
+                <p>Review the key details before saving the property record.</p>
+            </div>
+            <div class="property-review-grid">
+                <div><span>Category</span><strong data-review="category">-</strong></div>
+                <div><span>Listing</span><strong data-review="listing_for">-</strong></div>
+                <div><span>City</span><strong data-review="city">-</strong></div>
+                <div><span>Price</span><strong data-review="price">-</strong></div>
+                <div><span>Area</span><strong data-review="area_sqft">-</strong></div>
+                <div><span>Status</span><strong data-review="status">-</strong></div>
+            </div>
+        </div>
+
+        <div class="property-wizard-actions">
+            <button type="button" class="btn btn-light" data-wizard-back>Back</button>
+            <button type="button" class="btn btn-primary" data-wizard-next>Next</button>
+            <button type="submit" class="btn btn-primary" data-wizard-submit>{% if mode == "edit" %}Update Property{% else %}Save Property{% endif %}</button>
+        </div>
+    </section>
+</form>
+
+<style>
+  .property-wizard-shell {
+    background: #fff;
+    border: 1px solid #eadcc1;
+    border-radius: 4px;
+    padding: 18px;
+  }
+  .property-wizard-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .property-wizard-title span {
+    display: block;
+    color: #c2680f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+  .property-wizard-title h2 {
+    margin: 2px 0 0;
+    color: #26221d;
+    font-size: 18px;
+    font-weight: 800;
+  }
+  .property-wizard-title p {
+    margin: 0;
+    color: #776d60;
+    font-size: 12px;
+  }
+  .property-stepper {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 0 0 10px;
+    margin: 0 0 16px;
+    border-bottom: 1px solid #f0e5d4;
+  }
+  .property-step-progress {
+    height: 3px;
+    background: #f3eadc;
+    margin: -7px 0 16px;
+  }
+  .property-step-progress span {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: #f57f17;
+    transition: width .18s ease;
+  }
+  .property-step-dot {
+    flex: 0 0 132px;
+    border: 1px solid #eadcc1;
+    background: #fff;
+    border-radius: 4px;
+    color: #776d60;
+    display: grid;
+    grid-template-columns: 28px 1fr;
+    grid-template-rows: auto auto;
+    column-gap: 8px;
+    align-items: center;
+    text-align: left;
+    padding: 8px 10px;
+  }
+  .property-step-dot span {
+    grid-row: 1 / span 2;
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    display: grid;
+    place-items: center;
+    background: #fffaf2;
+    border: 1px solid #e3d5c0;
+    font-weight: 800;
+    font-size: 12px;
+  }
+  .property-step-dot strong {
+    color: #342f28;
+    font-size: 12px;
+    line-height: 1.2;
+  }
+  .property-step-dot small {
+    color: #8b8175;
+    font-size: 11px;
+    line-height: 1.2;
+  }
+  .property-step-dot.active {
+    border-color: #f57f17;
+    background: #fffaf2;
+  }
+  .property-step-dot:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+  }
+  .property-step-dot.active span,
+  .property-step-dot.done span {
+    background: #f57f17;
+    border-color: #f57f17;
+    color: #fff;
+  }
+  .property-step-dot[hidden],
+  .property-step-panel[hidden] {
+    display: none !important;
+  }
+  .property-step-panel {
+    display: none;
+    min-height: 300px;
+  }
+  .property-step-error {
+    margin: 0 0 14px;
+    border: 1px solid #f2b8b5;
+    border-radius: 4px;
+    background: #fff4f3;
+    color: #9f1c16;
+    padding: 10px 12px;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .property-wizard-pro .field-error {
+    border-color: #d93025 !important;
+    box-shadow: 0 0 0 .12rem rgba(217, 48, 37, .12);
+  }
+  .property-step-panel.active {
+    display: block;
+  }
+  .property-step-head {
+    margin-bottom: 16px;
+  }
+  .property-step-head h3 {
+    margin: 0 0 4px;
+    color: #26221d;
+    font-size: 16px;
+    font-weight: 800;
+  }
+  .property-step-head p {
+    margin: 0;
+    color: #776d60;
+    font-size: 12px;
+  }
+  .property-wizard-pro .form-label {
+    color: #4e473f;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .property-wizard-pro .form-control,
+  .property-wizard-pro .form-select {
+    border-radius: 4px;
+    min-height: 42px;
+  }
+  .property-wizard-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid #f0e5d4;
+  }
+  .property-wizard-actions .btn {
+    min-width: 108px;
+  }
+  .property-review-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .property-review-grid div {
+    border: 1px solid #eadcc1;
+    border-radius: 4px;
+    padding: 12px;
+    background: #fff;
+  }
+  .property-review-grid span {
+    display: block;
+    color: #776d60;
+    font-size: 11px;
+    margin-bottom: 4px;
+  }
+  .property-review-grid strong {
+    color: #26221d;
+    font-size: 13px;
+  }
+  .property-plot-grid input,
+  .property-plot-grid select {
+    min-width: 108px;
+  }
+  .property-plot-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border: 1px solid #eadcc1;
+    background: #fffaf2;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+  }
+  .property-plot-toolbar strong,
+  .property-plot-toolbar span {
+    display: block;
+  }
+  .property-plot-toolbar strong {
+    color: #26221d;
+    font-size: 13px;
+  }
+  .property-plot-toolbar span {
+    color: #776d60;
+    font-size: 12px;
+  }
+  .property-plot-grid tr[hidden] {
+    display: none !important;
+  }
+  @media (max-width: 767px) {
+    .property-wizard-title {
+      display: block;
+    }
+    .property-wizard-title p {
+      margin-top: 4px;
+    }
+    .property-review-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const form = document.querySelector("[data-property-wizard]");
+    if (!form) return;
+    const category = form.querySelector("[data-property-category]");
+    const panels = [...form.querySelectorAll("[data-step]")];
+    const dots = [...form.querySelectorAll("[data-step-target]")];
+    const back = form.querySelector("[data-wizard-back]");
+    const next = form.querySelector("[data-wizard-next]");
+    const submit = form.querySelector("[data-wizard-submit]");
+    const stepError = form.querySelector("[data-step-error]");
+    const progressBar = form.querySelector("[data-step-progress-bar]");
+    const totalPlotsInput = form.querySelector("[name='total_plots']");
+    const syncPlotsButton = form.querySelector("[data-sync-plots]");
+    const plotTableBody = form.querySelector(".property-plot-grid tbody");
+    const plotEmptyRow = form.querySelector("[data-plot-empty-row]");
+    const builtCategories = new Set(["flat", "residential_house", "commercial_shop", "row_house", "villa", "farm_house", "office", "warehouse"]);
+    const landCategories = new Set(["plot", "resale_plot", "agricultural_land"]);
+    let currentIndex = 0;
+    let maxUnlockedIndex = 0;
+
+    const getVisibleSteps = () => {
+      const value = category?.value || "";
+      return [0, 1, 2, builtCategories.has(value) ? 3 : null, value === "colony" ? 4 : null, 5, 6].filter((step) => step !== null);
+    };
+
+    const syncCategoryFields = () => {
+      const value = category?.value || "";
+      const isLand = landCategories.has(value) || value === "colony";
+      const isBuilt = builtCategories.has(value);
+      form.querySelectorAll("[data-field='carpet_area_sqft'], [data-field='builtup_area_sqft']").forEach((node) => node.style.display = isBuilt ? "" : "none");
+      form.querySelectorAll("[data-field='length_ft'], [data-field='width_ft'], [data-field='road_width_ft']").forEach((node) => node.style.display = isLand ? "" : "none");
+    };
+
+    const updateReview = () => {
+      form.querySelectorAll("[data-review]").forEach((target) => {
+        const name = target.dataset.review;
+        const input = form.querySelector(`[name="${name}"]`);
+        if (!input) return;
+        const value = input.options ? input.options[input.selectedIndex]?.text : input.value;
+        target.textContent = value || "-";
+      });
+    };
+
+    const field = (name) => form.querySelector(`[name="${name}"]`);
+    const fieldValue = (name) => (field(name)?.value || "").trim();
+    const showStepError = (message) => {
+      if (!stepError) return;
+      stepError.textContent = message;
+      stepError.hidden = false;
+    };
+    const clearStepError = () => {
+      if (!stepError) return;
+      stepError.textContent = "";
+      stepError.hidden = true;
+      form.querySelectorAll(".field-error").forEach((input) => input.classList.remove("field-error"));
+    };
+    const markInvalid = (names) => {
+      names.forEach((name) => field(name)?.classList.add("field-error"));
+      field(names[0])?.focus();
+    };
+    const validateCurrentStep = () => {
+      clearStepError();
+      const visibleSteps = getVisibleSteps();
+      const activeStep = visibleSteps[currentIndex];
+      const categoryValue = category?.value || "";
+      const missing = [];
+      if (activeStep === 0) {
+        ["title", "category", "listing_for", "status"].forEach((name) => {
+          if (!fieldValue(name)) missing.push(name);
+        });
+      }
+      if (activeStep === 1) {
+        ["city", "address"].forEach((name) => {
+          if (!fieldValue(name)) missing.push(name);
+        });
+      }
+      if (activeStep === 2) {
+        ["price", "area_sqft"].forEach((name) => {
+          if (!fieldValue(name) || Number(fieldValue(name)) <= 0) missing.push(name);
+        });
+        if ((landCategories.has(categoryValue) || categoryValue === "colony") && (!fieldValue("length_ft") || !fieldValue("width_ft"))) {
+          missing.push("length_ft", "width_ft");
+        }
+        if (builtCategories.has(categoryValue) && (!fieldValue("carpet_area_sqft") && !fieldValue("builtup_area_sqft"))) {
+          missing.push("carpet_area_sqft", "builtup_area_sqft");
+        }
+      }
+      if (activeStep === 3) {
+        if (!fieldValue("bedrooms") || Number(fieldValue("bedrooms")) <= 0) missing.push("bedrooms");
+        if (!fieldValue("bathrooms") || Number(fieldValue("bathrooms")) <= 0) missing.push("bathrooms");
+      }
+      if (activeStep === 4) {
+        ["colony_name", "total_plots"].forEach((name) => {
+          if (!fieldValue(name) || (name === "total_plots" && Number(fieldValue(name)) <= 0)) missing.push(name);
+        });
+        const requestedPlots = Number(fieldValue("total_plots")) || 0;
+        syncPlotRows();
+        for (let index = 0; index < requestedPlots; index += 1) {
+          ["plot_number", "area_sqft", "price"].forEach((name) => {
+            const input = form.querySelector(`[name="plots-${index}-${name}"]`);
+            if (!input || !String(input.value || "").trim() || (["area_sqft", "price"].includes(name) && Number(input.value) <= 0)) {
+              input?.classList.add("field-error");
+              missing.push(`plots-${index}-${name}`);
+            }
+          });
+        }
+      }
+      if (missing.length) {
+        markInvalid([...new Set(missing)]);
+        showStepError("Complete the required fields in this step before continuing.");
+        return false;
+      }
+      return true;
+    };
+    const syncPlotRows = () => {
+      const initialForms = Number(form.querySelector("[name='plots-INITIAL_FORMS']")?.value || 0);
+      const requested = Math.max(initialForms, Number(totalPlotsInput?.value || 0));
+      const totalForms = form.querySelector("[name='plots-TOTAL_FORMS']");
+      if (!plotTableBody || !plotEmptyRow || !totalForms) return;
+      let currentRows = plotTableBody.querySelectorAll("tr").length;
+      while (currentRows < requested) {
+        const html = plotEmptyRow.innerHTML.replaceAll("__prefix__", String(currentRows));
+        plotTableBody.insertAdjacentHTML("beforeend", html);
+        currentRows += 1;
+      }
+      while (currentRows > requested) {
+        plotTableBody.lastElementChild?.remove();
+        currentRows -= 1;
+      }
+      totalForms.value = String(requested);
+    };
+
+    const renderStep = () => {
+      const visibleSteps = getVisibleSteps();
+      if (currentIndex >= visibleSteps.length) currentIndex = visibleSteps.length - 1;
+      const activeStep = visibleSteps[currentIndex];
+      panels.forEach((panel) => {
+        const step = Number(panel.dataset.step);
+        panel.hidden = !visibleSteps.includes(step);
+        panel.classList.toggle("active", step === activeStep);
+      });
+      dots.forEach((dot) => {
+        const step = Number(dot.dataset.stepTarget);
+        const visible = visibleSteps.includes(step);
+        const stepIndex = visibleSteps.indexOf(step);
+        dot.hidden = !visible;
+        dot.classList.toggle("active", step === activeStep);
+        dot.classList.toggle("done", visible && stepIndex < currentIndex);
+        dot.disabled = visible && stepIndex > maxUnlockedIndex;
+      });
+      back.style.visibility = currentIndex === 0 ? "hidden" : "visible";
+      next.hidden = currentIndex === visibleSteps.length - 1;
+      submit.hidden = currentIndex !== visibleSteps.length - 1;
+      syncCategoryFields();
+      syncPlotRows();
+      updateReview();
+      if (progressBar) {
+        progressBar.style.width = `${((currentIndex + 1) / visibleSteps.length) * 100}%`;
+      }
+    };
+
+    dots.forEach((dot) => {
+      dot.addEventListener("click", () => {
+        const visibleSteps = getVisibleSteps();
+        const index = visibleSteps.indexOf(Number(dot.dataset.stepTarget));
+        if (index >= 0 && index <= maxUnlockedIndex) {
+          currentIndex = index;
+          renderStep();
+        }
+      });
+    });
+    next.addEventListener("click", () => {
+      if (!validateCurrentStep()) return;
+      currentIndex += 1;
+      maxUnlockedIndex = Math.max(maxUnlockedIndex, currentIndex);
+      renderStep();
+    });
+    back.addEventListener("click", () => {
+      currentIndex = Math.max(0, currentIndex - 1);
+      renderStep();
+    });
+    category?.addEventListener("change", () => {
+      currentIndex = 0;
+      maxUnlockedIndex = 0;
+      clearStepError();
+      renderStep();
+    });
+    totalPlotsInput?.addEventListener("input", syncPlotRows);
+    syncPlotsButton?.addEventListener("click", syncPlotRows);
+    form.addEventListener("input", () => {
+      clearStepError();
+      updateReview();
+    });
+    form.addEventListener("change", () => {
+      clearStepError();
+      updateReview();
+    });
+    form.addEventListener("submit", (event) => {
+      if (!validateCurrentStep()) {
+        event.preventDefault();
+      }
+    });
+    renderStep();
+  });
+</script>
+{% endblock %}

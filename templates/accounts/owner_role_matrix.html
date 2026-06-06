@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}Role Matrix - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head"><h1 class="app-page-title mb-0">Role Matrix</h1><p class="text-body mb-0">Define module permissions for each role.</p></div>
+{% include "accounts/partials/owner_configuration_form_list.html" with form=form rows=rules heading="Add Permission Rule" list_heading="Role Rules" button_label="Save Rule" columns="Role,Module,View,Create,Update,Delete" row_type="matrix" %}
+{% endblock %}

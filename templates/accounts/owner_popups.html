@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Offer Popups - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head company-update-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">Offer Popups</h1>
+        <p class="text-body mb-0">Manage role-wise offer images shown after login on user dashboards.</p>
+    </div>
+    <a class="btn btn-primary" href="{% url 'accounts:owner_popup_create' %}">Create Popup</a>
+</div>
+
+<section class="profile-panel offer-popup-list-panel">
+    <div class="profile-panel-head">
+        <div>
+            <h2>Active Popup List</h2>
+            <p>Only one popup can stay active at a time. Activating a popup will deactivate the previous active popup.</p>
+        </div>
+    </div>
+    <form class="employee-directory-filter offer-popup-filter" method="get">
+        <input class="form-control" type="search" name="q" value="{{ query }}" placeholder="Search title, message, offer label">
+        <select class="form-select" name="role">
+            <option value="">All roles</option>
+            {% for value, label in role_choices %}
+            <option value="{{ value }}" {% if selected_role == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <select class="form-select" name="status">
+            <option value="">All status</option>
+            {% for value,label in status_choices %}
+            <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <button class="btn btn-primary" type="submit">Filter</button>
+        <a class="btn btn-outline-primary" href="{% url 'accounts:owner_popups' %}">Reset</a>
+    </form>
+
+    <form id="popupBulkForm" method="post" data-delete-confirm="Delete selected popups?">
+        {% csrf_token %}
+    </form>
+    <div class="employee-bulk-toolbar offer-popup-bulk-toolbar">
+        <label class="employee-bulk-select">
+            <input type="checkbox" data-employee-select-all>
+            <span>Select all visible popups</span>
+        </label>
+        <div class="meeting-bulk-actions">
+            <select class="form-select form-select-sm" name="bulk_action" form="popupBulkForm" required>
+                <option value="">Bulk action</option>
+                <option value="activate">Activate selected popup</option>
+                <option value="deactivate">Deactivate selected</option>
+                <option value="delete">Delete selected</option>
+            </select>
+            <button class="btn btn-sm btn-primary" type="submit" form="popupBulkForm">Apply</button>
+        </div>
+    </div>
+    <div class="offer-popup-table">
+        {% for popup in popups %}
+        <article class="offer-popup-row">
+            <label class="offer-popup-row-check">
+                <input type="checkbox" name="popup_ids" value="{{ popup.id }}" form="popupBulkForm" data-employee-checkbox>
+            </label>
+            <a class="offer-popup-row-media" href="{% url 'accounts:owner_popup_detail' popup.id %}">
+                {% if popup.offer_image %}
+                <img src="{{ popup.offer_image.url }}" alt="{{ popup.title }}">
+                {% else %}
+                <span>{{ popup.title|slice:":1"|upper }}</span>
+                {% endif %}
+            </a>
+            <div class="offer-popup-row-main">
+                <div class="offer-popup-badge-line">
+                    <span class="event-badge event-badge-primary">{{ popup.deal_label|default:"Offer Popup" }}</span>
+                    <span class="event-badge {% if popup.is_active %}event-badge-success{% else %}event-badge-muted{% endif %}">{{ popup.is_active|yesno:"Active,Inactive" }}</span>
+                </div>
+                <h3><a href="{% url 'accounts:owner_popup_detail' popup.id %}">{{ popup.title }}</a></h3>
+                <p>{{ popup.message|truncatechars:150 }}</p>
+                <div class="offer-popup-role-list">
+                    {% for role in popup.roles %}
+                        {% for value,label in role_choices %}
+                            {% if value == role %}<span>{{ label }}</span>{% endif %}
+                        {% endfor %}
+                    {% empty %}
+                    <span>No roles selected</span>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="offer-popup-row-meta">
+                <div>
+                    <small>Starts</small>
+                    <strong>{% if popup.starts_at %}{{ popup.starts_at|date:"d M Y, h:i A" }}{% else %}Immediate{% endif %}</strong>
+                </div>
+                <div>
+                    <small>Ends</small>
+                    <strong>{% if popup.ends_at %}{{ popup.ends_at|date:"d M Y, h:i A" }}{% else %}No end date{% endif %}</strong>
+                </div>
+                <div>
+                    <small>Created</small>
+                    <strong>{{ popup.created_at|date:"d M Y" }}</strong>
+                </div>
+            </div>
+            <div class="offer-popup-row-actions">
+                <a class="btn btn-primary" href="{% url 'accounts:owner_popup_detail' popup.id %}">Open</a>
+                <a class="btn btn-outline-primary" href="{% url 'accounts:owner_popup_edit' popup.id %}">Edit</a>
+            </div>
+        </article>
+        {% empty %}
+        <div class="event-empty-state"><strong>No popup offers yet</strong><span>Create a popup offer to show it after login.</span></div>
+        {% endfor %}
+    </div>
+    {% include "accounts/partials/pagination.html" %}
+</section>
+{% endblock %}

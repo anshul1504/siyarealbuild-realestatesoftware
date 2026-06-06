@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Team Email Detail - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head company-update-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">Team Email Detail</h1>
+        <p class="text-body mb-0">{{ team_email.created_at|date:"d M Y, h:i A" }}</p>
+    </div>
+    <div class="company-page-actions">
+        <a class="btn btn-primary" href="{% url 'accounts:team_emails' %}">Send New Email</a>
+        <a class="btn btn-outline-primary" href="{% url 'accounts:team_email_list' %}">Sent Emails</a>
+    </div>
+</div>
+
+<section class="profile-panel profile-overview-single">
+    <div class="profile-overview-section">
+        <h2>Message</h2>
+        <div class="profile-overview-grid">
+            <div class="profile-overview-wide"><span>Subject</span><strong>{{ team_email.subject }}</strong></div>
+            <div><span>Target Role</span><strong>{{ team_email.get_role_display|default:"All visible roles" }}</strong></div>
+            <div><span>Department</span><strong>{{ team_email.department|default:"All departments" }}</strong></div>
+            <div><span>Recipients</span><strong>{{ team_email.sent_count }}</strong></div>
+            <div><span>Sent By</span><strong>{{ team_email.sent_by.get_full_name|default:team_email.sent_by.email|default:"System" }}</strong></div>
+            <div class="profile-overview-wide"><span>Body</span><strong>{{ team_email.message }}</strong></div>
+        </div>
+    </div>
+
+    <div class="profile-overview-section">
+        <h2>Recipient Snapshot</h2>
+        <div class="employee-directory-table-wrap">
+            <table class="table align-middle employee-directory-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Department</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for recipient in team_email.recipients %}
+                    <tr>
+                        <td>{{ recipient.name|default:"Not added" }}</td>
+                        <td>{{ recipient.email }}</td>
+                        <td>{{ recipient.role }}</td>
+                        <td>{{ recipient.department|default:"Not added" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="text-center text-body py-4">No recipients saved.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+{% endblock %}

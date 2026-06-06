@@ -1,0 +1,34 @@
+{% if company %}
+    {% if company.logo %}
+        <div class="mb-4">
+            <img src="{{ company.logo.url }}" alt="{{ company.name|default:'Company logo' }}" style="max-width:180px;max-height:120px;height:auto;">
+        </div>
+    {% endif %}
+    <div class="profile-summary-list">
+        <div><span>Company Name</span><strong>{{ company.name|default:"Not added" }}</strong></div>
+        <div><span>Tagline</span><strong>{{ company.tagline|default:"Not added" }}</strong></div>
+        <div><span>Primary Phone</span><strong>{{ company.phone|default:"Not added" }}</strong></div>
+        <div><span>Secondary Phone</span><strong>{{ company.phone_2|default:"Not added" }}</strong></div>
+        <div><span>Third Phone</span><strong>{{ company.phone_3|default:"Not added" }}</strong></div>
+        <div><span>Primary Email</span><strong>{{ company.email|default:"Not added" }}</strong></div>
+        <div><span>Secondary Email</span><strong>{{ company.email_2|default:"Not added" }}</strong></div>
+        <div><span>Third Email</span><strong>{{ company.email_3|default:"Not added" }}</strong></div>
+        <div><span>Website</span><strong>{{ company.website|default:"Not added" }}</strong></div>
+        <div><span>GST Number</span><strong>{{ company.gst_number|default:"Not added" }}</strong></div>
+        <div><span>RERA Number</span><strong>{{ company.rera_number|default:"Not added" }}</strong></div>
+        <div><span>CIN Number</span><strong>{{ company.cin_number|default:"Not added" }}</strong></div>
+        <div><span>PAN Number</span><strong>{{ company.pan_number|default:"Not added" }}</strong></div>
+        <div><span>Bank Name</span><strong>{{ company.bank_name|default:"Not added" }}</strong></div>
+        <div><span>Account Name</span><strong>{{ company.bank_account_name|default:"Not added" }}</strong></div>
+        <div><span>Account Number</span><strong>{{ company.bank_account_number|default:"Not added" }}</strong></div>
+        <div><span>IFSC</span><strong>{{ company.bank_ifsc|default:"Not added" }}</strong></div>
+        <div><span>UPI ID</span><strong>{{ company.upi_id|default:"Not added" }}</strong></div>
+        <div><span>City</span><strong>{{ company.city|default:"Not added" }}</strong></div>
+        <div><span>State</span><strong>{{ company.state|default:"Not added" }}</strong></div>
+        <div><span>Pincode</span><strong>{{ company.pincode|default:"Not added" }}</strong></div>
+        <div><span>Address</span><strong>{{ company.address|default:"Not added" }}</strong></div>
+        <div><span>Description</span><strong>{{ company.description|default:"Not added" }}</strong></div>
+    </div>
+{% else %}
+    <p class="text-body mb-0">Company details have not been created yet.</p>
+{% endif %}

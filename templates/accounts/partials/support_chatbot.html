@@ -16,16 +16,18 @@
     </div>
 
     <div class="auth-support-feed">
-      <div class="auth-support-message bot">Hi, choose a quick question or fill the form. Our team will help you.</div>
+      <div class="auth-support-message bot">Please select a common question or submit the support form. Our team will review your request and contact you shortly.</div>
     </div>
 
     <div class="auth-support-faq">
-      <button type="button" data-support-reply="Signup ke baad pehle OTP verify hota hai. Uske baad admin approval ke baad login OTP se sign in kar sakte hain.">Signup approval kab milega?</button>
-      <button type="button" data-support-reply="Agar OTP nahi aa raha hai, email address check karein, spam folder dekhein, phir Resend OTP use karein.">OTP nahi aa raha</button>
-      <button type="button" data-support-reply="Same email se multiple signup request allowed nahi hai. Agar request pending ya rejected hai, admin team se contact karein.">Email already registered</button>
+      <button type="button" data-support-reply="After signup, please verify your email with the OTP. Your request will then be reviewed by the admin team. Once approved, you can sign in using email OTP.">When will my signup be approved?</button>
+      <button type="button" data-support-reply="Please confirm that the email address is correct, check your spam folder, and use Resend OTP after the countdown finishes.">I did not receive the OTP</button>
+      <button type="button" data-support-reply="If your email is already registered, your request may already be pending review, approved, or rejected. Please submit a support request if you need assistance.">Email already registered</button>
     </div>
 
-    <form class="auth-support-form">
+    <form class="auth-support-form" method="post" action="{% url 'accounts:support_request' %}">
+      {% csrf_token %}
+      <input type="hidden" name="page_url" value="{{ request.get_full_path }}">
       <div class="auth-support-grid">
         <input type="text" name="support_name" placeholder="Your name" aria-label="Your name" required>
         <input type="text" name="support_contact" placeholder="Email or phone" aria-label="Email or phone">

@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}Serial Rules - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head company-update-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">Serial Rules</h1>
+        <p class="text-body mb-0">Control role and designation wise employee code prefixes and next serial numbers.</p>
+    </div>
+    <div class="company-page-actions">
+        <a class="btn btn-outline-primary" href="{% url 'accounts:owner_assigned_codes' %}">Assigned Code List</a>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3"><div class="profile-panel h-100"><span class="text-body small">Total Rules</span><h2 class="mb-0">{{ rule_stats.total }}</h2></div></div>
+    <div class="col-md-3"><div class="profile-panel h-100"><span class="text-body small">Active Rules</span><h2 class="mb-0">{{ rule_stats.active }}</h2></div></div>
+    <div class="col-md-3"><div class="profile-panel h-100"><span class="text-body small">Inactive Rules</span><h2 class="mb-0">{{ rule_stats.inactive }}</h2></div></div>
+    <div class="col-md-3"><div class="profile-panel h-100"><span class="text-body small">Employees With Codes</span><h2 class="mb-0">{{ rule_stats.employees_with_codes }}</h2></div></div>
+</div>
+
+<section class="profile-panel serial-rule-form-panel mb-4">
+    <div class="profile-panel-head">
+        <div>
+            <h2>{% if edit_rule %}Edit Serial Rule{% else %}Create Serial Rule{% endif %}</h2>
+            <p>Format is prefix plus padded number, for example EXE-0001.</p>
+        </div>
+        {% if edit_rule %}
+            <a class="btn btn-light btn-sm" href="{% url 'accounts:owner_serial_rules' %}">Cancel Edit</a>
+        {% endif %}
+    </div>
+    <form method="post" class="profile-form">
+        {% csrf_token %}
+        <input type="hidden" name="form_kind" value="code">
+        <div class="serial-rule-form-grid">
+            {% for field in form %}
+                <div class="serial-rule-field {% if field.name == 'is_active' %}serial-rule-active-field{% endif %}">
+                    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                </div>
+            {% endfor %}
+            <div class="serial-rule-submit">
+                <button class="btn btn-primary">{% if edit_rule %}Update Rule{% else %}Save Rule{% endif %}</button>
+            </div>
+        </div>
+    </form>
+</section>
+
+<section class="profile-panel employee-directory-panel serial-rule-list-panel">
+    <form id="serialRuleBulkForm" method="post" data-delete-confirm="Apply selected serial rule bulk action?">
+        {% csrf_token %}
+        <input type="hidden" name="form_kind" value="rule_bulk">
+    </form>
+    <div class="serial-rule-action-row">
+        <form class="employee-directory-filter serial-rule-filter" method="get">
+            <input class="form-control" type="search" name="q" value="{{ query }}" placeholder="Search designation or prefix">
+            <select class="form-select" name="role">
+                <option value="">All roles</option>
+                {% for value, label in role_choices %}
+                <option value="{{ value }}" {% if selected_role == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+            <select class="form-select" name="status">
+                <option value="">All status</option>
+                <option value="active" {% if selected_status == "active" %}selected{% endif %}>Active</option>
+                <option value="inactive" {% if selected_status == "inactive" %}selected{% endif %}>Inactive</option>
+            </select>
+            <button class="btn btn-primary" type="submit">Filter</button>
+            <a class="btn btn-outline-primary" href="{% url 'accounts:owner_serial_rules' %}">Reset</a>
+        </form>
+
+        <div class="employee-bulk-toolbar serial-rule-bulk-toolbar">
+            <label class="employee-bulk-select">
+                <input type="checkbox" data-employee-select-all>
+                <span>Select all visible</span>
+            </label>
+            <div class="serial-rule-bulk-actions">
+                <select class="form-select form-select-sm" name="action" form="serialRuleBulkForm" required>
+                    <option value="">Bulk action</option>
+                    <option value="activate">Activate</option>
+                    <option value="deactivate">Deactivate</option>
+                    <option value="delete">Delete</option>
+                </select>
+                <button class="btn btn-sm btn-primary" type="submit" form="serialRuleBulkForm">Apply</button>
+            </div>
+        </div>
+    </div>
+
+        <div class="employee-directory-table-wrap">
+            <table class="table align-middle employee-directory-table">
+                <thead>
+                    <tr>
+                        <th class="employee-select-col"></th>
+                        <th>Role</th>
+                        <th>Designation</th>
+                        <th>Prefix</th>
+                        <th>Next Serial</th>
+                        <th>Preview</th>
+                        <th>Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rule in rules %}
+                    <tr>
+                        <td class="employee-select-col"><input type="checkbox" name="rule_ids" value="{{ rule.id }}" form="serialRuleBulkForm" data-employee-checkbox></td>
+                        <td>{{ rule.get_role_display }}</td>
+                        <td>{{ rule.designation }}</td>
+                        <td>{{ rule.prefix }}</td>
+                        <td>{{ rule.next_number }}</td>
+                        <td><span class="badge bg-primary-subtle text-primary">{{ rule.preview_code }}</span></td>
+                        <td>{{ rule.is_active|yesno:"Active,Inactive" }}</td>
+                        <td class="text-end">
+                            <div class="d-inline-flex gap-2">
+                                <a class="btn btn-light btn-sm" href="{% url 'accounts:owner_serial_rules' %}?edit={{ rule.id }}">Edit</a>
+                                <form method="post">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="form_kind" value="rule_action">
+                                    <input type="hidden" name="rule_id" value="{{ rule.id }}">
+                                    <input type="hidden" name="action" value="toggle">
+                                    <button class="btn btn-light btn-sm" type="submit">{{ rule.is_active|yesno:"Deactivate,Activate" }}</button>
+                                </form>
+                                <form method="post" data-delete-confirm="Delete this serial rule? Existing employee codes will not change.">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="form_kind" value="rule_action">
+                                    <input type="hidden" name="rule_id" value="{{ rule.id }}">
+                                    <input type="hidden" name="action" value="delete">
+                                    <button class="btn btn-outline-danger btn-sm" type="submit">Delete</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="8" class="text-center text-body py-4">No serial rules configured yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% include "accounts/partials/pagination.html" %}
+</section>
+{% endblock %}

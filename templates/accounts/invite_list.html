@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}Invite List - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head company-update-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">Invite List</h1>
+        <p class="text-body mb-0">Filter, review, resend, and delete employee invite records.</p>
+    </div>
+    <div class="company-page-actions">
+        <a class="btn btn-primary" href="{% url 'accounts:employee_invites' %}">Send Invite</a>
+        {% if user_profile.role == "company_owner" %}<a class="btn btn-outline-primary" href="{% url 'accounts:add_employee' %}">Add Employee</a>{% endif %}
+        <a class="btn btn-outline-primary" href="{% url 'accounts:team_profiles' %}">Employee Directory</a>
+    </div>
+</div>
+
+<section class="profile-panel employee-directory-panel mt-3">
+    <div class="profile-panel-head invite-list-head">
+        <div>
+            <h2>Invite Records</h2>
+            <p>Approved invites are locked. Pending invites can be resent or deleted.</p>
+        </div>
+        <div class="invite-list-result">
+            <span>{{ page_obj.paginator.count }}</span>
+            <strong>Total</strong>
+        </div>
+    </div>
+    <div class="invite-status-strip" aria-label="Invite status summary">
+        <a class="{% if not selected_status %}active{% endif %}" href="{% url 'accounts:employee_invite_list' %}">
+            <span>All</span><strong>{{ invite_counts.all }}</strong>
+        </a>
+        <a class="{% if selected_status == 'pending_verification' %}active{% endif %}" href="{% url 'accounts:employee_invite_list' %}?status=pending_verification">
+            <span>Verification</span><strong>{{ invite_counts.pending_verification }}</strong>
+        </a>
+        <a class="{% if selected_status == 'pending_approval' %}active{% endif %}" href="{% url 'accounts:employee_invite_list' %}?status=pending_approval">
+            <span>Approval</span><strong>{{ invite_counts.pending_approval }}</strong>
+        </a>
+        <a class="{% if selected_status == 'approved' %}active{% endif %}" href="{% url 'accounts:employee_invite_list' %}?status=approved">
+            <span>Approved</span><strong>{{ invite_counts.approved }}</strong>
+        </a>
+        <a class="{% if selected_status == 'rejected' %}active{% endif %}" href="{% url 'accounts:employee_invite_list' %}?status=rejected">
+            <span>Rejected</span><strong>{{ invite_counts.rejected }}</strong>
+        </a>
+    </div>
+    <form method="get" class="employee-directory-filter invite-filter">
+        <div class="invite-filter-field invite-filter-search">
+            <label for="inviteSearch">Search</label>
+            <input id="inviteSearch" class="form-control" type="search" name="q" value="{{ query }}" placeholder="Name, email, phone, code">
+        </div>
+        <div class="invite-filter-field">
+            <label for="inviteStatus">Status</label>
+            <select id="inviteStatus" class="form-select" name="status">
+                <option value="">All statuses</option>
+                {% for value,label in status_choices %}
+                <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="invite-filter-field">
+            <label for="inviteRole">Role</label>
+            <select id="inviteRole" class="form-select" name="role">
+                <option value="">All roles</option>
+                {% for value,label in role_choices %}
+                <option value="{{ value }}" {% if selected_role == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="invite-filter-actions">
+            <button class="btn btn-primary" type="submit">Apply</button>
+            <a class="btn btn-outline-secondary" href="{% url 'accounts:employee_invite_list' %}">Clear</a>
+        </div>
+    </form>
+
+    <form method="post" action="{% url 'accounts:employee_invite_bulk_action' %}" class="employee-bulk-form invite-bulk-form" data-delete-confirm="Apply selected invite bulk action? Approved invites are locked and will be skipped.">
+        {% csrf_token %}
+        <div class="employee-bulk-toolbar">
+            <label class="employee-bulk-select">
+                <input type="checkbox" data-employee-select-all>
+                <span>Select all visible invites</span>
+            </label>
+            <div class="invite-bulk-actions">
+                <select class="form-select" name="bulk_action" required>
+                    <option value="">Bulk action</option>
+                    <option value="approve">Approve selected</option>
+                    <option value="resend">Resend verification</option>
+                    <option value="delete">Delete selected</option>
+                </select>
+                <button class="btn btn-outline-primary" type="submit">Apply</button>
+            </div>
+        </div>
+        <div class="employee-directory-table-wrap">
+            <table class="table align-middle employee-directory-table">
+                <thead>
+                    <tr>
+                        <th class="employee-select-col"></th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Code</th>
+                        <th>Status</th>
+                        <th>Updated</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for invite in page_obj %}
+                    <tr>
+                        <td><input class="form-check-input" type="checkbox" name="invite_ids" value="{{ invite.id }}" data-employee-checkbox></td>
+                        <td><strong>{{ invite.name }}</strong><small>{{ invite.phone|default:"Phone not added" }}</small></td>
+                        <td>{{ invite.email }}</td>
+                        <td><span class="badge rounded-pill bg-primary-subtle text-primary">{{ invite.get_role_display }}</span></td>
+                        <td>{{ invite.employee_code|default:"-" }}</td>
+                        <td>
+                            <span class="approval-status {% if invite.status == 'approved' %}ready{% elif invite.status == 'rejected' %}danger{% else %}waiting{% endif %}">
+                                {{ invite.get_status_display }}
+                            </span>
+                        </td>
+                        <td>{{ invite.updated_at|date:"d M Y, h:i A" }}</td>
+                        <td>
+                            <div class="employee-row-actions">
+                                <a class="btn btn-sm btn-outline-primary" href="{% url 'accounts:employee_invite_detail' invite.id %}">Open</a>
+                            </div>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="8" class="text-center text-body py-4">No invites found.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </form>
+
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="signup-pagination">
+        <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        <div>
+            {% if page_obj.has_previous %}
+                <a class="btn btn-sm btn-light" href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+            {% endif %}
+            {% if page_obj.has_next %}
+                <a class="btn btn-sm btn-light" href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}
