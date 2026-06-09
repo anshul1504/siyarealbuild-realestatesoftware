@@ -4,7 +4,7 @@ import secrets
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
 
 
@@ -187,6 +187,59 @@ class CompanyProfile(models.Model):
         return self.name or "Siya Real Build"
 
 
+class OfficeLocation(models.Model):
+    company = models.ForeignKey(CompanyProfile, on_delete=models.CASCADE, related_name="office_locations")
+    name = models.CharField(max_length=120)
+    address = models.TextField(blank=True)
+    city = models.CharField(max_length=80, blank=True)
+    state = models.CharField(max_length=80, blank=True)
+    pincode = models.CharField(max_length=12, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name"]
+        unique_together = ("company", "name")
+        db_table = "accounts_companyofficelocation"
+
+    def __str__(self):
+        return self.name
+
+
+class AuditLog(models.Model):
+    company = models.ForeignKey(CompanyProfile, on_delete=models.SET_NULL, null=True, blank=True, related_name="audit_logs")
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="audit_logs")
+    action = models.CharField(max_length=80)
+    target_type = models.CharField(max_length=80)
+    target_id = models.CharField(max_length=80, blank=True)
+    target_label = models.CharField(max_length=240, blank=True)
+    details = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
+class NotificationDelivery(models.Model):
+    class Status(models.TextChoices):
+        SENT = "sent", "Sent"
+        FAILED = "failed", "Failed"
+
+    company = models.ForeignKey(CompanyProfile, on_delete=models.SET_NULL, null=True, blank=True, related_name="notification_deliveries")
+    sent_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="notification_deliveries")
+    category = models.CharField(max_length=80)
+    recipient = models.EmailField()
+    subject = models.CharField(max_length=180)
+    status = models.CharField(max_length=16, choices=Status.choices)
+    error_message = models.TextField(blank=True)
+    retry_count = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
 class TeamEmailMessage(models.Model):
     company = models.ForeignKey(CompanyProfile, on_delete=models.CASCADE, related_name="team_emails")
     sent_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
@@ -283,6 +336,16 @@ class UserProfile(models.Model):
         return "Not added"
 
 
+class EmployeeProfileChange(models.Model):
+    profile = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name="change_history")
+    changed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    changes = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
 class EmployeeInvite(models.Model):
     class Status(models.TextChoices):
         PENDING_VERIFICATION = "pending_verification", "Pending Email Verification"
@@ -315,6 +378,7 @@ class EmployeeInvite(models.Model):
     def __str__(self):
         return f"{self.name} - {self.email}"
 
+    @transaction.atomic
     def approve(self, approved_by=None):
         if not self.is_email_verified:
             return None
@@ -676,6 +740,7 @@ class EmployeeEmailChangeRequest(models.Model):
         self.verified_at = timezone.now()
         self.save(update_fields=["is_email_verified", "verified_at", "updated_at"])
 
+    @transaction.atomic
     def approve(self, approved_by=None):
         if not self.is_email_verified:
             return False
@@ -723,6 +788,7 @@ class EmployeeRoleChangeRequest(models.Model):
     def __str__(self):
         return f"{self.employee} {self.current_role} -> {self.requested_role}"
 
+    @transaction.atomic
     def approve(self, reviewed_by=None, review_note=""):
         if self.status != self.Status.PENDING:
             return False
@@ -758,5 +824,15 @@ class EmployeeRoleChangeRequest(models.Model):
         self.reviewed_by = reviewed_by
         self.reviewed_at = timezone.now()
         self.review_note = review_note
+        self.save(update_fields=["status", "reviewed_by", "reviewed_at", "review_note", "updated_at"])
+        return True
+
+    def reopen(self):
+        if self.status == self.Status.PENDING:
+            return False
+        self.status = self.Status.PENDING
+        self.reviewed_by = None
+        self.reviewed_at = None
+        self.review_note = ""
         self.save(update_fields=["status", "reviewed_by", "reviewed_at", "review_note", "updated_at"])
         return True

@@ -2,6 +2,7 @@ from django.contrib import admin
 
 from .models import (
     AuthenticationSupportRequest,
+    AuditLog,
     CompanyEvent,
     CompanyProfile,
     DesignationCodeRule,
@@ -10,6 +11,8 @@ from .models import (
     EmployeeRoleChangeRequest,
     EmployeeInvite,
     Meeting,
+    NotificationDelivery,
+    OfficeLocation,
     ReferralReward,
     ReferralSetting,
     RoleMatrixRule,
@@ -19,7 +22,13 @@ from .models import (
     SoftwarePopup,
     TeamEmailMessage,
     UserProfile,
+    EmployeeProfileChange,
 )
+
+admin.site.register(AuditLog)
+admin.site.register(NotificationDelivery)
+admin.site.register(OfficeLocation)
+admin.site.register(EmployeeProfileChange)
 
 
 @admin.register(SignupRequest)

@@ -5,6 +5,28 @@ from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 
 
+def _send_and_record(email, *, recipient, subject, category):
+    from .models import NotificationDelivery
+
+    try:
+        email.send(fail_silently=False)
+    except Exception as exc:
+        NotificationDelivery.objects.create(
+            category=category,
+            recipient=recipient,
+            subject=subject,
+            status=NotificationDelivery.Status.FAILED,
+            error_message=str(exc),
+        )
+        raise
+    NotificationDelivery.objects.create(
+        category=category,
+        recipient=recipient,
+        subject=subject,
+        status=NotificationDelivery.Status.SENT,
+    )
+
+
 def _attach_logo(email):
     logo_path = settings.BASE_DIR / "static" / "assets" / "images" / "siya-builder-logo-transparent.png"
     if not logo_path.exists():
@@ -50,7 +72,7 @@ def send_otp_email(*, to_email, code, purpose, cta_url=None):
     email = EmailMultiAlternatives(subject, text_body, settings.DEFAULT_FROM_EMAIL, [to_email])
     email.attach_alternative(html_body, "text/html")
     _attach_logo(email)
-    email.send(fail_silently=False)
+    _send_and_record(email, recipient=to_email, subject=subject, category=purpose)
 
 
 
@@ -68,7 +90,7 @@ def _send_account_status_email(*, to_email, subject, title, intro, body, badge, 
     email = EmailMultiAlternatives(subject, text_body, settings.DEFAULT_FROM_EMAIL, [to_email])
     email.attach_alternative(html_body, "text/html")
     _attach_logo(email)
-    email.send(fail_silently=False)
+    _send_and_record(email, recipient=to_email, subject=subject, category=badge.lower().replace(" ", "_"))
 
 
 def send_signup_pending_review_email(*, to_email, name):

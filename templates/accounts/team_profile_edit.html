@@ -1,0 +1,1 @@
+{% extends "base.html" %}{% block content %}<div class="container-fluid"><h4>Edit Employee Profile</h4><form method="post" enctype="multipart/form-data" class="card card-body">{% csrf_token %}{{ form.as_p }}<button class="btn btn-primary">Save Profile</button></form></div>{% endblock %}

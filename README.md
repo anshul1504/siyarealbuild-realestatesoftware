@@ -1,6 +1,6 @@
 # Siya Real Build
 
-Django-based real estate operations platform under active development.
+Django-based real estate operations platform. Non-property role and operations workflows are implemented; property workflows remain under active development.
 
 ## Run locally
 

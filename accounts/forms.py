@@ -13,6 +13,7 @@ from .models import (
     EmployeeEmailChangeRequest,
     EmployeeRoleChangeRequest,
     EmployeeInvite,
+    OfficeLocation,
     Meeting,
     ReferralSetting,
     Role,
@@ -631,6 +632,32 @@ class TeamRoleForm(forms.Form):
 
 class OwnerCompanyProfileForm(CompanyProfileForm):
     pass
+
+
+class OfficeLocationForm(forms.ModelForm):
+    class Meta:
+        model = OfficeLocation
+        fields = ["name", "address", "city", "state", "pincode", "is_active"]
+        widgets = {field: forms.TextInput(attrs={"class": "form-control"}) for field in ["name", "city", "state", "pincode"]}
+        widgets["address"] = forms.Textarea(attrs={"class": "form-control", "rows": 2})
+        widgets["is_active"] = forms.CheckboxInput(attrs={"class": "form-check-input"})
+
+
+class EmployeeBulkUpdateForm(forms.Form):
+    profile_ids = forms.MultipleChoiceField(widget=forms.CheckboxSelectMultiple)
+    department = forms.CharField(required=False, widget=forms.TextInput(attrs={"class": "form-control"}))
+    reporting_manager = forms.CharField(required=False, widget=forms.TextInput(attrs={"class": "form-control"}))
+    work_location = forms.CharField(required=False, widget=forms.TextInput(attrs={"class": "form-control"}))
+
+    def __init__(self, *args, profiles, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["profile_ids"].choices = [(profile.pk, str(profile)) for profile in profiles]
+
+    def clean(self):
+        data = super().clean()
+        if not any(data.get(field) for field in ("department", "reporting_manager", "work_location")):
+            raise forms.ValidationError("Enter at least one value to update.")
+        return data
 
 
 class DesignationCodeRuleForm(forms.ModelForm):

@@ -33,6 +33,7 @@
     <div class="profile-panel-head"><div><h2>Core Details</h2><p>Primary inventory and location information.</p></div></div>
     <div class="profile-overview-grid">
         <div><span>Listing For</span><strong>{{ property_obj.get_listing_for_display }}</strong></div>
+        <div><span>Assigned To</span><strong>{{ property_obj.assigned_to.get_full_name|default:property_obj.assigned_to.email|default:"Unassigned" }}</strong></div>
         <div><span>City</span><strong>{{ property_obj.city }}</strong></div>
         <div><span>Locality</span><strong>{{ property_obj.locality|default:"-" }}</strong></div>
         <div><span>Address</span><strong>{{ property_obj.address }}</strong></div>
@@ -41,6 +42,13 @@
         <div><span>Facing</span><strong>{{ property_obj.facing|default:"-" }}</strong></div>
         <div><span>Road Width</span><strong>{% if property_obj.road_width_ft %}{{ property_obj.road_width_ft }} ft{% else %}-{% endif %}</strong></div>
     </div>
+</section>
+
+<section class="profile-panel mb-3">
+    <div class="profile-panel-head"><div><h2>Status History</h2><p>Immutable property lifecycle changes.</p></div></div>
+    <div class="table-responsive"><table class="table"><thead><tr><th>Time</th><th>From</th><th>To</th><th>Changed By</th><th>Note</th></tr></thead><tbody>
+    {% for item in status_history %}<tr><td>{{ item.created_at }}</td><td>{{ item.get_from_status_display|default:"Created" }}</td><td>{{ item.get_to_status_display }}</td><td>{{ item.changed_by|default:"System" }}</td><td>{{ item.note|default:"-" }}</td></tr>{% empty %}<tr><td colspan="5">No status changes.</td></tr>{% endfor %}
+    </tbody></table></div>
 </section>
 
 <section class="profile-panel mb-3">

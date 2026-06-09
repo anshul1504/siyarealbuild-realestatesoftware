@@ -36,6 +36,7 @@ class Property(models.Model):
         MORTGAGED = "mortgaged", "Mortgaged"
 
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="properties")
+    assigned_to = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="assigned_properties")
     title = models.CharField(max_length=160)
     category = models.CharField(max_length=40, choices=Category.choices, default=Category.PLOT)
     property_type = models.CharField(max_length=40, choices=Category.choices, default=Category.PLOT)
@@ -110,6 +111,18 @@ class Property(models.Model):
         if self.total_plots and not self.available_plots:
             self.available_plots = self.total_plots
         super().save(*args, **kwargs)
+
+
+class PropertyStatusHistory(models.Model):
+    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name="status_history")
+    from_status = models.CharField(max_length=30, choices=Property.Status.choices, blank=True)
+    to_status = models.CharField(max_length=30, choices=Property.Status.choices)
+    changed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    note = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
 
 
 class PropertyPhoto(models.Model):
@@ -214,6 +227,10 @@ class PropertyVisit(models.Model):
     outcome = models.CharField(max_length=30, choices=Outcome.choices, default=Outcome.PENDING)
     notes = models.TextField(blank=True)
     follow_up_at = models.DateTimeField(null=True, blank=True)
+    follow_up_completed_at = models.DateTimeField(null=True, blank=True)
+    reminder_sent_at = models.DateTimeField(null=True, blank=True)
+    converted_at = models.DateTimeField(null=True, blank=True)
+    conversion_note = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -177,3 +177,11 @@ SECURE_HSTS_SECONDS = int(os.environ.get("SIYA_SECURE_HSTS_SECONDS", "0"))
 SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool("SIYA_SECURE_HSTS_INCLUDE_SUBDOMAINS", False)
 SECURE_HSTS_PRELOAD = env_bool("SIYA_SECURE_HSTS_PRELOAD", False)
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {"standard": {"format": "{levelname} {asctime} {name} {message}", "style": "{"}},
+    "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "standard"}},
+    "root": {"handlers": ["console"], "level": os.environ.get("SIYA_LOG_LEVEL", "INFO")},
+}

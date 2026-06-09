@@ -1,0 +1,1 @@
+{% extends "base.html" %}{% block content %}<div class="container-fluid"><h4>Bulk Employee Update</h4><p class="text-muted">Select employees and enter only values that should change.</p><form method="post" class="card card-body">{% csrf_token %}{{ form.as_p }}<button class="btn btn-primary">Apply Updates</button></form></div>{% endblock %}

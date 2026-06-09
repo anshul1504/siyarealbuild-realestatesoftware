@@ -49,6 +49,7 @@ class PropertyForm(forms.ModelForm):
             "category",
             "listing_for",
             "status",
+            "assigned_to",
             "city",
             "locality",
             "address",
@@ -103,6 +104,7 @@ class PropertyForm(forms.ModelForm):
             "category": forms.Select(attrs={"class": "form-control", "data-property-category": "true"}),
             "listing_for": forms.Select(attrs={"class": "form-control"}),
             "status": forms.Select(attrs={"class": "form-control"}),
+            "assigned_to": forms.Select(attrs={"class": "form-control"}),
             "city": forms.TextInput(attrs={"class": "form-control", "placeholder": "City"}),
             "locality": forms.TextInput(attrs={"class": "form-control", "placeholder": "Locality / area"}),
             "address": forms.TextInput(attrs={"class": "form-control", "placeholder": "Street, colony, landmark"}),
@@ -173,6 +175,12 @@ class PropertyForm(forms.ModelForm):
                 self.add_error("available_plots", "Available plots cannot be more than total plots.")
         return cleaned_data
 
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        company = getattr(getattr(user, "profile", None), "company", None)
+        self.fields["assigned_to"].queryset = User.objects.filter(profile__company=company) if company else User.objects.none()
+        self.fields["assigned_to"].required = False
+
 
 class ColonyPlotForm(forms.ModelForm):
     class Meta:
@@ -219,6 +227,8 @@ class PropertyVisitForm(forms.ModelForm):
             "outcome",
             "notes",
             "follow_up_at",
+            "follow_up_completed_at",
+            "conversion_note",
         ]
         widgets = {
             "plot": forms.Select(attrs={"class": "form-control"}),
@@ -231,6 +241,8 @@ class PropertyVisitForm(forms.ModelForm):
             "outcome": forms.Select(attrs={"class": "form-control"}),
             "notes": forms.Textarea(attrs={"class": "form-control", "rows": 4, "placeholder": "Visit notes, client requirement, site feedback"}),
             "follow_up_at": forms.DateTimeInput(attrs={"class": "form-control", "type": "datetime-local"}),
+            "follow_up_completed_at": forms.DateTimeInput(attrs={"class": "form-control", "type": "datetime-local"}),
+            "conversion_note": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
         }
 
     def __init__(self, *args, property_obj=None, user=None, **kwargs):
@@ -249,7 +261,7 @@ class PropertyVisitForm(forms.ModelForm):
         self.fields["assigned_employee"].queryset = employees
         self.fields["assigned_employee"].required = False
 
-        for field_name in ("visit_at", "follow_up_at"):
+        for field_name in ("visit_at", "follow_up_at", "follow_up_completed_at"):
             value = self.initial.get(field_name) or getattr(self.instance, field_name, None)
             if value:
                 self.initial[field_name] = value.strftime("%Y-%m-%dT%H:%M")

@@ -1,98 +1,42 @@
-# Siya Real Build Architecture and Development Audit
+# Siya Real Build Architecture Audit
 
-Status: active development baseline  
-Audit scope: implemented functionality, maintainability, workflow gaps, and development readiness
+Status: architecture cleanup complete
 
-## Current Baseline
+## Current Structure
 
-- Django checks and migration consistency pass.
-- The automated suite covers 51 core scenarios.
-- Existing modules include authentication, signup approval, team onboarding, role and email change requests, company master, properties, visits, meetings, events, referrals, targets, popups, and support intake.
-- Company-scoped access and owner/manager workflow rules exist, but authorization is repeated across controllers.
+- `accounts/url_groups`: domain-grouped account routes.
+- `accounts/view_modules`: authentication/profile/company, onboarding, team directory, access control, meetings/events, and owner workflow views.
+- `accounts/policies.py`: reusable authorization decisions.
+- `accounts/services.py`: transactional employee updates and audit logging.
+- `properties/view_modules`: dashboard, inventory, sharing, plots, and visit views.
+- `properties/selectors.py`, `properties/policies.py`, and `properties/services.py`: query, authorization, and lifecycle boundaries.
+- `config`: project settings, root URLs, and error handlers.
+- `templates`: feature-grouped server-rendered UI.
 
-## Architecture Findings
+## Architecture Rules
 
-### P0 - Functional Integrity
+- Keep URL routing grouped by business domain under `accounts/url_groups/`.
+- Put authorization decisions in `policies.py`.
+- Put reusable queries in `selectors.py`.
+- Put transactional state changes and audit logging in `services.py`.
+- Keep views focused on request parsing, messages, and rendering.
+- Preserve migrations, user uploads, databases, and backups during cleanup.
 
-- Add audit logging for destructive and approval actions. Employee deletion currently removes linked operational history without a durable actor/action log.
-- Add transaction boundaries around multi-model onboarding, approval, role-change, email-change, and deletion workflows.
-- Define a single authorization policy layer. Role checks are repeated in views and can drift between list, detail, and action endpoints.
-- Add explicit lifecycle rules for records linked to deleted employees. Decide which records must be retained, anonymized, or removed.
+## Deliberate Boundaries
 
-### P1 - Core Workflow Gaps
+- `accounts/views.py` and `properties/views.py` are compatibility facades only.
+- `accounts/forms.py` remains a central form registry because forms share model and role choices; splitting it would add import churn without changing runtime ownership.
+- `accounts/models.py` remains the Django app schema boundary so migration imports and historical migration state stay stable.
+- Database migrations, user media, local databases, and backups are preserved during cleanup.
 
-- Add owner-side employee profile editing with controlled fields and change history.
-- Add office-location master management instead of deriving locations only from company text fields.
-- Add bulk department/reporting-manager updates with preview and audit history.
-- Add reject/reopen actions and review notes consistently across invite and approval queues.
-- Add property lifecycle/status history and ownership assignment workflow.
-- Add visit follow-up outcomes, reminders, and conversion linkage.
-- Add notification delivery state and retry visibility for operational emails.
+## Verification
 
-### P1 - Structure and Maintainability
+- Django system checks pass.
+- Migration consistency check reports no model changes.
+- Ruff passes across `accounts`, `properties`, and `config`.
+- The complete automated suite passes.
+- No unresolved Git conflict markers remain.
 
-- Split `accounts/views.py` by domain: auth, company, team, invites, access, requests, communications, and owner operations.
-- Split `accounts/forms.py`, `accounts/models.py`, and `accounts/tests.py` along the same boundaries.
-- Move side-effect-heavy workflows from models/views into service functions with transactions.
-- Create query/selectors for company-scoped list visibility and reusable filters.
-- Split the shared CSS file into base, layout, components, and feature-level styles after visual regression coverage exists.
+## Generated Files
 
-### P2 - Quality and Development Tooling
-
-- Add browser-level tests for responsive navigation, tables, forms, modals, and critical owner workflows.
-- Add test factories to reduce repeated user/company/profile setup.
-- Add CI checks for Django checks, migration drift, tests, formatting, and static analysis.
-- Remove the tracked `demo/` tree after a reference audit confirms no runtime dependencies.
-- Add structured application logging and a development error-reporting convention.
-
-## Target Architecture
-
-Keep the existing Django apps while introducing internal domain boundaries:
-
-```text
-accounts/
-  auth/
-  company/
-  team/
-  access/
-  communications/
-  owner_operations/
-  services/
-  selectors/
-  policies/
-properties/
-  services/
-  selectors/
-  policies/
-templates/
-  accounts/<domain>/
-  properties/
-static/
-  css/base/
-  css/components/
-  css/features/
-```
-
-Each domain should expose:
-
-- `views.py`: HTTP input/output only
-- `forms.py`: validation and input normalization
-- `services.py`: transactional state changes and side effects
-- `selectors.py`: optimized read queries and visibility rules
-- `policies.py`: reusable authorization decisions
-- `tests/`: unit, permission, workflow, and integration coverage
-
-## Delivery Phases
-
-1. Stabilize authorization policies, transactions, and audit logging.
-2. Complete team operations: employee edit, office locations, bulk updates, and queue lifecycle actions.
-3. Complete property and visit lifecycle workflows.
-4. Extract domain modules and split CSS with regression tests.
-5. Add CI, browser responsiveness tests, observability, and deployment readiness.
-
-## Changes Completed In This Audit Phase
-
-- Added the missing pending-invite edit workflow.
-- Locked approved invites from editing.
-- Reset verification and send a fresh OTP when an invite email changes.
-- Preserved company and role scope during invite editing.
+The following stay outside Git: virtual environments, caches, logs, local databases, media uploads, static build output, environment secrets, coverage output, and local backups.

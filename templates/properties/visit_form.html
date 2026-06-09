@@ -54,6 +54,8 @@
             <label class="form-label" for="{{ form.notes.id_for_label }}">Notes</label>
             {{ form.notes }}{{ form.notes.errors }}
         </div>
+        <div class="col-md-4"><label class="form-label">Follow-up Completed At</label>{{ form.follow_up_completed_at }}{{ form.follow_up_completed_at.errors }}</div>
+        <div class="col-md-8"><label class="form-label">Conversion Note</label>{{ form.conversion_note }}{{ form.conversion_note.errors }}</div>
     </div>
     <div class="d-flex justify-content-end gap-2 mt-4">
         <a href="{% url 'properties:detail' property_obj.id %}" class="btn btn-light">Cancel</a>
