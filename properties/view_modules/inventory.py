@@ -10,9 +10,9 @@ from django.urls import reverse
 from accounts.email_utils import send_property_share_email
 from accounts.models import Role
 
-from ..forms import ColonyPlotFormSet, PropertyForm, PropertyShareEmailForm
+from ..forms import ColonyPlotForm, ColonyPlotFormSet, PlotBookingForm, PlotQuotationForm, PropertyDeveloperForm, PropertyForm, PropertyShareEmailForm
 from ..models import ColonyPlot, Property, PropertyVisit
-from ..services import bulk_delete_properties, bulk_update_property_status, create_property, update_property
+from ..services import bulk_delete_properties, bulk_update_property_status, create_booking, create_plot, create_property, create_quotation, update_plot, update_property
 from .helpers import can_manage_properties_for, property_share_message, save_property_uploads, visible_properties_for
 
 
@@ -111,6 +111,25 @@ def property_create(request):
         messages.success(request, "Property added successfully.")
         return redirect("properties:list")
     return render(request, "properties/property_form.html", {"form": form, "plot_formset": plot_formset, "mode": "create", "property_obj": None})
+
+
+@login_required
+def developer_create(request):
+    if not can_manage_properties_for(request):
+        messages.error(request, "You do not have access to add developers.")
+        return redirect("properties:list")
+    company = getattr(getattr(request.user, "profile", None), "company", None)
+    if not company:
+        messages.error(request, "Company profile is required before adding developers.")
+        return redirect("properties:list")
+    form = PropertyDeveloperForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        developer = form.save(commit=False)
+        developer.company = company
+        developer.save()
+        messages.success(request, "Developer saved successfully.")
+        return redirect("properties:create")
+    return render(request, "properties/developer_form.html", {"form": form})
 
 
 @login_required
@@ -219,6 +238,72 @@ def colony_plot_detail(request, property_id, plot_id):
             "property_obj": property_obj,
             "plot": plot,
             "visits": visits,
+            "quotations": plot.quotations.select_related("created_by")[:10],
+            "bookings": plot.bookings.select_related("created_by", "quotation")[:10],
             "can_manage": can_manage_properties_for(request),
         },
     )
+
+
+@login_required
+def colony_plot_create(request, property_id):
+    if not can_manage_properties_for(request):
+        messages.error(request, "You do not have access to add colony plots.")
+        return redirect("properties:detail", property_id=property_id)
+    property_obj = get_object_or_404(visible_properties_for(request).prefetch_related("plots"), id=property_id)
+    form = ColonyPlotForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        plot = create_plot(form=form, property_obj=property_obj, actor=request.user)
+        messages.success(request, "Plot saved successfully.")
+        return redirect("properties:plot_detail", property_id=property_obj.id, plot_id=plot.id)
+    return render(request, "properties/plot_form.html", {"form": form, "property_obj": property_obj, "mode": "create"})
+
+
+@login_required
+def colony_plot_edit(request, property_id, plot_id):
+    if not can_manage_properties_for(request):
+        messages.error(request, "You do not have access to edit colony plots.")
+        return redirect("properties:plot_detail", property_id=property_id, plot_id=plot_id)
+    property_obj = get_object_or_404(visible_properties_for(request).prefetch_related("plots"), id=property_id)
+    plot = get_object_or_404(property_obj.plots, id=plot_id)
+    form = ColonyPlotForm(request.POST or None, instance=plot)
+    if request.method == "POST" and form.is_valid():
+        plot = update_plot(form=form, plot=plot, actor=request.user)
+        messages.success(request, "Plot updated successfully.")
+        return redirect("properties:plot_detail", property_id=property_obj.id, plot_id=plot.id)
+    return render(request, "properties/plot_form.html", {"form": form, "property_obj": property_obj, "plot": plot, "mode": "edit"})
+
+
+@login_required
+def plot_quotation_create(request, property_id, plot_id):
+    if not can_manage_properties_for(request):
+        messages.error(request, "You do not have access to create plot quotations.")
+        return redirect("properties:plot_detail", property_id=property_id, plot_id=plot_id)
+    property_obj = get_object_or_404(visible_properties_for(request).prefetch_related("plots"), id=property_id)
+    plot = get_object_or_404(property_obj.plots, id=plot_id)
+    initial = {
+        "base_amount": plot.area_sqft * plot.base_rate,
+        "plc_amount": plot.area_sqft * plot.plc_rate,
+        "charges_amount": plot.extra_charges,
+    }
+    form = PlotQuotationForm(request.POST or None, initial=initial)
+    if request.method == "POST" and form.is_valid():
+        quotation = create_quotation(form=form, plot=plot, actor=request.user)
+        messages.success(request, "Quotation saved successfully.")
+        return redirect("properties:plot_detail", property_id=property_obj.id, plot_id=plot.id)
+    return render(request, "properties/plot_quotation_form.html", {"form": form, "property_obj": property_obj, "plot": plot})
+
+
+@login_required
+def plot_booking_create(request, property_id, plot_id):
+    if not can_manage_properties_for(request):
+        messages.error(request, "You do not have access to book plots.")
+        return redirect("properties:plot_detail", property_id=property_id, plot_id=plot_id)
+    property_obj = get_object_or_404(visible_properties_for(request).prefetch_related("plots"), id=property_id)
+    plot = get_object_or_404(property_obj.plots, id=plot_id)
+    form = PlotBookingForm(request.POST or None, plot=plot, initial={"agreed_rate": plot.base_rate, "plc_amount": plot.area_sqft * plot.plc_rate, "charges_amount": plot.extra_charges})
+    if request.method == "POST" and form.is_valid():
+        create_booking(form=form, plot=plot, actor=request.user)
+        messages.success(request, "Plot booking saved successfully.")
+        return redirect("properties:plot_detail", property_id=property_obj.id, plot_id=plot.id)
+    return render(request, "properties/plot_booking_form.html", {"form": form, "property_obj": property_obj, "plot": plot})

@@ -6,7 +6,7 @@ from accounts.models import AuditLog, Role
 from accounts.test_factories import create_company, create_user
 
 from .forms import PropertyForm, PropertyVisitForm
-from .models import Property, PropertyStatusHistory, PropertyVisit
+from .models import ColonyPlot, PlotBooking, PlotQuotation, PlotStatusHistory, Property, PropertyDeveloper, PropertyStatusHistory, PropertyVisit
 from .services import create_property, update_property, update_visit
 
 
@@ -81,3 +81,149 @@ class PropertyLifecycleTests(TestCase):
         self.assertTrue(form.is_valid(), form.errors)
         updated = update_visit(form=form, actor=self.owner)
         self.assertIsNotNone(updated.converted_at)
+
+    def test_assigned_employee_can_view_assigned_property(self):
+        assigned_property = Property.objects.create(
+            owner=self.owner,
+            assigned_to=self.employee,
+            title="Assigned Plot",
+            category=Property.Category.PLOT,
+            city="Indore",
+            address="Assigned",
+            area_sqft=900,
+        )
+        self.client.force_login(self.employee)
+        response = self.client.get(reverse("properties:detail", args=[assigned_property.id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Assigned Plot")
+
+    def test_owner_can_create_developer(self):
+        self.client.force_login(self.owner)
+        response = self.client.post(
+            reverse("properties:developer_create"),
+            data={
+                "name": "Prime Developer",
+                "company_name": "Prime Infra",
+                "contact_person": "Amit",
+                "mobile": "+91 9999999999",
+                "email": "dev@example.com",
+                "office_address": "Indore",
+                "rera_number": "RERA-DEV",
+                "notes": "Trusted developer",
+                "is_active": "on",
+            },
+        )
+        self.assertRedirects(response, reverse("properties:create"))
+        self.assertTrue(PropertyDeveloper.objects.filter(company=self.company, name="Prime Developer").exists())
+
+    def test_colony_plot_create_and_edit_records_status_history(self):
+        colony = Property.objects.create(
+            owner=self.owner,
+            title="Royal Colony",
+            category=Property.Category.COLONY,
+            city="Indore",
+            address="Bypass",
+            area_sqft=10000,
+            total_plots=1,
+            base_rate_per_sqft=1500,
+            electricity_charge=25000,
+            maintenance_charge=10000,
+            corner_plc_rate=100,
+        )
+        self.client.force_login(self.owner)
+        create_response = self.client.post(
+            reverse("properties:plot_create", args=[colony.id]),
+            data={
+                "plot_number": "A-01",
+                "plot_category": ColonyPlot.PlotCategory.RESIDENTIAL,
+                "custom_category": "",
+                "block": "A",
+                "area_sqft": 1000,
+                "length_ft": "50",
+                "width_ft": "20",
+                "facing": "East",
+                "road_width_ft": "30",
+                "base_rate": "1500",
+                "plc_rate": "100",
+                "extra_charges": "35000",
+                "price": "0",
+                "is_corner": "on",
+                "status": ColonyPlot.Status.AVAILABLE,
+                "notes": "Corner plot",
+            },
+        )
+        plot = ColonyPlot.objects.get(property=colony, plot_number="A-01")
+        self.assertRedirects(create_response, reverse("properties:plot_detail", args=[colony.id, plot.id]))
+        self.assertEqual(plot.price, 1635000)
+        self.assertTrue(PlotStatusHistory.objects.filter(plot=plot, to_status=ColonyPlot.Status.AVAILABLE).exists())
+        edit_response = self.client.post(
+            reverse("properties:plot_edit", args=[colony.id, plot.id]),
+            data={
+                "plot_number": "A-01",
+                "plot_category": ColonyPlot.PlotCategory.RESIDENTIAL,
+                "custom_category": "",
+                "block": "A",
+                "area_sqft": 1000,
+                "length_ft": "50",
+                "width_ft": "20",
+                "facing": "East",
+                "road_width_ft": "30",
+                "base_rate": "1500",
+                "plc_rate": "100",
+                "extra_charges": "35000",
+                "price": "1635000",
+                "is_corner": "on",
+                "status": ColonyPlot.Status.BOOKED,
+                "notes": "Booked plot",
+            },
+        )
+        plot.refresh_from_db()
+        self.assertRedirects(edit_response, reverse("properties:plot_detail", args=[colony.id, plot.id]))
+        self.assertEqual(plot.status, ColonyPlot.Status.BOOKED)
+        self.assertTrue(PlotStatusHistory.objects.filter(plot=plot, from_status=ColonyPlot.Status.AVAILABLE, to_status=ColonyPlot.Status.BOOKED).exists())
+
+    def test_plot_quotation_and_booking_workflow(self):
+        colony = Property.objects.create(owner=self.owner, title="Booking Colony", category=Property.Category.COLONY, city="Indore", address="Ring Road", area_sqft=10000)
+        plot = ColonyPlot.objects.create(property=colony, plot_number="B-01", area_sqft=1200, base_rate=2000, plc_rate=100, extra_charges=50000)
+        self.client.force_login(self.owner)
+        quote_response = self.client.post(
+            reverse("properties:plot_quotation_create", args=[colony.id, plot.id]),
+            data={
+                "client_name": "Buyer One",
+                "client_phone": "+91 9000000000",
+                "client_email": "buyer@example.com",
+                "base_amount": "2400000",
+                "plc_amount": "120000",
+                "charges_amount": "50000",
+                "discount_amount": "10000",
+                "valid_until": timezone.now().date().strftime("%Y-%m-%d"),
+                "terms": "Valid for 7 days",
+                "status": PlotQuotation.Status.SENT,
+            },
+        )
+        quotation = PlotQuotation.objects.get(plot=plot, client_name="Buyer One")
+        self.assertRedirects(quote_response, reverse("properties:plot_detail", args=[colony.id, plot.id]))
+        self.assertEqual(quotation.total_amount, 2560000)
+        booking_response = self.client.post(
+            reverse("properties:plot_booking_create", args=[colony.id, plot.id]),
+            data={
+                "quotation": quotation.id,
+                "client_name": "Buyer One",
+                "client_phone": "+91 9000000000",
+                "client_email": "buyer@example.com",
+                "booking_date": timezone.now().date().strftime("%Y-%m-%d"),
+                "booking_amount": "100000",
+                "agreed_rate": "2000",
+                "discount_amount": "10000",
+                "plc_amount": "120000",
+                "charges_amount": "50000",
+                "payment_mode": "UPI",
+                "status": PlotBooking.Status.BOOKED,
+                "note": "Token received",
+            },
+        )
+        plot.refresh_from_db()
+        booking = PlotBooking.objects.get(plot=plot, client_name="Buyer One")
+        self.assertRedirects(booking_response, reverse("properties:plot_detail", args=[colony.id, plot.id]))
+        self.assertEqual(plot.status, ColonyPlot.Status.BOOKED)
+        self.assertEqual(booking.total_deal_value, 2560000)

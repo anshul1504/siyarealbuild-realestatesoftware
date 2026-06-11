@@ -4,7 +4,25 @@ from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 from django.forms import inlineformset_factory
 
-from .models import ColonyPlot, Property, PropertyDocument, PropertyVisit
+from .models import ColonyPlot, PlotBooking, PlotQuotation, Property, PropertyDeveloper, PropertyDocument, PropertyVisit
+
+
+DEFAULT_AMENITIES = (
+    ("boundary_wall", "Boundary wall"),
+    ("main_gate", "Main gate"),
+    ("security", "Security"),
+    ("garden", "Garden"),
+    ("club_house", "Club house"),
+    ("kids_play_area", "Kids play area"),
+    ("water_connection", "Water connection"),
+    ("electricity", "Electricity"),
+    ("street_lights", "Street lights"),
+    ("drainage", "Drainage"),
+    ("cement_road", "Cement road"),
+    ("cctv", "CCTV"),
+    ("commercial_shops", "Commercial shops"),
+    ("open_gym", "Open gym"),
+)
 
 
 User = get_user_model()
@@ -50,6 +68,7 @@ class PropertyForm(forms.ModelForm):
             "listing_for",
             "status",
             "assigned_to",
+            "developer",
             "city",
             "locality",
             "address",
@@ -77,7 +96,9 @@ class PropertyForm(forms.ModelForm):
             "total_plots",
             "available_plots",
             "development_status",
+            "selected_amenities",
             "amenities",
+            "custom_amenities",
             "amenity_count",
             "garden_count",
             "corner_plot_count",
@@ -89,6 +110,22 @@ class PropertyForm(forms.ModelForm):
             "nearby_education",
             "nearby_healthcare",
             "nearby_landmarks",
+            "base_rate_per_sqft",
+            "residential_rate_per_sqft",
+            "commercial_rate_per_sqft",
+            "lig_rate_per_sqft",
+            "mig_rate_per_sqft",
+            "hig_rate_per_sqft",
+            "ews_rate_per_sqft",
+            "electricity_charge",
+            "maintenance_charge",
+            "development_charge",
+            "registry_charge",
+            "other_charge",
+            "corner_plc_rate",
+            "garden_facing_plc_rate",
+            "main_road_plc_rate",
+            "wide_road_plc_rate",
             "rera_number",
             "tcp_approval_number",
             "registry_status",
@@ -105,6 +142,7 @@ class PropertyForm(forms.ModelForm):
             "listing_for": forms.Select(attrs={"class": "form-control"}),
             "status": forms.Select(attrs={"class": "form-control"}),
             "assigned_to": forms.Select(attrs={"class": "form-control"}),
+            "developer": forms.Select(attrs={"class": "form-control"}),
             "city": forms.TextInput(attrs={"class": "form-control", "placeholder": "City"}),
             "locality": forms.TextInput(attrs={"class": "form-control", "placeholder": "Locality / area"}),
             "address": forms.TextInput(attrs={"class": "form-control", "placeholder": "Street, colony, landmark"}),
@@ -132,7 +170,9 @@ class PropertyForm(forms.ModelForm):
             "total_plots": forms.NumberInput(attrs={"class": "form-control", "min": 0}),
             "available_plots": forms.NumberInput(attrs={"class": "form-control", "min": 0}),
             "development_status": forms.TextInput(attrs={"class": "form-control", "placeholder": "Road, drainage, garden, gate, etc."}),
+            "selected_amenities": forms.CheckboxSelectMultiple(),
             "amenities": forms.Textarea(attrs={"class": "form-control", "rows": 3, "placeholder": "Water, electricity, security, park, drainage"}),
+            "custom_amenities": forms.Textarea(attrs={"class": "form-control", "rows": 2, "placeholder": "Add custom amenities, one per line"}),
             "amenity_count": forms.NumberInput(attrs={"class": "form-control", "min": 0}),
             "garden_count": forms.NumberInput(attrs={"class": "form-control", "min": 0}),
             "corner_plot_count": forms.NumberInput(attrs={"class": "form-control", "min": 0}),
@@ -144,6 +184,22 @@ class PropertyForm(forms.ModelForm):
             "nearby_education": forms.Textarea(attrs={"class": "form-control", "rows": 2, "placeholder": "Schools, colleges, coaching zones"}),
             "nearby_healthcare": forms.Textarea(attrs={"class": "form-control", "rows": 2, "placeholder": "Hospitals, clinics, pharmacies"}),
             "nearby_landmarks": forms.Textarea(attrs={"class": "form-control", "rows": 2, "placeholder": "Parks, temples, malls, landmarks, government offices"}),
+            "base_rate_per_sqft": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),
+            "residential_rate_per_sqft": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),
+            "commercial_rate_per_sqft": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),
+            "lig_rate_per_sqft": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),
+            "mig_rate_per_sqft": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),
+            "hig_rate_per_sqft": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),
+            "ews_rate_per_sqft": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),
+            "electricity_charge": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),
+            "maintenance_charge": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),
+            "development_charge": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),
+            "registry_charge": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),
+            "other_charge": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),
+            "corner_plc_rate": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),
+            "garden_facing_plc_rate": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),
+            "main_road_plc_rate": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),
+            "wide_road_plc_rate": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),
             "rera_number": forms.TextInput(attrs={"class": "form-control", "placeholder": "RERA number"}),
             "tcp_approval_number": forms.TextInput(attrs={"class": "form-control", "placeholder": "T&CP approval number"}),
             "registry_status": forms.TextInput(attrs={"class": "form-control", "placeholder": "Registry / diversion / mutation"}),
@@ -180,20 +236,55 @@ class PropertyForm(forms.ModelForm):
         company = getattr(getattr(user, "profile", None), "company", None)
         self.fields["assigned_to"].queryset = User.objects.filter(profile__company=company) if company else User.objects.none()
         self.fields["assigned_to"].required = False
+        self.fields["developer"].queryset = PropertyDeveloper.objects.filter(company=company, is_active=True) if company else PropertyDeveloper.objects.none()
+        self.fields["developer"].required = False
+        self.fields["selected_amenities"] = forms.MultipleChoiceField(
+            choices=DEFAULT_AMENITIES,
+            required=False,
+            widget=forms.CheckboxSelectMultiple(attrs={"class": "form-check-input"}),
+        )
 
 
 class ColonyPlotForm(forms.ModelForm):
     class Meta:
         model = ColonyPlot
-        fields = ["plot_number", "area_sqft", "length_ft", "width_ft", "facing", "road_width_ft", "price", "status", "notes"]
+        fields = [
+            "plot_number",
+            "plot_category",
+            "custom_category",
+            "block",
+            "area_sqft",
+            "length_ft",
+            "width_ft",
+            "facing",
+            "road_width_ft",
+            "base_rate",
+            "plc_rate",
+            "extra_charges",
+            "price",
+            "is_corner",
+            "is_garden_facing",
+            "is_main_road",
+            "status",
+            "notes",
+        ]
         widgets = {
             "plot_number": forms.TextInput(attrs={"class": "form-control", "placeholder": "A-01"}),
+            "plot_category": forms.Select(attrs={"class": "form-control"}),
+            "custom_category": forms.TextInput(attrs={"class": "form-control", "placeholder": "Custom category"}),
+            "block": forms.TextInput(attrs={"class": "form-control", "placeholder": "Block / sector"}),
             "area_sqft": forms.NumberInput(attrs={"class": "form-control", "min": 0}),
             "length_ft": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),
             "width_ft": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),
             "facing": forms.TextInput(attrs={"class": "form-control", "placeholder": "East"}),
             "road_width_ft": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),
-            "price": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),
+            "base_rate": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),
+            "plc_rate": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),
+            "extra_charges": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),
+            "price": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01", "readonly": True}),
+            "is_corner": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "is_garden_facing": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "is_main_road": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "status": forms.Select(attrs={"class": "form-control"}),
             "notes": forms.TextInput(attrs={"class": "form-control", "placeholder": "Corner / premium / park facing"}),
         }
@@ -202,6 +293,67 @@ class ColonyPlotForm(forms.ModelForm):
         if not (self.data.get(self.add_prefix("plot_number")) or "").strip():
             return False
         return super().has_changed()
+
+
+class PropertyDeveloperForm(forms.ModelForm):
+    class Meta:
+        model = PropertyDeveloper
+        fields = ["name", "company_name", "contact_person", "mobile", "email", "office_address", "rera_number", "notes", "is_active"]
+        widgets = {
+            "name": forms.TextInput(attrs={"class": "form-control"}),
+            "company_name": forms.TextInput(attrs={"class": "form-control"}),
+            "contact_person": forms.TextInput(attrs={"class": "form-control"}),
+            "mobile": forms.TextInput(attrs={"class": "form-control indian-phone-input"}),
+            "email": forms.EmailInput(attrs={"class": "form-control"}),
+            "office_address": forms.TextInput(attrs={"class": "form-control"}),
+            "rera_number": forms.TextInput(attrs={"class": "form-control"}),
+            "notes": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+            "is_active": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }
+
+
+class PlotQuotationForm(forms.ModelForm):
+    class Meta:
+        model = PlotQuotation
+        fields = ["client_name", "client_phone", "client_email", "base_amount", "plc_amount", "charges_amount", "discount_amount", "valid_until", "terms", "status"]
+        widgets = {
+            "client_name": forms.TextInput(attrs={"class": "form-control"}),
+            "client_phone": forms.TextInput(attrs={"class": "form-control indian-phone-input"}),
+            "client_email": forms.EmailInput(attrs={"class": "form-control"}),
+            "base_amount": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),
+            "plc_amount": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),
+            "charges_amount": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),
+            "discount_amount": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),
+            "valid_until": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+            "terms": forms.Textarea(attrs={"class": "form-control", "rows": 4}),
+            "status": forms.Select(attrs={"class": "form-control"}),
+        }
+
+
+class PlotBookingForm(forms.ModelForm):
+    class Meta:
+        model = PlotBooking
+        fields = ["quotation", "client_name", "client_phone", "client_email", "booking_date", "booking_amount", "agreed_rate", "discount_amount", "plc_amount", "charges_amount", "payment_mode", "status", "note"]
+        widgets = {
+            "quotation": forms.Select(attrs={"class": "form-control"}),
+            "client_name": forms.TextInput(attrs={"class": "form-control"}),
+            "client_phone": forms.TextInput(attrs={"class": "form-control indian-phone-input"}),
+            "client_email": forms.EmailInput(attrs={"class": "form-control"}),
+            "booking_date": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+            "booking_amount": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),
+            "agreed_rate": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),
+            "discount_amount": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),
+            "plc_amount": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),
+            "charges_amount": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),
+            "payment_mode": forms.TextInput(attrs={"class": "form-control"}),
+            "status": forms.Select(attrs={"class": "form-control"}),
+            "note": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+        }
+
+    def __init__(self, *args, plot=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["quotation"].queryset = plot.quotations.all() if plot else PlotQuotation.objects.none()
+        self.fields["quotation"].required = False
 
 
 ColonyPlotFormSet = inlineformset_factory(

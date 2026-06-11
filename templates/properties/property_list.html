@@ -6,7 +6,7 @@
         <h1 class="app-page-title mb-0">Properties</h1>
         <p class="text-body mb-0">Category-wise inventory with legal, media, and plot-level information.</p>
     </div>
-    <a class="btn btn-primary" href="{% url 'properties:create' %}">Add Property</a>
+    {% if can_manage %}<a class="btn btn-primary" href="{% url 'properties:create' %}">Add Property</a>{% endif %}
 </div>
 
 <section class="profile-panel mb-3">

@@ -9,7 +9,10 @@
     {% if mode == "edit" and property_obj %}
     <a href="{% url 'properties:detail' property_obj.id %}" class="btn btn-outline-primary">Back to Detail</a>
     {% else %}
-    <a href="{% url 'properties:list' %}" class="btn btn-outline-primary">Property List</a>
+    <div class="d-flex gap-2">
+        <a href="{% url 'properties:developer_create' %}" class="btn btn-light">Add Developer</a>
+        <a href="{% url 'properties:list' %}" class="btn btn-outline-primary">Property List</a>
+    </div>
     {% endif %}
 </div>
 
@@ -45,7 +48,7 @@
             </div>
             <div class="row g-3">
                 {% for field in form %}
-                    {% if field.name == "title" or field.name == "category" or field.name == "listing_for" or field.name == "status" %}
+                    {% if field.name == "title" or field.name == "category" or field.name == "listing_for" or field.name == "status" or field.name == "developer" or field.name == "assigned_to" %}
                     <div class="col-md-6">
                         <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
                         {{ field }}
@@ -117,10 +120,10 @@
             </div>
             <div class="row g-3 mb-3">
                 {% for field in form %}
-                    {% if field.name == "colony_name" or field.name == "total_plots" or field.name == "available_plots" or field.name == "development_status" or field.name == "amenities" or field.name == "amenity_count" or field.name == "garden_count" or field.name == "corner_plot_count" or field.name == "garden_facing_plot_count" or field.name == "plc_rules" or field.name == "nearby_residential" or field.name == "nearby_commercial" or field.name == "nearby_connectivity" or field.name == "nearby_education" or field.name == "nearby_healthcare" or field.name == "nearby_landmarks" %}
-                    <div class="{% if field.name == 'amenities' or field.name == 'plc_rules' or field.name == 'nearby_residential' or field.name == 'nearby_commercial' or field.name == 'nearby_connectivity' or field.name == 'nearby_education' or field.name == 'nearby_healthcare' or field.name == 'nearby_landmarks' %}col-md-6{% else %}col-md-4{% endif %}">
+                    {% if field.name == "colony_name" or field.name == "total_plots" or field.name == "available_plots" or field.name == "development_status" or field.name == "selected_amenities" or field.name == "amenities" or field.name == "custom_amenities" or field.name == "amenity_count" or field.name == "garden_count" or field.name == "corner_plot_count" or field.name == "garden_facing_plot_count" or field.name == "plc_rules" or field.name == "nearby_residential" or field.name == "nearby_commercial" or field.name == "nearby_connectivity" or field.name == "nearby_education" or field.name == "nearby_healthcare" or field.name == "nearby_landmarks" or field.name == "base_rate_per_sqft" or field.name == "residential_rate_per_sqft" or field.name == "commercial_rate_per_sqft" or field.name == "lig_rate_per_sqft" or field.name == "mig_rate_per_sqft" or field.name == "hig_rate_per_sqft" or field.name == "ews_rate_per_sqft" or field.name == "electricity_charge" or field.name == "maintenance_charge" or field.name == "development_charge" or field.name == "registry_charge" or field.name == "other_charge" or field.name == "corner_plc_rate" or field.name == "garden_facing_plc_rate" or field.name == "main_road_plc_rate" or field.name == "wide_road_plc_rate" %}
+                    <div class="{% if field.name == 'selected_amenities' or field.name == 'amenities' or field.name == 'custom_amenities' or field.name == 'plc_rules' or field.name == 'nearby_residential' or field.name == 'nearby_commercial' or field.name == 'nearby_connectivity' or field.name == 'nearby_education' or field.name == 'nearby_healthcare' or field.name == 'nearby_landmarks' %}col-md-6{% else %}col-md-4{% endif %}">
                         <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                        {{ field }}
+                        {% if field.name == "selected_amenities" %}<div class="amenity-check-grid">{{ field }}</div>{% else %}{{ field }}{% endif %}
                         {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
                     </div>
                     {% endif %}
@@ -136,17 +139,18 @@
             </div>
             <div class="table-responsive">
                 <table class="table align-middle property-plot-grid">
-                    <thead><tr><th>Plot No.</th><th>Area</th><th>Length</th><th>Width</th><th>Facing</th><th>Road</th><th>Price</th><th>Status</th><th>Notes</th></tr></thead>
+                    <thead><tr><th>Plot No.</th><th>Category</th><th>Block</th><th>Area</th><th>Base Rate</th><th>PLC</th><th>Charges</th><th>Price</th><th>Status</th><th>Notes</th></tr></thead>
                     <tbody>
                     {% for plot_form in plot_formset %}
                         <tr>
                             {% for hidden in plot_form.hidden_fields %}{{ hidden }}{% endfor %}
                             <td>{{ plot_form.plot_number }}</td>
+                            <td>{{ plot_form.plot_category }}</td>
+                            <td>{{ plot_form.block }}</td>
                             <td>{{ plot_form.area_sqft }}</td>
-                            <td>{{ plot_form.length_ft }}</td>
-                            <td>{{ plot_form.width_ft }}</td>
-                            <td>{{ plot_form.facing }}</td>
-                            <td>{{ plot_form.road_width_ft }}</td>
+                            <td>{{ plot_form.base_rate }}</td>
+                            <td>{{ plot_form.plc_rate }}</td>
+                            <td>{{ plot_form.extra_charges }}</td>
                             <td>{{ plot_form.price }}</td>
                             <td>{{ plot_form.status }}</td>
                             <td>{{ plot_form.notes }}</td>
@@ -159,11 +163,12 @@
             <tr>
                 {% for hidden in plot_formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
                 <td>{{ plot_formset.empty_form.plot_number }}</td>
+                <td>{{ plot_formset.empty_form.plot_category }}</td>
+                <td>{{ plot_formset.empty_form.block }}</td>
                 <td>{{ plot_formset.empty_form.area_sqft }}</td>
-                <td>{{ plot_formset.empty_form.length_ft }}</td>
-                <td>{{ plot_formset.empty_form.width_ft }}</td>
-                <td>{{ plot_formset.empty_form.facing }}</td>
-                <td>{{ plot_formset.empty_form.road_width_ft }}</td>
+                <td>{{ plot_formset.empty_form.base_rate }}</td>
+                <td>{{ plot_formset.empty_form.plc_rate }}</td>
+                <td>{{ plot_formset.empty_form.extra_charges }}</td>
                 <td>{{ plot_formset.empty_form.price }}</td>
                 <td>{{ plot_formset.empty_form.status }}</td>
                 <td>{{ plot_formset.empty_form.notes }}</td>
@@ -399,6 +404,21 @@
   .property-plot-grid input,
   .property-plot-grid select {
     min-width: 108px;
+  }
+  .amenity-check-grid ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .amenity-check-grid label {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    color: #4e473f;
+    font-size: 12px;
   }
   .property-plot-toolbar {
     display: flex;

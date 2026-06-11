@@ -8,7 +8,13 @@
     </div>
     <div class="d-flex gap-2">
         <a href="{% url 'properties:detail' property_obj.id %}" class="btn btn-light">Property Detail</a>
-        {% if can_manage %}<a href="{% url 'properties:plot_visit_create' property_obj.id plot.id %}" class="btn btn-primary">Add Visit</a>{% endif %}
+        <a href="https://wa.me/?text={{ property_obj.title|urlencode }}%20Plot%20{{ plot.plot_number|urlencode }}%20Area%20{{ plot.area_sqft }}%20sqft%20Price%20Rs.%20{{ plot.price }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-success">Share WhatsApp</a>
+        {% if can_manage %}
+        <a href="{% url 'properties:plot_edit' property_obj.id plot.id %}" class="btn btn-outline-primary">Edit Plot</a>
+        <a href="{% url 'properties:plot_quotation_create' property_obj.id plot.id %}" class="btn btn-light">Quotation</a>
+        <a href="{% url 'properties:plot_booking_create' property_obj.id plot.id %}" class="btn btn-light">Book Plot</a>
+        <a href="{% url 'properties:plot_visit_create' property_obj.id plot.id %}" class="btn btn-primary">Add Visit</a>
+        {% endif %}
     </div>
 </div>
 
@@ -16,13 +22,66 @@
     <div class="profile-panel-head"><div><h2>Plot Details</h2><p>Individual plot inventory and pricing information.</p></div></div>
     <div class="profile-overview-grid">
         <div><span>Plot Number</span><strong>{{ plot.plot_number }}</strong></div>
+        <div><span>Category</span><strong>{{ plot.get_plot_category_display }}{% if plot.custom_category %} / {{ plot.custom_category }}{% endif %}</strong></div>
+        <div><span>Block</span><strong>{{ plot.block|default:"-" }}</strong></div>
         <div><span>Status</span><strong>{{ plot.get_status_display }}</strong></div>
         <div><span>Area</span><strong>{{ plot.area_sqft }} sqft</strong></div>
         <div><span>Dimensions</span><strong>{% if plot.length_ft and plot.width_ft %}{{ plot.length_ft }} x {{ plot.width_ft }} ft{% else %}-{% endif %}</strong></div>
         <div><span>Facing</span><strong>{{ plot.facing|default:"-" }}</strong></div>
         <div><span>Road Width</span><strong>{% if plot.road_width_ft %}{{ plot.road_width_ft }} ft{% else %}-{% endif %}</strong></div>
         <div><span>Price</span><strong>Rs. {{ plot.price }}</strong></div>
+        <div><span>Base Rate</span><strong>Rs. {{ plot.base_rate }}/sqft</strong></div>
+        <div><span>PLC Rate</span><strong>Rs. {{ plot.plc_rate }}/sqft</strong></div>
+        <div><span>Extra Charges</span><strong>Rs. {{ plot.extra_charges }}</strong></div>
+        <div><span>Flags</span><strong>{% if plot.is_corner %}Corner {% endif %}{% if plot.is_garden_facing %}Garden-facing {% endif %}{% if plot.is_main_road %}Main-road{% endif %}</strong></div>
         <div class="profile-overview-wide"><span>Notes</span><strong>{{ plot.notes|default:"-" }}</strong></div>
+    </div>
+</section>
+
+<div class="row g-4 mb-3">
+    <div class="col-xl-6">
+        <section class="profile-panel h-100">
+            <div class="profile-panel-head"><div><h2>Quotations</h2><p>Client pricing generated for this plot.</p></div></div>
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead><tr><th>Client</th><th>Total</th><th>Status</th><th>Valid</th></tr></thead>
+                    <tbody>
+                    {% for quote in quotations %}
+                    <tr><td>{{ quote.client_name }}<br><small>{{ quote.client_phone|default:quote.client_email }}</small></td><td>Rs. {{ quote.total_amount }}</td><td>{{ quote.get_status_display }}</td><td>{{ quote.valid_until|default:"-" }}</td></tr>
+                    {% empty %}<tr><td colspan="4" class="text-center text-body py-3">No quotations yet.</td></tr>{% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+    <div class="col-xl-6">
+        <section class="profile-panel h-100">
+            <div class="profile-panel-head"><div><h2>Bookings</h2><p>Booking and deal status for this plot.</p></div></div>
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead><tr><th>Client</th><th>Booking</th><th>Deal</th><th>Status</th></tr></thead>
+                    <tbody>
+                    {% for booking in bookings %}
+                    <tr><td>{{ booking.client_name }}<br><small>{{ booking.client_phone|default:booking.client_email }}</small></td><td>Rs. {{ booking.booking_amount }}</td><td>Rs. {{ booking.total_deal_value }}</td><td>{{ booking.get_status_display }}</td></tr>
+                    {% empty %}<tr><td colspan="4" class="text-center text-body py-3">No bookings yet.</td></tr>{% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</div>
+
+<section class="profile-panel mb-3">
+    <div class="profile-panel-head"><div><h2>Status History</h2><p>Plot lifecycle changes.</p></div></div>
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead><tr><th>Time</th><th>From</th><th>To</th><th>Changed By</th><th>Note</th></tr></thead>
+            <tbody>
+                {% for item in plot.status_history.all %}
+                <tr><td>{{ item.created_at|date:"d M Y, h:i A" }}</td><td>{{ item.get_from_status_display|default:"Created" }}</td><td>{{ item.get_to_status_display }}</td><td>{{ item.changed_by|default:"System" }}</td><td>{{ item.note|default:"-" }}</td></tr>
+                {% empty %}<tr><td colspan="5" class="text-center text-body py-3">No plot status history.</td></tr>{% endfor %}
+            </tbody>
+        </table>
     </div>
 </section>
 

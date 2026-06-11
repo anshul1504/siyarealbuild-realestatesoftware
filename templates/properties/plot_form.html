@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}{% if mode == "edit" %}Edit Plot{% else %}Add Plot{% endif %} - {{ property_obj.title }}{% endblock %}
+{% block content %}
+<div class="app-page-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">{% if mode == "edit" %}Edit Plot{% else %}Add Plot{% endif %}</h1>
+        <p class="text-body mb-0">{{ property_obj.title }} plot inventory and pricing.</p>
+    </div>
+    <a class="btn btn-light" href="{% url 'properties:detail' property_obj.id %}">Property Detail</a>
+</div>
+<form method="post" class="profile-panel">
+    {% csrf_token %}
+    <div class="row g-3">
+        {% for field in form %}
+        <div class="col-md-{% if field.name == 'notes' %}12{% elif field.name == 'is_corner' or field.name == 'is_garden_facing' or field.name == 'is_main_road' %}4{% else %}3{% endif %}">
+            {% if field.name == 'is_corner' or field.name == 'is_garden_facing' or field.name == 'is_main_road' %}
+            <div class="form-check mt-4">{{ field }} <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label></div>
+            {% else %}
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% endif %}
+            {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+    <div class="d-flex justify-content-end gap-2 mt-4">
+        <a class="btn btn-light" href="{% url 'properties:detail' property_obj.id %}">Cancel</a>
+        <button class="btn btn-primary" type="submit">Save Plot</button>
+    </div>
+</form>
+{% endblock %}

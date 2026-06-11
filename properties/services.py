@@ -3,7 +3,7 @@ from django.utils import timezone
 
 from accounts.services import record_audit
 
-from .models import PropertyStatusHistory, PropertyVisit
+from .models import ColonyPlot, PlotBooking, PlotStatusHistory, PropertyStatusHistory, PropertyVisit
 
 
 def actor_company(actor):
@@ -92,3 +92,62 @@ def update_visit(*, form, actor):
         visit.save(update_fields=["converted_at", "updated_at"])
     record_audit(actor=actor, action="property_visit.updated", target=visit, company=actor_company(actor), details={"status": visit.status, "outcome": visit.outcome})
     return visit
+
+
+@transaction.atomic
+def create_plot(*, form, property_obj, actor):
+    plot = form.save(commit=False)
+    plot.property = property_obj
+    plot.save()
+    PlotStatusHistory.objects.create(plot=plot, to_status=plot.status, changed_by=actor, note="Plot created")
+    record_audit(actor=actor, action="property_plot.created", target=property_obj, company=actor_company(actor), details={"plot_id": plot.id, "plot_number": plot.plot_number, "status": plot.status})
+    sync_available_plots(property_obj)
+    return plot
+
+
+@transaction.atomic
+def update_plot(*, form, plot, actor):
+    persisted = ColonyPlot.objects.select_for_update().only("status").get(pk=plot.pk)
+    old_status = persisted.status
+    updated = form.save()
+    if old_status != updated.status:
+        PlotStatusHistory.objects.create(plot=updated, from_status=old_status, to_status=updated.status, changed_by=actor)
+        record_audit(actor=actor, action="property_plot.status_changed", target=updated.property, company=actor_company(actor), details={"plot_id": updated.id, "from": old_status, "to": updated.status})
+    else:
+        record_audit(actor=actor, action="property_plot.updated", target=updated.property, company=actor_company(actor), details={"plot_id": updated.id, "plot_number": updated.plot_number})
+    sync_available_plots(updated.property)
+    return updated
+
+
+def sync_available_plots(property_obj):
+    property_obj.available_plots = property_obj.plots.exclude(status__in=[ColonyPlot.Status.SOLD, ColonyPlot.Status.RESERVED, ColonyPlot.Status.BOOKED]).count()
+    property_obj.total_plots = max(property_obj.total_plots, property_obj.plots.count())
+    property_obj.save(update_fields=["available_plots", "total_plots", "updated_at"])
+
+
+@transaction.atomic
+def create_quotation(*, form, plot, actor):
+    quotation = form.save(commit=False)
+    quotation.plot = plot
+    quotation.created_by = actor
+    quotation.save()
+    record_audit(actor=actor, action="property_plot.quotation_created", target=plot.property, company=actor_company(actor), details={"plot_id": plot.id, "quotation_id": quotation.id, "total": str(quotation.total_amount)})
+    return quotation
+
+
+@transaction.atomic
+def create_booking(*, form, plot, actor):
+    booking = form.save(commit=False)
+    booking.plot = plot
+    booking.created_by = actor
+    if booking.status in {PlotBooking.Status.BOOKED, PlotBooking.Status.CONVERTED}:
+        booking.approved_by = actor
+    booking.save()
+    if booking.status == PlotBooking.Status.BOOKED:
+        old_status = plot.status
+        plot.status = ColonyPlot.Status.BOOKED
+        plot.save(update_fields=["status"])
+        PlotStatusHistory.objects.create(plot=plot, from_status=old_status, to_status=plot.status, changed_by=actor, note=f"Booked by {booking.client_name}")
+    record_audit(actor=actor, action="property_plot.booking_created", target=plot.property, company=actor_company(actor), details={"plot_id": plot.id, "booking_id": booking.id, "status": booking.status})
+    sync_available_plots(plot.property)
+    return booking
