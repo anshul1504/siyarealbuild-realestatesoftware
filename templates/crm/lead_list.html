@@ -43,6 +43,25 @@
                 {% for value,label in priority_choices %}<option value="{{ value }}" {% if selected_priority == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
             </select>
         </div>
+        <div class="col-lg-2">
+            <label class="form-label" for="leadAssignee">Assignee</label>
+            <select id="leadAssignee" class="form-control" name="assigned_to">
+                <option value="">All</option>
+                {% for member in assignee_choices %}<option value="{{ member.id }}" {% if selected_assignee == member.id|stringformat:"s" %}selected{% endif %}>{{ member.get_full_name|default:member.email }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="col-lg-2">
+            <label class="form-label" for="leadCity">City</label>
+            <input id="leadCity" class="form-control" name="city" value="{{ city }}" placeholder="City">
+        </div>
+        <div class="col-lg-2">
+            <label class="form-label" for="createdFrom">From</label>
+            <input id="createdFrom" class="form-control" type="date" name="created_from" value="{{ created_from }}">
+        </div>
+        <div class="col-lg-2">
+            <label class="form-label" for="createdTo">To</label>
+            <input id="createdTo" class="form-control" type="date" name="created_to" value="{{ created_to }}">
+        </div>
         <div class="col-lg-2 d-flex gap-2">
             <button class="btn btn-primary w-100">Filter</button>
             <a class="btn btn-light" href="{% url 'crm:lead_list' %}">Clear</a>

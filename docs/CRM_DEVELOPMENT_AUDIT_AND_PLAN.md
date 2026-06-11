@@ -6,23 +6,24 @@ Audit date: 2026-06-11
 
 The CRM is no longer only a planning idea. It now has a working Django app, lead pipeline, role-aware visibility, lead assignment, follow-ups, property matching, visit scheduling, CSV export, reports, activity history, Meta source configuration, and Meta webhook ingestion foundation.
 
-Current practical readiness is about 70% for an internal operational CRM and about 55-60% for a production-grade Meta-connected CRM. The remaining work is mostly reliability, automation, reporting depth, and production integration rather than basic page creation.
+Current practical readiness is about 85% for an internal operational CRM and about 70-75% for a production-grade Meta-connected CRM. The remaining work is mostly external-platform integration, background processing, and richer analytics rather than core CRM workflows.
 
 ## Current Completion Estimate
 
 - CRM app wiring: 100%
-- Lead CRUD and detail workspace: 80%
-- Role-wise access foundation: 70%
-- Follow-up workflow: 75%
-- Property and site-visit integration: 75%
-- Meta webhook foundation: 60%
-- Meta production integration: 35%
-- Duplicate detection and lifecycle rules: 65%
-- Reports and analytics: 45%
-- Frontend CRM polish: 60%
-- Production readiness: 40%
+- Lead CRUD and detail workspace: 85%
+- Role-wise access foundation: 80%
+- Follow-up workflow: 85%
+- Property and site-visit integration: 80%
+- Assignment automation: 75%
+- Meta webhook foundation: 80%
+- Meta production integration: 55%
+- Duplicate detection and lifecycle rules: 80%
+- Reports and analytics: 60%
+- Frontend CRM polish: 70%
+- Production readiness: 55%
 
-Overall professional CRM progress: 65-70% complete.
+Overall professional CRM progress: 80-85% complete for internal use, and 70-75% complete for production Meta-connected use.
 
 ## Existing Features
 
@@ -50,6 +51,11 @@ Overall professional CRM progress: 65-70% complete.
 - Meta duplicate guard by Meta lead ID, normalized phone, and email.
 - Meta app signature verification support through `SIYA_META_APP_SECRET`.
 - Global `AuditLog` creation for CRM lead activity.
+- Owner-configurable CRM assignment rules for default, source, city, and property-category routing.
+- Failed Meta event reprocess action from reports.
+- Advanced lead filters for assignee, city, and date range.
+- Assignee distribution and Meta health metrics in reports.
+- Notification delivery records for CRM assignment, follow-up scheduling, and Meta lead assignment.
 - Test coverage for core CRM workflows.
 
 ## Role-Wise Current Behavior
@@ -89,13 +95,11 @@ No-company user:
 P0:
 - Add a structured team hierarchy for Team Lead visibility instead of relying on `reporting_manager` text.
 - Add dedicated Channel Partner CRM workflow for referral leads, partner-owned leads, conversion visibility, and payout status.
-- Add owner-configured assignment rules: manual, round-robin, role-based, city-based, property-category-based, and workload-based.
-- Add strict lead transition validation for all critical states.
+- Add round-robin and workload-based assignment on top of existing owner-configured assignment rules.
 - Add proper lead archive/delete flow with audit log.
 - Add Meta token management UI.
 - Add Meta OAuth/page/form sync for real production connection.
-- Add webhook retry/reprocess action for failed events.
-- Add production monitoring for Meta failures and token expiry.
+- Add production monitoring for token expiry and background job failures.
 
 P1:
 - Add advanced lead filters: assignee, created date, follow-up date, city, budget, property category, listing purpose, and source reference.

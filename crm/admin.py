@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Lead, LeadActivity, LeadFollowUp, MetaLeadSource, MetaWebhookEvent
+from .models import Lead, LeadActivity, LeadAssignmentRule, LeadFollowUp, MetaLeadSource, MetaWebhookEvent
 
 
 class LeadActivityInline(admin.TabularInline):
@@ -23,6 +23,13 @@ class LeadFollowUpAdmin(admin.ModelAdmin):
     list_display = ("lead", "assigned_to", "due_at", "status", "completed_at")
     list_filter = ("status", "due_at")
     search_fields = ("lead__client_name", "lead__phone", "assigned_to__email")
+
+
+@admin.register(LeadAssignmentRule)
+class LeadAssignmentRuleAdmin(admin.ModelAdmin):
+    list_display = ("name", "mode", "source", "city", "property_category", "default_assignee", "default_role", "priority", "is_active")
+    list_filter = ("company", "mode", "source", "property_category", "is_active")
+    search_fields = ("name", "city", "default_assignee__email")
 
 
 @admin.register(MetaLeadSource)

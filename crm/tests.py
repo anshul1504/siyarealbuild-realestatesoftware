@@ -6,10 +6,10 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from accounts.models import AuditLog, CompanyProfile, Role, UserProfile
+from accounts.models import AuditLog, CompanyProfile, NotificationDelivery, Role, UserProfile
 from properties.models import Property, PropertyVisit
 
-from .models import Lead, LeadActivity, LeadFollowUp, LeadSource, LeadStatus, MetaLeadSource
+from .models import AssignmentMode, Lead, LeadActivity, LeadAssignmentRule, LeadFollowUp, LeadSource, LeadStatus, MetaLeadSource, MetaWebhookEvent
 from .services import ingest_meta_payload
 
 
@@ -48,6 +48,50 @@ class CrmLeadWorkflowTests(TestCase):
         self.assertRedirects(response, reverse("crm:lead_detail", args=[lead.id]))
         self.assertEqual(lead.assigned_to, self.executive)
         self.assertEqual(lead.activities.filter(activity_type=LeadActivity.ActivityType.CREATED).count(), 1)
+        self.assertTrue(NotificationDelivery.objects.filter(category="crm_assignment", recipient=self.executive.email).exists())
+
+    def test_assignment_rule_routes_new_manual_lead(self):
+        LeadAssignmentRule.objects.create(
+            company=self.company,
+            name="Indore leads",
+            mode=AssignmentMode.CITY,
+            city="Indore",
+            default_assignee=self.executive,
+            priority=1,
+        )
+        self.client.force_login(self.manager)
+        response = self.client.post(
+            reverse("crm:lead_create"),
+            data={
+                "client_name": "Rule Buyer",
+                "phone": "+91 9000000000",
+                "city": "Indore",
+                "source": LeadSource.MANUAL,
+                "priority": "medium",
+            },
+        )
+        lead = Lead.objects.get(client_name="Rule Buyer")
+        self.assertRedirects(response, reverse("crm:lead_detail", args=[lead.id]))
+        self.assertEqual(lead.assigned_to, self.executive)
+
+    def test_owner_can_create_assignment_rule(self):
+        self.client.force_login(self.owner)
+        response = self.client.post(
+            reverse("crm:assignment_rule_create"),
+            data={
+                "name": "Meta default",
+                "mode": AssignmentMode.SOURCE,
+                "source": LeadSource.META,
+                "city": "",
+                "property_category": "",
+                "default_assignee": self.manager.id,
+                "default_role": "",
+                "priority": 10,
+                "is_active": "on",
+            },
+        )
+        self.assertRedirects(response, reverse("crm:assignment_rule_list"))
+        self.assertTrue(LeadAssignmentRule.objects.filter(name="Meta default", default_assignee=self.manager).exists())
 
     def test_executive_sees_only_assigned_or_created_leads(self):
         assigned = Lead.objects.create(company=self.company, client_name="Assigned", assigned_to=self.executive)
@@ -157,6 +201,12 @@ class CrmLeadWorkflowTests(TestCase):
         followup = LeadFollowUp.objects.create(lead=lead, assigned_to=self.executive, due_at=timezone.now(), note="Call")
         self.client.force_login(self.executive)
         self.assertEqual(self.client.get(reverse("crm:dashboard")).status_code, 200)
+        schedule_response = self.client.post(
+            reverse("crm:lead_followup_create", args=[lead.id]),
+            {"assigned_to": self.executive.id, "due_at": timezone.now().strftime("%Y-%m-%dT%H:%M"), "note": "Second call"},
+        )
+        self.assertRedirects(schedule_response, reverse("crm:lead_detail", args=[lead.id]))
+        self.assertTrue(NotificationDelivery.objects.filter(category="crm_followup", recipient=self.executive.email).exists())
         response = self.client.post(reverse("crm:followup_complete", args=[followup.id]), {"outcome": "Interested"})
         followup.refresh_from_db()
         self.assertRedirects(response, reverse("crm:followup_list"))
@@ -225,6 +275,7 @@ class CrmLeadWorkflowTests(TestCase):
         self.assertIsNotNone(lead)
         self.assertEqual(lead.assigned_to, self.manager)
         self.assertEqual(event.status, "processed")
+        self.assertTrue(NotificationDelivery.objects.filter(category="crm_meta_lead", recipient=self.manager.email).exists())
         self.assertIsNone(duplicate)
         self.assertEqual(duplicate_event.status, "duplicate")
 
@@ -252,6 +303,17 @@ class CrmLeadWorkflowTests(TestCase):
         self.assertIsNotNone(lead)
         self.assertEqual(lead.client_name, "Mapped Buyer 2")
         self.assertEqual(lead.phone, "9123456789")
+
+    def test_meta_ingest_uses_assignment_rule(self):
+        LeadAssignmentRule.objects.create(company=self.company, name="Meta to executive", mode=AssignmentMode.SOURCE, source=LeadSource.META, default_assignee=self.executive, priority=1)
+        source = MetaLeadSource.objects.create(company=self.company, page_id="page-rule", form_id="form-rule", default_assignee=self.manager)
+        lead, event = ingest_meta_payload(
+            source=source,
+            payload={"event_id": "event-rule-1", "leadgen_id": "lead-rule-1"},
+            fetched_data={"client_name": "Rule Meta Buyer", "phone": "+91 8111111111"},
+        )
+        self.assertEqual(event.status, "processed")
+        self.assertEqual(lead.assigned_to, self.executive)
 
     @override_settings(META_WEBHOOK_VERIFY_TOKEN="verify-me")
     def test_meta_webhook_verification_and_ingest(self):
@@ -282,6 +344,20 @@ class CrmLeadWorkflowTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertTrue(Lead.objects.filter(meta_lead_id="lead-webhook-1", client_name="Webhook Buyer").exists())
+
+    def test_owner_can_reprocess_failed_meta_event(self):
+        event = MetaWebhookEvent.objects.create(
+            company=self.company,
+            event_id="retry-lead-1",
+            payload={"form_id": "form-retry", "page_id": "page-retry", "leadgen_id": "retry-lead-1", "full_name": "Retry Buyer", "phone_number": "+91 8222222222"},
+            status=MetaWebhookEvent.Status.FAILED,
+            error_message="No active Meta source mapping.",
+        )
+        MetaLeadSource.objects.create(company=self.company, page_id="page-retry", form_id="form-retry", default_assignee=self.manager)
+        self.client.force_login(self.owner)
+        response = self.client.post(reverse("crm:meta_event_reprocess", args=[event.id]))
+        self.assertRedirects(response, reverse("crm:reports"))
+        self.assertTrue(Lead.objects.filter(meta_lead_id="retry-lead-1", client_name="Retry Buyer").exists())
 
     @override_settings(META_APP_SECRET="secret")
     def test_meta_webhook_rejects_invalid_signature(self):

@@ -32,10 +32,12 @@ The highest-risk area is no longer missing pages. It is consistency across permi
 - Dedicated `crm` app is installed and routed under `/crm/`.
 - CRM sidebar navigation is available in the authenticated workspace.
 - Lead dashboard, list, kanban, create/edit/detail, assignment, status updates, notes, follow-ups, property matching, visit scheduling, reports, and export are implemented.
-- Meta source mapping and webhook ingestion foundation are implemented.
+- Meta source mapping, webhook ingestion foundation, and failed-event reprocessing are implemented.
 - Meta webhook verification token and optional app-secret signature validation are available through environment settings.
 - Duplicate detection covers Meta lead ID, normalized phone, and email.
 - CRM activities also write global audit records.
+- Owner-configurable assignment rules support default, source, city, and property-category lead routing.
+- CRM assignment, follow-up, and Meta lead actions create notification delivery records.
 - TL and Executive visibility is restricted to leads they own through assignment or creation unless a higher-level team hierarchy is added later.
 
 ## Role-Wise Issues
@@ -85,7 +87,7 @@ The highest-risk area is no longer missing pages. It is consistency across permi
 | Owner operations | Audit logs, support queue, office locations, notification deliveries | Duplicate configuration sources should be watched as features grow | P2 | Queryset company-scope tests |
 | Marketing tools | Events, meetings, popups, targets, referrals | Delivery status and audience scoping should be tested | P2 | NotificationDelivery and role audience tests |
 | Property CRM | Dashboard, list, create/edit/detail, plot drilldown, visits, bulk actions, sharing, service-layer create/update/bulk lifecycle audit | Assigned-record scoping and export permissions are highest risk | P0 | View/create/update/delete/export permission tests |
-| Lead CRM | Dashboard, list, kanban, create/edit/detail, assignment, bulk actions, follow-ups, property matching, visit scheduling, Meta webhook foundation, reports, export, audit activity | Meta OAuth, assignment rules, TL hierarchy, Channel Partner CRM, notifications, retry queue, and richer analytics remain | P0 | CRM role matrix, Meta webhook, duplicate, lifecycle, export, and direct URL tests |
+| Lead CRM | Dashboard, list, kanban, create/edit/detail, assignment rules, bulk actions, follow-ups, property matching, visit scheduling, Meta webhook foundation, failed-event reprocess, reports, export, notification records, audit activity | Meta OAuth, round-robin/workload assignment, TL hierarchy, Channel Partner CRM, background jobs, and richer analytics remain | P0 | CRM role matrix, Meta webhook, duplicate, lifecycle, export, and direct URL tests |
 | Email system | Shared notification templates and delivery helper | Background retry/queue strategy is not production-grade yet | P2 | Failure-path tests and operational alerting plan |
 | Admin | Django admin available with project models | Admin destructive actions should be restricted in production | P2 | Staff permission review and deploy checklist |
 | Error handling | Custom error pages and handler views | Monitoring and exception reporting are not yet a full production stack | P2 | Sentry/log aggregation decision before go-live |
@@ -126,7 +128,7 @@ The highest-risk area is no longer missing pages. It is consistency across permi
 
 ## Recommended Backlog
 
-1. Complete the CRM production phase: Meta OAuth/token health, failed-event retry, assignment rules, TL hierarchy, Channel Partner CRM, notifications, and richer reports.
+1. Complete the CRM production phase: Meta OAuth/token health, round-robin/workload assignment, TL hierarchy, Channel Partner CRM, background jobs, and richer reports.
 2. Complete the property module permission matrix for view, create, update, delete, export, bulk actions, share email, visits, and direct URL access.
 3. Audit every property and CRM queryset for company scoping and assigned-record scoping.
 4. Build the broader role-by-module permission test matrix for Accounts, Owner operations, Properties, and CRM.

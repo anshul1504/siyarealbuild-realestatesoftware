@@ -13,6 +13,8 @@ urlpatterns = [
     path("reports/", views.crm_reports, name="reports"),
     path("export/", views.lead_export, name="lead_export"),
     path("new/", views.lead_create, name="lead_create"),
+    path("assignment-rules/", views.assignment_rule_list, name="assignment_rule_list"),
+    path("assignment-rules/new/", views.assignment_rule_create, name="assignment_rule_create"),
     path("follow-ups/", views.followup_list, name="followup_list"),
     path("follow-ups/<int:followup_id>/complete/", views.followup_complete, name="followup_complete"),
     path("<int:lead_id>/", views.lead_detail, name="lead_detail"),
@@ -25,5 +27,6 @@ urlpatterns = [
     path("<int:lead_id>/schedule-visit/", views.lead_visit_schedule, name="lead_visit_schedule"),
     path("meta/sources/", views.meta_source_list, name="meta_source_list"),
     path("meta/sources/new/", views.meta_source_create, name="meta_source_create"),
+    path("meta/events/<int:event_id>/reprocess/", views.meta_event_reprocess, name="meta_event_reprocess"),
     path("meta/webhook/", views.meta_webhook, name="meta_webhook"),
 ]

@@ -4,7 +4,7 @@ from django import forms
 
 from properties.models import Property, PropertyVisit
 
-from .models import Lead, LeadFollowUp, LeadPriority, LeadSource, LeadStatus, MetaLeadSource
+from .models import AssignmentMode, Lead, LeadAssignmentRule, LeadFollowUp, LeadPriority, LeadSource, LeadStatus, MetaLeadSource
 from .policies import can_assign_leads
 from .selectors import assignable_users_for
 
@@ -201,3 +201,42 @@ class MetaLeadSourceForm(forms.ModelForm):
         if not isinstance(mapping, dict):
             raise forms.ValidationError("Field mapping must be a JSON object.")
         return mapping
+
+
+class LeadAssignmentRuleForm(forms.ModelForm):
+    class Meta:
+        model = LeadAssignmentRule
+        fields = ["name", "mode", "source", "city", "property_category", "default_assignee", "default_role", "priority", "is_active"]
+        widgets = {
+            "name": forms.TextInput(attrs={"class": "form-control"}),
+            "mode": forms.Select(attrs={"class": "form-control"}),
+            "source": forms.Select(attrs={"class": "form-control"}),
+            "city": forms.TextInput(attrs={"class": "form-control"}),
+            "property_category": forms.Select(attrs={"class": "form-control"}),
+            "default_assignee": forms.Select(attrs={"class": "form-control"}),
+            "default_role": forms.Select(attrs={"class": "form-control"}),
+            "priority": forms.NumberInput(attrs={"class": "form-control", "min": 1}),
+            "is_active": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }
+
+    def __init__(self, *args, user, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["default_assignee"].queryset = assignable_users_for(user)
+        self.fields["source"].required = False
+        self.fields["city"].required = False
+        self.fields["property_category"].required = False
+        self.fields["default_assignee"].required = False
+        self.fields["default_role"].required = False
+
+    def clean(self):
+        cleaned = super().clean()
+        mode = cleaned.get("mode")
+        if mode == AssignmentMode.SOURCE and not cleaned.get("source"):
+            self.add_error("source", "Select a source for source-based assignment.")
+        if mode == AssignmentMode.CITY and not cleaned.get("city"):
+            self.add_error("city", "Add a city for city-based assignment.")
+        if mode == AssignmentMode.CATEGORY and not cleaned.get("property_category"):
+            self.add_error("property_category", "Select a category for category-based assignment.")
+        if not cleaned.get("default_assignee") and not cleaned.get("default_role"):
+            raise forms.ValidationError("Select either a default assignee or a default role.")
+        return cleaned

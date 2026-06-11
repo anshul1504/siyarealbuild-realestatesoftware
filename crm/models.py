@@ -36,6 +36,13 @@ class LeadPriority(models.TextChoices):
     URGENT = "urgent", "Urgent"
 
 
+class AssignmentMode(models.TextChoices):
+    DEFAULT = "default", "Default"
+    SOURCE = "source", "Source Based"
+    CITY = "city", "City Based"
+    CATEGORY = "category", "Property Category Based"
+
+
 class Lead(models.Model):
     company = models.ForeignKey(CompanyProfile, on_delete=models.CASCADE, related_name="crm_leads")
     client_name = models.CharField(max_length=140)
@@ -121,6 +128,28 @@ class LeadFollowUp(models.Model):
 
     class Meta:
         ordering = ["due_at", "-created_at"]
+
+
+class LeadAssignmentRule(models.Model):
+    company = models.ForeignKey(CompanyProfile, on_delete=models.CASCADE, related_name="crm_assignment_rules")
+    name = models.CharField(max_length=140)
+    mode = models.CharField(max_length=20, choices=AssignmentMode.choices, default=AssignmentMode.DEFAULT)
+    source = models.CharField(max_length=30, choices=LeadSource.choices, blank=True)
+    city = models.CharField(max_length=80, blank=True)
+    property_category = models.CharField(max_length=40, choices=Property.Category.choices, blank=True)
+    default_assignee = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="crm_assignment_rules")
+    default_role = models.CharField(max_length=32, choices=Role.choices, blank=True)
+    priority = models.PositiveSmallIntegerField(default=100)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["priority", "name"]
+        unique_together = ("company", "name")
+
+    def __str__(self):
+        return self.name
 
 
 class MetaLeadSource(models.Model):

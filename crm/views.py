@@ -8,6 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.conf import settings
 from django.core.paginator import Paginator
 from django.db.models import Q
+from django.db.models import Count
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -15,6 +16,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 from .forms import (
     LeadAssignmentForm,
+    LeadAssignmentRuleForm,
     LeadBulkActionForm,
     LeadFollowUpCompleteForm,
     LeadFollowUpForm,
@@ -25,7 +27,7 @@ from .forms import (
     MetaLeadSourceForm,
     PropertyMatchForm,
 )
-from .models import Lead, LeadFollowUp, LeadPriority, LeadSource, LeadStatus, MetaLeadSource, MetaWebhookEvent
+from .models import Lead, LeadAssignmentRule, LeadFollowUp, LeadPriority, LeadSource, LeadStatus, MetaLeadSource, MetaWebhookEvent
 from .policies import can_assign_leads, can_configure_meta, can_edit_lead, can_view_lead, user_company
 from .selectors import visible_leads_for
 from .services import (
@@ -38,6 +40,7 @@ from .services import (
     fetch_meta_lead_data,
     ingest_meta_payload,
     match_property_to_lead,
+    reprocess_meta_event,
     schedule_visit_from_lead,
     update_lead_details,
     update_lead_status,
@@ -87,6 +90,10 @@ def lead_list(request):
     status = request.GET.get("status", "").strip()
     source = request.GET.get("source", "").strip()
     priority = request.GET.get("priority", "").strip()
+    assignee = request.GET.get("assigned_to", "").strip()
+    created_from = request.GET.get("created_from", "").strip()
+    created_to = request.GET.get("created_to", "").strip()
+    city = request.GET.get("city", "").strip()
     if query:
         leads = leads.filter(Q(client_name__icontains=query) | Q(phone__icontains=query) | Q(email__icontains=query))
     if status:
@@ -95,6 +102,14 @@ def lead_list(request):
         leads = leads.filter(source=source)
     if priority:
         leads = leads.filter(priority=priority)
+    if assignee:
+        leads = leads.filter(assigned_to_id=assignee)
+    if city:
+        leads = leads.filter(city__icontains=city)
+    if created_from:
+        leads = leads.filter(created_at__date__gte=created_from)
+    if created_to:
+        leads = leads.filter(created_at__date__lte=created_to)
     page_obj = Paginator(leads, 20).get_page(request.GET.get("page"))
     return render(
         request,
@@ -106,10 +121,15 @@ def lead_list(request):
             "selected_status": status,
             "selected_source": source,
             "selected_priority": priority,
+            "selected_assignee": assignee,
+            "created_from": created_from,
+            "created_to": created_to,
+            "city": city,
             "status_choices": LeadStatus.choices,
             "source_choices": LeadSource.choices,
             "priority_choices": LeadPriority.choices,
             "bulk_form": LeadBulkActionForm(user=request.user),
+            "assignee_choices": LeadAssignmentForm(user=request.user).fields["assigned_to"].queryset,
             "can_assign": can_assign_leads(request.user),
         },
     )
@@ -361,15 +381,60 @@ def meta_source_create(request):
 
 
 @login_required
+def assignment_rule_list(request):
+    if not can_configure_meta(request.user):
+        messages.error(request, "Only Company Owner can configure CRM assignment rules.")
+        return redirect("crm:dashboard")
+    rules = LeadAssignmentRule.objects.filter(company=user_company(request.user)).select_related("default_assignee")
+    return render(request, "crm/assignment_rule_list.html", {"rules": rules})
+
+
+@login_required
+def assignment_rule_create(request):
+    if not can_configure_meta(request.user):
+        messages.error(request, "Only Company Owner can configure CRM assignment rules.")
+        return redirect("crm:dashboard")
+    form = LeadAssignmentRuleForm(request.POST or None, user=request.user)
+    if form.is_valid():
+        rule = form.save(commit=False)
+        rule.company = user_company(request.user)
+        rule.save()
+        messages.success(request, "CRM assignment rule saved.")
+        return redirect("crm:assignment_rule_list")
+    return render(request, "crm/assignment_rule_form.html", {"form": form})
+
+
+@login_required
+def meta_event_reprocess(request, event_id):
+    if not can_configure_meta(request.user):
+        messages.error(request, "Only Company Owner can reprocess Meta events.")
+        return redirect("crm:reports")
+    event = get_object_or_404(MetaWebhookEvent, id=event_id, company=user_company(request.user))
+    lead, new_event = reprocess_meta_event(event, actor=request.user)
+    if lead:
+        messages.success(request, "Meta event reprocessed and lead created.")
+    else:
+        messages.warning(request, f"Meta event reprocessed with status {new_event.get_status_display()}.")
+    return redirect("crm:reports")
+
+
+@login_required
 def crm_reports(request):
     leads = visible_leads_for(request.user)
     now = timezone.now()
+    assignee_counts = (
+        leads.values("assigned_to__email", "assigned_to__first_name", "assigned_to__last_name")
+        .annotate(total=Count("id"))
+        .order_by("-total")[:10]
+    )
     context = {
         "source_counts": [{"label": label, "count": leads.filter(source=value).count()} for value, label in LeadSource.choices],
         "status_counts": [{"label": label, "count": leads.filter(status=value).count()} for value, label in LeadStatus.choices],
         "priority_counts": [{"label": label, "count": leads.filter(priority=value).count()} for value, label in LeadPriority.choices],
         "overdue_followups": LeadFollowUp.objects.filter(lead__in=leads, status=LeadFollowUp.Status.OPEN, due_at__lt=now).select_related("lead", "assigned_to")[:20],
         "meta_events": MetaWebhookEvent.objects.filter(company=user_company(request.user)).select_related("company")[:20],
+        "assignee_counts": assignee_counts,
+        "failed_meta_count": MetaWebhookEvent.objects.filter(company=user_company(request.user), status=MetaWebhookEvent.Status.FAILED).count(),
     }
     return render(request, "crm/reports.html", context)
 

@@ -5,13 +5,13 @@ from urllib.parse import urlencode
 from urllib.request import urlopen
 
 from django.conf import settings
-from django.db import transaction
+from django.db import models, transaction
 from django.utils import timezone
 
-from accounts.models import AuditLog, Role
+from accounts.models import AuditLog, NotificationDelivery, Role
 from properties.models import PropertyVisit
 
-from .models import Lead, LeadActivity, LeadFollowUp, LeadStatus, MetaWebhookEvent
+from .models import AssignmentMode, Lead, LeadActivity, LeadAssignmentRule, LeadFollowUp, LeadStatus, MetaLeadSource, MetaWebhookEvent
 
 
 STANDARD_FIELD_ALIASES = {
@@ -45,6 +45,20 @@ def record_audit(lead, *, actor=None, action, details=None):
     )
 
 
+def record_notification(*, lead, sent_by=None, recipient_user=None, category, subject, error_message=""):
+    if not recipient_user or not getattr(recipient_user, "email", ""):
+        return None
+    return NotificationDelivery.objects.create(
+        company=lead.company,
+        sent_by=sent_by,
+        category=category,
+        recipient=recipient_user.email,
+        subject=subject,
+        status=NotificationDelivery.Status.FAILED if error_message else NotificationDelivery.Status.SENT,
+        error_message=error_message,
+    )
+
+
 def record_activity(lead, *, actor=None, activity_type=LeadActivity.ActivityType.NOTE, old_value="", new_value="", note="", metadata=None):
     activity = LeadActivity.objects.create(
         lead=lead,
@@ -64,8 +78,42 @@ def record_activity(lead, *, actor=None, activity_type=LeadActivity.ActivityType
     return activity
 
 
+def assignee_from_rule(rule):
+    if rule.default_assignee_id:
+        return rule.default_assignee
+    if rule.default_role:
+        member = rule.company.members.filter(role=rule.default_role).select_related("user").first()
+        return member.user if member else None
+    return None
+
+
+def matching_assignment_rules(company, data):
+    rules = LeadAssignmentRule.objects.filter(company=company, is_active=True).select_related("default_assignee", "company")
+    source = data.get("source") or ""
+    city = (data.get("city") or "").strip().lower()
+    category = data.get("property_category") or ""
+    return rules.filter(
+        models.Q(mode=AssignmentMode.DEFAULT)
+        | models.Q(mode=AssignmentMode.SOURCE, source=source)
+        | models.Q(mode=AssignmentMode.CITY, city__iexact=city)
+        | models.Q(mode=AssignmentMode.CATEGORY, property_category=category)
+    )
+
+
+def auto_assignee_for_lead(company, data):
+    for rule in matching_assignment_rules(company, data):
+        assignee = assignee_from_rule(rule)
+        if assignee:
+            return assignee, rule
+    return None, None
+
+
 @transaction.atomic
 def create_lead(*, company, actor, data):
+    if not data.get("assigned_to"):
+        assignee, rule = auto_assignee_for_lead(company, data)
+        if assignee:
+            data["assigned_to"] = assignee
     lead = Lead.objects.create(
         company=company,
         created_by=actor,
@@ -75,6 +123,7 @@ def create_lead(*, company, actor, data):
     record_activity(lead, actor=actor, activity_type=LeadActivity.ActivityType.CREATED, new_value=lead.get_status_display(), note="Lead created.")
     if lead.assigned_to_id:
         record_activity(lead, actor=actor, activity_type=LeadActivity.ActivityType.ASSIGNED, new_value=str(lead.assigned_to), note="Lead assigned.")
+        record_notification(lead=lead, sent_by=actor, recipient_user=lead.assigned_to, category="crm_assignment", subject=f"New CRM lead assigned: {lead.client_name}")
     return lead
 
 
@@ -156,6 +205,7 @@ def assign_lead(lead, *, actor, assigned_to, note=""):
         new_value=str(assigned_to) if assigned_to else "Unassigned",
         note=note or "Lead assignment updated.",
     )
+    record_notification(lead=lead, sent_by=actor, recipient_user=assigned_to, category="crm_assignment", subject=f"CRM lead assignment updated: {lead.client_name}")
     return lead
 
 
@@ -169,6 +219,7 @@ def create_followup(lead, *, actor, assigned_to, due_at, note=""):
     lead.status = LeadStatus.FOLLOW_UP
     lead.save(update_fields=["next_follow_up_at", "status", "updated_at"])
     record_activity(lead, actor=actor, activity_type=LeadActivity.ActivityType.FOLLOW_UP, new_value=str(due_at), note=note)
+    record_notification(lead=lead, sent_by=actor, recipient_user=assigned_to, category="crm_followup", subject=f"CRM follow-up scheduled: {lead.client_name}")
     return followup
 
 
@@ -354,6 +405,11 @@ def default_assignee_for_meta(source):
     return manager.user if manager else None
 
 
+def default_assignee_for_meta_data(source, data):
+    assignee, _ = auto_assignee_for_lead(source.company, {**data, "source": "meta"})
+    return assignee or default_assignee_for_meta(source)
+
+
 @transaction.atomic
 def ingest_meta_payload(*, source, payload, fetched_data=None):
     event_id = str(payload.get("event_id") or payload.get("leadgen_id") or payload.get("id") or "")
@@ -385,10 +441,34 @@ def ingest_meta_payload(*, source, payload, fetched_data=None):
         meta_lead_id=meta_lead_id,
         meta_form_id=source.form_id,
         meta_page_id=source.page_id,
-        assigned_to=default_assignee_for_meta(source),
+        assigned_to=default_assignee_for_meta_data(source, data),
     )
     record_activity(lead, activity_type=LeadActivity.ActivityType.META_SYNC, new_value="received", note="Lead received from Meta.")
+    record_notification(lead=lead, recipient_user=lead.assigned_to, category="crm_meta_lead", subject=f"New Meta lead received: {lead.client_name}")
     event.status = MetaWebhookEvent.Status.PROCESSED
     event.processed_at = timezone.now()
     event.save(update_fields=["status", "processed_at"])
     return lead, event
+
+
+@transaction.atomic
+def reprocess_meta_event(event, *, actor=None):
+    payload = event.payload or {}
+    form_id = str(payload.get("form_id") or "")
+    page_id = str(payload.get("page_id") or "")
+    leadgen_id = str(payload.get("leadgen_id") or event.event_id or "")
+    source = MetaLeadSource.objects.filter(form_id=form_id, page_id=page_id, is_active=True).select_related("company", "default_assignee").first()
+    if not source:
+        event.status = MetaWebhookEvent.Status.FAILED
+        event.error_message = "No active Meta source mapping."
+        event.save(update_fields=["status", "error_message"])
+        return None, event
+    event.delete()
+    lead, new_event = ingest_meta_payload(
+        source=source,
+        payload={"event_id": leadgen_id, "leadgen_id": leadgen_id, "form_id": form_id, "page_id": page_id},
+        fetched_data=payload,
+    )
+    if lead:
+        record_activity(lead, actor=actor, activity_type=LeadActivity.ActivityType.META_SYNC, new_value="reprocessed", note="Meta event reprocessed.")
+    return lead, new_event
