@@ -1,6 +1,6 @@
 from django.db import transaction
 
-from .models import AuditLog, EmployeeProfileChange
+from .models import AuditLog, EmployeeProfileChange, NotificationDelivery
 
 
 def record_audit(*, actor, action, target, company=None, details=None, target_label=None):
@@ -12,6 +12,18 @@ def record_audit(*, actor, action, target, company=None, details=None, target_la
         target_id=str(getattr(target, "pk", "") or ""),
         target_label=target_label or str(target),
         details=details or {},
+    )
+
+
+def record_notification_delivery(*, company, sent_by, category, recipient, subject, status, error_message=""):
+    return NotificationDelivery.objects.create(
+        company=company,
+        sent_by=sent_by,
+        category=category,
+        recipient=recipient,
+        subject=subject,
+        status=status,
+        error_message=error_message,
     )
 
 

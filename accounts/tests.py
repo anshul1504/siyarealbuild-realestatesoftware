@@ -6,13 +6,14 @@ from django.contrib.admin.sites import AdminSite
 from django.db import IntegrityError
 from django.urls import reverse
 from django.utils import timezone
+from unittest.mock import patch
 
 from .admin import CompanyProfileAdmin
 from django.test import TestCase, override_settings
 from datetime import timedelta
 
 from .forms import AddEmployeeForm, CompanyProfileForm, SignupRequestForm
-from .models import AuditLog, AuthenticationSupportRequest, CompanyProfile, EmailOTP, EmployeeEmailChangeRequest, EmployeeInvite, EmployeeRoleChangeRequest, OfficeLocation, Role, SignupRequest, SignupRequestOwnerMessage, SignupRequestStatus, TeamEmailMessage, UserProfile
+from .models import AuditLog, AuthenticationSupportRequest, CompanyProfile, EmailOTP, EmployeeEmailChangeRequest, EmployeeInvite, EmployeeRoleChangeRequest, NotificationDelivery, OfficeLocation, Role, RoleMatrixRule, SignupRequest, SignupRequestOwnerMessage, SignupRequestStatus, TeamEmailMessage, UserProfile
 
 
 @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
@@ -176,7 +177,7 @@ class SignupApprovalEmailTests(TestCase):
 
         response = self.client.post(
             reverse("accounts:employee_invite_edit", args=[invite.id]),
-            data={"name": "Updated Executive", "email": "new@example.com", "phone": "", "role": Role.EXECUTIVE, "employee_code": "EXE-1", "note": "Updated"},
+            data={"name": "Updated Executive", "email": "new@example.com", "phone": "", "role": Role.EXECUTIVE, "employee_code": "SIYA-EXE-001", "note": "Updated"},
         )
 
         invite.refresh_from_db()
@@ -619,7 +620,7 @@ class SignupApprovalEmailTests(TestCase):
         UserProfile.objects.create(user=manager, role=Role.MANAGER, company=company)
         profile = UserProfile.objects.create(
             user=employee, role=Role.EXECUTIVE, company=company, bank_account_number="123456789012",
-            address="Private Address", personal_email="private@example.com",
+            address="Private Address", personal_email="private@example.com", reporting_manager="manager@example.com",
         )
         self.client.force_login(manager)
 
@@ -841,7 +842,7 @@ class SignupApprovalEmailTests(TestCase):
         executive = User.objects.create_user(username="exec@example.com", email="exec@example.com", first_name="Executive")
         owner = User.objects.create_user(username="owner@example.com", email="owner@example.com", first_name="Owner")
         UserProfile.objects.create(user=manager, role=Role.MANAGER, company=company)
-        UserProfile.objects.create(user=executive, role=Role.EXECUTIVE, company=company, aadhaar_number="123456789012", pan_number="ABCDE1234F")
+        UserProfile.objects.create(user=executive, role=Role.EXECUTIVE, company=company, aadhaar_number="123456789012", pan_number="ABCDE1234F", reporting_manager="manager@example.com")
         UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
         self.client.force_login(manager)
 
@@ -853,6 +854,34 @@ class SignupApprovalEmailTests(TestCase):
         self.assertContains(response, "Owner only")
         self.assertNotContains(response, "123456789012")
         self.assertNotContains(response, "owner@example.com")
+
+    def test_manager_directory_is_limited_to_assigned_team(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        manager = User.objects.create_user(username="manager@example.com", email="manager@example.com")
+        assigned = User.objects.create_user(username="assigned@example.com", email="assigned@example.com", first_name="Assigned")
+        unassigned = User.objects.create_user(username="unassigned@example.com", email="unassigned@example.com", first_name="Unassigned")
+        UserProfile.objects.create(user=manager, role=Role.MANAGER, company=company, employee_code="SIYA-MGR-001")
+        UserProfile.objects.create(user=assigned, role=Role.EXECUTIVE, company=company, reporting_manager="SIYA-MGR-001")
+        UserProfile.objects.create(user=unassigned, role=Role.EXECUTIVE, company=company)
+        self.client.force_login(manager)
+
+        response = self.client.get(reverse("accounts:team_profiles"))
+
+        self.assertContains(response, "Assigned")
+        self.assertNotContains(response, "Unassigned")
+
+    def test_role_matrix_can_block_team_directory_view(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        manager = User.objects.create_user(username="manager@example.com", email="manager@example.com")
+        UserProfile.objects.create(user=manager, role=Role.MANAGER, company=company)
+        RoleMatrixRule.objects.create(company=company, role=Role.MANAGER, module="team_management", can_view=False)
+        self.client.force_login(manager)
+
+        response = self.client.get(reverse("accounts:team_profiles"))
+
+        self.assertRedirects(response, reverse("accounts:profile"))
 
     def test_company_owner_can_view_full_employee_profile_ids(self):
         User = get_user_model()
@@ -902,6 +931,23 @@ class SignupApprovalEmailTests(TestCase):
 
         self.assertFalse(form.is_valid())
         self.assertIn("role", form.errors)
+
+    def test_add_employee_rejects_legacy_employee_code_format(self):
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        form = AddEmployeeForm(
+            data={
+                "name": "Executive",
+                "email": "exec@example.com",
+                "phone": "+91 9999999999",
+                "role": Role.EXECUTIVE,
+                "employee_code": "EXE-0001",
+            },
+            company=company,
+            allowed_roles={Role.EXECUTIVE},
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("employee_code", form.errors)
 
     def test_owner_can_request_and_approve_employee_role_change(self):
         User = get_user_model()
@@ -1149,7 +1195,27 @@ class SignupApprovalEmailTests(TestCase):
         self.assertRedirects(response, reverse("accounts:team_email_detail", args=[team_email.id]))
         self.assertEqual(team_email.sent_count, 1)
         self.assertEqual(team_email.recipients[0]["email"], "exec@example.com")
-        self.assertEqual(len(mail.outbox), 1)
+        self.assertTrue(NotificationDelivery.objects.filter(category="team_email", recipient="exec@example.com", status=NotificationDelivery.Status.SENT).exists())
+
+    def test_team_email_records_per_recipient_delivery_failure(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        executive = User.objects.create_user(username="exec@example.com", email="exec@example.com", first_name="Executive")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        UserProfile.objects.create(user=executive, role=Role.EXECUTIVE, company=company)
+        self.client.force_login(owner)
+
+        with patch("accounts.view_modules.team_directory.send_employee_custom_email", side_effect=RuntimeError("smtp failed")):
+            response = self.client.post(
+                reverse("accounts:team_emails"),
+                data={"role": Role.EXECUTIVE, "department": "", "subject": "Sales Update", "message": "Please review."},
+            )
+
+        team_email = TeamEmailMessage.objects.get(subject="Sales Update")
+        self.assertRedirects(response, reverse("accounts:team_email_detail", args=[team_email.id]))
+        self.assertEqual(team_email.recipients[0]["status"], NotificationDelivery.Status.FAILED)
+        self.assertTrue(NotificationDelivery.objects.filter(category="team_email", recipient="exec@example.com", status=NotificationDelivery.Status.FAILED).exists())
 
         detail_response = self.client.get(reverse("accounts:team_email_detail", args=[team_email.id]))
         self.assertContains(detail_response, "Sales Update")
@@ -1216,7 +1282,7 @@ class SignupApprovalEmailTests(TestCase):
             name="Invite User",
             email="invite@example.com",
             role=Role.EXECUTIVE,
-            employee_code="EXE-0007",
+            employee_code="SIYA-EXE-007",
         )
         otp = EmailOTP.create_for_email(invite.email)
 
@@ -1247,7 +1313,7 @@ class SignupApprovalEmailTests(TestCase):
             email="invite@example.com",
             phone="+91 9999999999",
             role=Role.EXECUTIVE,
-            employee_code="EXE-0007",
+            employee_code="SIYA-EXE-007",
             is_email_verified=True,
             status=EmployeeInvite.Status.PENDING_APPROVAL,
         )
@@ -1262,7 +1328,7 @@ class SignupApprovalEmailTests(TestCase):
         user = User.objects.get(email="invite@example.com")
         self.assertEqual(user.profile.company, company)
         self.assertEqual(user.profile.role, Role.EXECUTIVE)
-        self.assertEqual(user.profile.employee_code, "EXE-0007")
+        self.assertEqual(user.profile.employee_code, "SIYA-EXE-007")
         signup = SignupRequest.objects.get(email="invite@example.com")
         self.assertEqual(signup.status, SignupRequestStatus.APPROVED)
         self.assertEqual(signup.user, user)
@@ -1284,7 +1350,7 @@ class SignupApprovalEmailTests(TestCase):
                 "invite-email": "bad@example.com",
                 "invite-phone": "+91 9999999999",
                 "invite-role": Role.MANAGER,
-                "invite-employee_code": "MGR-0002",
+                "invite-employee_code": "SIYA-MGR-002",
                 "invite-note": "",
             },
         )
@@ -1315,14 +1381,14 @@ class SignupApprovalEmailTests(TestCase):
                 "invite-email": "thewebfixofficial@gmail.com",
                 "invite-phone": "+91 9999999999",
                 "invite-role": Role.EXECUTIVE,
-                "invite-employee_code": "EXE-0099",
+                "invite-employee_code": "SIYA-EXE-099",
                 "invite-note": "",
             },
         )
 
         invite = EmployeeInvite.objects.get(email="thewebfixofficial@gmail.com")
         self.assertRedirects(response, reverse("accounts:employee_invite_detail", args=[invite.id]))
-        self.assertEqual(invite.employee_code, "EXE-0099")
+        self.assertEqual(invite.employee_code, "SIYA-EXE-099")
         self.assertFalse(User.objects.filter(email="thewebfixofficial@gmail.com").exists())
 
     def test_owner_can_verify_invite_otp_from_invite_detail(self):
@@ -1464,7 +1530,7 @@ class SignupApprovalEmailTests(TestCase):
             name="Bulk Approve",
             email="bulk-approve@example.com",
             role=Role.EXECUTIVE,
-            employee_code="EXE-0100",
+            employee_code="SIYA-EXE-100",
             is_email_verified=True,
             status=EmployeeInvite.Status.PENDING_APPROVAL,
         )

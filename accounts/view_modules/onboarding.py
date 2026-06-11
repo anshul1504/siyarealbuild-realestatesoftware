@@ -178,6 +178,7 @@ def employee_invite_bulk_action(request):
             if invite.status == EmployeeInvite.Status.APPROVED:
                 skipped += 1
                 continue
+            record_audit(actor=request.user, action="employee.invite_deleted", target=invite, company=company, details={"email": invite.email, "role": invite.role})
             invite.delete()
             updated += 1
         elif action == "approve":
@@ -185,6 +186,7 @@ def employee_invite_bulk_action(request):
             if not approved_user:
                 skipped += 1
                 continue
+            record_audit(actor=request.user, action="employee.invite_approved", target=invite, company=company, details={"email": invite.email, "user_id": approved_user.id})
             updated += 1
         elif action == "resend":
             if invite.status == EmployeeInvite.Status.APPROVED:
@@ -199,6 +201,7 @@ def employee_invite_bulk_action(request):
             invite.last_invite_sent_at = timezone.now()
             invite.resend_count += 1
             invite.save(update_fields=["last_invite_sent_at", "resend_count", "updated_at"])
+            record_audit(actor=request.user, action="employee.invite_resent", target=invite, company=company, details={"email": invite.email, "resend_count": invite.resend_count})
             updated += 1
         else:
             messages.error(request, "Select a valid bulk action.")
@@ -252,6 +255,7 @@ def employee_invite_resend(request, invite_id):
     invite.last_invite_sent_at = timezone.now()
     invite.resend_count += 1
     invite.save(update_fields=["last_invite_sent_at", "resend_count", "updated_at"])
+    record_audit(actor=request.user, action="employee.invite_resent", target=invite, company=company, details={"email": invite.email, "resend_count": invite.resend_count})
     messages.success(request, "Invite verification email resent.")
     return redirect("accounts:employee_invite_detail", invite_id=invite.id)
 
@@ -271,6 +275,7 @@ def employee_invite_approve(request, invite_id):
     if not approved_user:
         messages.error(request, "Invite cannot be approved until email OTP verification is complete.")
     else:
+        record_audit(actor=request.user, action="employee.invite_approved", target=invite, company=company, details={"email": invite.email, "user_id": approved_user.id})
         messages.success(request, "Invite approved and employee account is ready for login.")
     return redirect("accounts:employee_invite_detail", invite_id=invite.id)
 
@@ -314,6 +319,7 @@ def employee_invite_verify_otp(request, invite_id):
     otp.is_used = True
     otp.save(update_fields=["is_used"])
     _mark_invite_email_verified(invite)
+    record_audit(actor=request.user, action="employee.invite_email_verified", target=invite, company=company, details={"email": invite.email})
     messages.success(request, "Invite email verified. It is ready for owner approval.")
     return redirect("accounts:employee_invite_detail", invite_id=invite.id)
 
@@ -332,6 +338,7 @@ def employee_invite_delete(request, invite_id):
     if invite.status == EmployeeInvite.Status.APPROVED:
         messages.error(request, "Approved invite records are locked because an employee account is already linked.")
         return redirect("accounts:employee_invite_detail", invite_id=invite.id)
+    record_audit(actor=request.user, action="employee.invite_deleted", target=invite, company=company, details={"email": invite.email, "role": invite.role})
     invite.delete()
     messages.success(request, "Invite deleted.")
     return redirect("accounts:employee_invites")
@@ -364,6 +371,7 @@ def employee_invite_edit(request, invite_id):
             updated_invite.last_invite_sent_at = timezone.now()
             updated_invite.resend_count = 0
         updated_invite.save()
+        record_audit(actor=request.user, action="employee.invite_updated", target=updated_invite, company=company, details={"email_changed": email_changed})
         if email_changed:
             otp = EmailOTP.create_for_email(updated_invite.email)
             verify_url = request.build_absolute_uri(f"{reverse('accounts:verify_invite_email')}?email={updated_invite.email}&code={otp.code}")

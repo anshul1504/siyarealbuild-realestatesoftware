@@ -24,6 +24,7 @@ from .models import (
     SoftwarePopup,
     UserProfile,
 )
+from .employee_codes import next_employee_code, validate_employee_code
 
 
 PHONE_INPUT_ATTRS = {
@@ -557,6 +558,13 @@ class EmployeeInviteForm(forms.ModelForm):
             raise forms.ValidationError("You cannot invite employees for this role.")
         return role
 
+    def clean_employee_code(self):
+        role = self.cleaned_data.get("role") or getattr(self.instance, "role", "")
+        try:
+            return validate_employee_code(self.cleaned_data.get("employee_code"), role)
+        except ValueError as exc:
+            raise forms.ValidationError(str(exc))
+
 
 class AddEmployeeForm(forms.Form):
     name = forms.CharField(max_length=120, widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "Employee name"}))
@@ -620,6 +628,13 @@ class AddEmployeeForm(forms.Form):
             raise forms.ValidationError("You cannot add an employee with this role.")
         return role
 
+    def clean_employee_code(self):
+        role = self.cleaned_data.get("role")
+        try:
+            return validate_employee_code(self.cleaned_data.get("employee_code"), role)
+        except ValueError as exc:
+            raise forms.ValidationError(str(exc))
+
     def clean_phone(self):
         phone = normalize_indian_phone(self.cleaned_data.get("phone"))
         digits = "".join(ch for ch in phone if ch.isdigit())[2:]
@@ -651,21 +666,12 @@ class TeamRoleForm(forms.Form):
     def save(self, company):
         User = get_user_model()
         members = User.objects.filter(profile__company=company).select_related("profile")
-        prefix_map = {
-            Role.COMPANY_OWNER: "OWN",
-            Role.MANAGER: "MGR",
-            Role.TL: "TL",
-            Role.EXECUTIVE: "EXE",
-            Role.CHANNEL_PARTNER: "CP",
-        }
         for member in members:
             role = self.cleaned_data.get(f"role_{member.id}")
             if role:
                 member.profile.role = role
                 if not member.profile.employee_code:
-                    prefix = prefix_map.get(role, "EMP")
-                    next_number = UserProfile.objects.filter(company=company, role=role).count() + 1
-                    member.profile.employee_code = f"{prefix}-{next_number:04d}"
+                    member.profile.employee_code = next_employee_code(role, company=company)
                     member.profile.save(update_fields=["role", "employee_code", "updated_at"])
                 else:
                     member.profile.save(update_fields=["role", "updated_at"])

@@ -12,8 +12,9 @@ from django.views.decorators.http import require_http_methods
 
 from ..email_utils import send_employee_custom_email
 from ..forms import EmployeeBulkUpdateForm, TeamEmailMessageForm, UserProfileForm
-from ..models import EmailOTP, EmployeeEmailChangeRequest, EmployeeInvite, EmployeeProfileChange, Role, SignupRequest, TeamEmailMessage, UserProfile
-from ..services import bulk_update_profiles, record_audit, update_employee_profile
+from ..models import EmailOTP, EmployeeEmailChangeRequest, EmployeeInvite, EmployeeProfileChange, NotificationDelivery, Role, SignupRequest, TeamEmailMessage, UserProfile
+from ..policies import role_matrix_allows, visible_team_profiles_for
+from ..services import bulk_update_profiles, record_audit, record_notification_delivery, update_employee_profile
 
 
 def _profile_context(request):
@@ -81,7 +82,7 @@ def team_profiles(request):
 @require_http_methods(["POST"])
 def team_profiles_bulk_delete(request):
     user_profile, company, _ = _profile_context(request)
-    if user_profile.role != Role.COMPANY_OWNER:
+    if user_profile.role != Role.COMPANY_OWNER or not role_matrix_allows(user_profile, "delete"):
         messages.error(request, "Only company owner can delete employee records.")
         return redirect("accounts:team_profiles")
 
@@ -128,14 +129,18 @@ def team_profiles_bulk_email(request):
     sent_count = 0
     sender_name = request.user.get_full_name() or request.user.email or "Siya Real Build"
     for profile_item in recipients:
-        send_employee_custom_email(
-            to_email=profile_item.user.email,
-            name=profile_item.user.get_full_name() or profile_item.user.email,
-            subject=subject,
-            message=message,
-            sender_name=sender_name,
-        )
-        sent_count += 1
+        try:
+            send_employee_custom_email(
+                to_email=profile_item.user.email,
+                name=profile_item.user.get_full_name() or profile_item.user.email,
+                subject=subject,
+                message=message,
+                sender_name=sender_name,
+            )
+            record_notification_delivery(company=company, sent_by=request.user, category="team_bulk_email", recipient=profile_item.user.email, subject=subject, status=NotificationDelivery.Status.SENT)
+            sent_count += 1
+        except Exception as exc:
+            record_notification_delivery(company=company, sent_by=request.user, category="team_bulk_email", recipient=profile_item.user.email, subject=subject, status=NotificationDelivery.Status.FAILED, error_message=str(exc)[:500])
 
     if sent_count:
         record_audit(actor=request.user, action="employee.bulk_email_sent", target=request.user, company=company, details={"count": sent_count, "role": role, "department": department, "subject": subject})
@@ -179,18 +184,27 @@ def team_emails(request):
             sender_name = request.user.get_full_name() or request.user.email or "Siya Real Build"
             for profile_item in target_profiles.select_related("user").exclude(user__email=""):
                 recipient_name = profile_item.user.get_full_name() or profile_item.user.email
-                send_employee_custom_email(
-                    to_email=profile_item.user.email,
-                    name=recipient_name,
-                    subject=subject,
-                    message=message,
-                    sender_name=sender_name,
-                )
+                try:
+                    send_employee_custom_email(
+                        to_email=profile_item.user.email,
+                        name=recipient_name,
+                        subject=subject,
+                        message=message,
+                        sender_name=sender_name,
+                    )
+                    delivery_status = NotificationDelivery.Status.SENT
+                    delivery_error = ""
+                except Exception as exc:
+                    delivery_status = NotificationDelivery.Status.FAILED
+                    delivery_error = str(exc)[:500]
+                record_notification_delivery(company=company, sent_by=request.user, category="team_email", recipient=profile_item.user.email, subject=subject, status=delivery_status, error_message=delivery_error)
                 recipients.append({
                     "name": recipient_name,
                     "email": profile_item.user.email,
                     "role": profile_item.get_role_display(),
                     "department": profile_item.department or "",
+                    "status": delivery_status,
+                    "error": delivery_error,
                 })
             if not recipients:
                 messages.error(request, "No employees matched this email target.")
@@ -256,23 +270,7 @@ def team_email_detail(request, email_id):
 
 
 def _visible_team_profiles(user_profile, company):
-    can_view_sensitive_profile_data = user_profile.role == Role.COMPANY_OWNER
-    visible_roles = {
-        Role.COMPANY_OWNER: {Role.COMPANY_OWNER, Role.MANAGER, Role.TL, Role.EXECUTIVE, Role.CHANNEL_PARTNER},
-        Role.MANAGER: {Role.TL, Role.EXECUTIVE, Role.CHANNEL_PARTNER},
-        Role.TL: {Role.EXECUTIVE, Role.CHANNEL_PARTNER},
-    }.get(user_profile.role)
-    if not visible_roles:
-        return None, can_view_sensitive_profile_data
-
-    profiles = (
-        UserProfile.objects.filter(company=company, role__in=visible_roles)
-        .select_related("user", "company")
-        .order_by("role", "user__first_name", "user__email")
-    )
-    if user_profile.role != Role.COMPANY_OWNER:
-        profiles = profiles.exclude(id=user_profile.id)
-    return profiles, can_view_sensitive_profile_data
+    return visible_team_profiles_for(user_profile, company)
 
 
 @login_required
@@ -299,7 +297,7 @@ def team_profile_detail(request, profile_id):
 @login_required
 def team_profile_edit(request, profile_id):
     user_profile, company, _ = _profile_context(request)
-    if user_profile.role != Role.COMPANY_OWNER:
+    if user_profile.role != Role.COMPANY_OWNER or not role_matrix_allows(user_profile, "update"):
         messages.error(request, "Only company owner can edit employee profiles.")
         return redirect("accounts:team_profile_detail", profile_id=profile_id)
     profile = get_object_or_404(UserProfile.objects.select_related("user"), id=profile_id, company=company)
@@ -321,7 +319,7 @@ def team_profile_edit(request, profile_id):
 @login_required
 def team_profile_history(request, profile_id):
     user_profile, company, _ = _profile_context(request)
-    if user_profile.role != Role.COMPANY_OWNER:
+    if user_profile.role != Role.COMPANY_OWNER or not role_matrix_allows(user_profile, "update"):
         messages.error(request, "Only company owner can view employee profile history.")
         return redirect("accounts:team_profile_detail", profile_id=profile_id)
     profile = get_object_or_404(UserProfile.objects.select_related("user"), id=profile_id, company=company)
@@ -347,7 +345,7 @@ def profile_document(request, profile_id, document_type):
 @login_required
 def team_profiles_bulk_update(request):
     user_profile, company, _ = _profile_context(request)
-    if user_profile.role != Role.COMPANY_OWNER:
+    if user_profile.role != Role.COMPANY_OWNER or not role_matrix_allows(user_profile, "delete"):
         return redirect("properties:dashboard")
     profiles = UserProfile.objects.filter(company=company).exclude(role=Role.COMPANY_OWNER).select_related("user")
     form = EmployeeBulkUpdateForm(request.POST or None, profiles=profiles)
