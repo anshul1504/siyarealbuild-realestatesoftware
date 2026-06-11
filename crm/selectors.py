@@ -11,7 +11,7 @@ def visible_leads_for(user):
     company = user_company(user)
     if not company:
         return Lead.objects.none()
-    leads = Lead.objects.filter(company=company).select_related("assigned_to", "created_by", "property", "company")
+    leads = Lead.objects.filter(company=company, is_archived=False).select_related("assigned_to", "created_by", "property", "company")
     role = user_role(user)
     if role in {Role.COMPANY_OWNER, Role.MANAGER}:
         return leads

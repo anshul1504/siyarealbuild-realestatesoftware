@@ -11,6 +11,7 @@
         <a class="btn btn-light" href="{% url 'crm:lead_kanban' %}">Kanban</a>
         <a class="btn btn-light" href="{% url 'crm:followup_list' %}">Follow-ups</a>
         {% if can_assign %}<a class="btn btn-light" href="{% url 'crm:lead_export' %}">Export</a>{% endif %}
+        {% if can_assign %}<a class="btn btn-light" href="{% url 'crm:lead_list' %}?archived={% if include_archived %}0{% else %}1{% endif %}">{% if include_archived %}Active Leads{% else %}Archived Leads{% endif %}</a>{% endif %}
         {% if dashboard_is_owner %}<a class="btn btn-outline-primary" href="{% url 'crm:meta_source_list' %}">Meta Sources</a>{% endif %}
         <a class="btn btn-primary" href="{% url 'crm:lead_create' %}">Add Lead</a>
     </div>
@@ -110,7 +111,7 @@
                     <td><strong>{{ lead.client_name }}</strong><br><small>{{ lead.phone|default:lead.email|default:"-" }}</small></td>
                     <td>{{ lead.get_source_display }}</td>
                     <td><span class="badge bg-primary-subtle text-primary">{{ lead.get_status_display }}</span></td>
-                    <td>{{ lead.get_priority_display }}</td>
+                    <td>{{ lead.get_priority_display }}{% if lead.is_archived %}<br><span class="badge bg-secondary-subtle text-secondary">Archived</span>{% endif %}</td>
                     <td>{% if lead.assigned_to %}{{ lead.assigned_to.get_full_name|default:lead.assigned_to.email }}{% else %}<span class="text-warning">Unassigned</span>{% endif %}</td>
                     <td>{% if lead.next_follow_up_at %}{{ lead.next_follow_up_at|date:"d M Y, h:i A" }}{% else %}-{% endif %}</td>
                     <td><a class="btn btn-sm btn-outline-primary" href="{% url 'crm:lead_detail' lead.id %}">Open</a></td>

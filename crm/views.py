@@ -17,6 +17,7 @@ from django.views.decorators.csrf import csrf_exempt
 from .forms import (
     LeadAssignmentForm,
     LeadAssignmentRuleForm,
+    LeadArchiveForm,
     LeadBulkActionForm,
     LeadFollowUpCompleteForm,
     LeadFollowUpForm,
@@ -32,6 +33,7 @@ from .policies import can_assign_leads, can_configure_meta, can_edit_lead, can_v
 from .selectors import visible_leads_for
 from .services import (
     add_lead_note,
+    archive_lead,
     assign_lead,
     bulk_update_leads,
     complete_followup,
@@ -41,6 +43,7 @@ from .services import (
     ingest_meta_payload,
     match_property_to_lead,
     reprocess_meta_event,
+    restore_lead,
     schedule_visit_from_lead,
     update_lead_details,
     update_lead_status,
@@ -85,7 +88,11 @@ def crm_dashboard(request):
 
 @login_required
 def lead_list(request):
-    leads = visible_leads_for(request.user)
+    include_archived = request.GET.get("archived") == "1"
+    if include_archived and can_assign_leads(request.user):
+        leads = Lead.objects.filter(company=user_company(request.user), is_archived=True).select_related("assigned_to", "created_by", "property", "company")
+    else:
+        leads = visible_leads_for(request.user)
     query = request.GET.get("q", "").strip()
     status = request.GET.get("status", "").strip()
     source = request.GET.get("source", "").strip()
@@ -125,6 +132,7 @@ def lead_list(request):
             "created_from": created_from,
             "created_to": created_to,
             "city": city,
+            "include_archived": include_archived,
             "status_choices": LeadStatus.choices,
             "source_choices": LeadSource.choices,
             "priority_choices": LeadPriority.choices,
@@ -223,6 +231,7 @@ def lead_detail(request, lead_id):
             "visit_form": LeadVisitForm(user=request.user, company=lead.company, initial={"property": lead.property_id, "assigned_employee": lead.assigned_to_id}),
             "match_form": PropertyMatchForm(company=lead.company, initial={"property": lead.property_id}),
             "note_form": LeadNoteForm(),
+            "archive_form": LeadArchiveForm(),
             "activities": lead.activities.select_related("actor")[:30],
             "followups": lead.followups.select_related("assigned_to")[:20],
             "can_edit": can_edit_lead(request.user, lead),
@@ -288,6 +297,30 @@ def lead_note_create(request, lead_id):
         messages.success(request, "Note added.")
     else:
         messages.error(request, "Please enter a note.")
+    return redirect("crm:lead_detail", lead_id=lead.id)
+
+
+@login_required
+def lead_archive(request, lead_id):
+    lead = get_object_or_404(Lead, id=lead_id)
+    if not can_assign_leads(request.user) or not can_view_lead(request.user, lead):
+        messages.error(request, "You cannot archive this lead.")
+        return redirect("crm:lead_list")
+    form = LeadArchiveForm(request.POST)
+    if form.is_valid():
+        archive_lead(lead, actor=request.user, reason=form.cleaned_data["reason"])
+        messages.success(request, "Lead archived.")
+    return redirect("crm:lead_list")
+
+
+@login_required
+def lead_restore(request, lead_id):
+    lead = get_object_or_404(Lead, id=lead_id)
+    if not can_assign_leads(request.user) or lead.company_id != getattr(user_company(request.user), "id", None):
+        messages.error(request, "You cannot restore this lead.")
+        return redirect("crm:lead_list")
+    restore_lead(lead, actor=request.user)
+    messages.success(request, "Lead restored.")
     return redirect("crm:lead_detail", lead_id=lead.id)
 
 

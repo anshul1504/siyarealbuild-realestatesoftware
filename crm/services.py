@@ -87,6 +87,46 @@ def assignee_from_rule(rule):
     return None
 
 
+def role_members_for_rule(rule):
+    if not rule.default_role:
+        return []
+    return [profile.user for profile in rule.company.members.filter(role=rule.default_role, user__is_active=True).select_related("user").order_by("user__id")]
+
+
+def round_robin_assignee(rule):
+    members = role_members_for_rule(rule)
+    if not members:
+        return None
+    member_ids = [member.id for member in members]
+    if rule.last_assigned_to_id in member_ids:
+        next_index = (member_ids.index(rule.last_assigned_to_id) + 1) % len(member_ids)
+    else:
+        next_index = 0
+    assignee = members[next_index]
+    rule.last_assigned_to = assignee
+    rule.save(update_fields=["last_assigned_to", "updated_at"])
+    return assignee
+
+
+def workload_assignee(rule):
+    members = role_members_for_rule(rule)
+    if not members:
+        return None
+    active_statuses = [
+        LeadStatus.NEW,
+        LeadStatus.CONTACTED,
+        LeadStatus.QUALIFIED,
+        LeadStatus.PROPERTY_MATCHED,
+        LeadStatus.VISIT_SCHEDULED,
+        LeadStatus.FOLLOW_UP,
+        LeadStatus.NEGOTIATION,
+    ]
+    return min(
+        members,
+        key=lambda member: Lead.objects.filter(company=rule.company, assigned_to=member, is_archived=False, status__in=active_statuses).count(),
+    )
+
+
 def matching_assignment_rules(company, data):
     rules = LeadAssignmentRule.objects.filter(company=company, is_active=True).select_related("default_assignee", "company")
     source = data.get("source") or ""
@@ -94,6 +134,8 @@ def matching_assignment_rules(company, data):
     category = data.get("property_category") or ""
     return rules.filter(
         models.Q(mode=AssignmentMode.DEFAULT)
+        | models.Q(mode=AssignmentMode.ROUND_ROBIN)
+        | models.Q(mode=AssignmentMode.WORKLOAD)
         | models.Q(mode=AssignmentMode.SOURCE, source=source)
         | models.Q(mode=AssignmentMode.CITY, city__iexact=city)
         | models.Q(mode=AssignmentMode.CATEGORY, property_category=category)
@@ -102,6 +144,14 @@ def matching_assignment_rules(company, data):
 
 def auto_assignee_for_lead(company, data):
     for rule in matching_assignment_rules(company, data):
+        if rule.mode == AssignmentMode.ROUND_ROBIN:
+            assignee = round_robin_assignee(rule)
+            if assignee:
+                return assignee, rule
+        if rule.mode == AssignmentMode.WORKLOAD:
+            assignee = workload_assignee(rule)
+            if assignee:
+                return assignee, rule
         assignee = assignee_from_rule(rule)
         if assignee:
             return assignee, rule
@@ -305,6 +355,28 @@ def bulk_update_leads(*, leads, actor, action, assigned_to=None, status="", prio
             record_activity(lead, actor=actor, activity_type=LeadActivity.ActivityType.NOTE, old_value=old_priority, new_value=priority, note=note or "Priority updated.")
             updated += 1
     return updated
+
+
+@transaction.atomic
+def archive_lead(lead, *, actor, reason=""):
+    lead.is_archived = True
+    lead.archive_reason = reason or "Archived from CRM."
+    lead.archived_at = timezone.now()
+    lead.archived_by = actor
+    lead.save(update_fields=["is_archived", "archive_reason", "archived_at", "archived_by", "updated_at"])
+    record_activity(lead, actor=actor, activity_type=LeadActivity.ActivityType.NOTE, new_value="archived", note=lead.archive_reason)
+    return lead
+
+
+@transaction.atomic
+def restore_lead(lead, *, actor):
+    lead.is_archived = False
+    lead.archive_reason = ""
+    lead.archived_at = None
+    lead.archived_by = None
+    lead.save(update_fields=["is_archived", "archive_reason", "archived_at", "archived_by", "updated_at"])
+    record_activity(lead, actor=actor, activity_type=LeadActivity.ActivityType.NOTE, new_value="restored", note="Lead restored to active CRM pipeline.")
+    return lead
 
 
 def fetch_meta_lead_data(leadgen_id, *, access_token=None):

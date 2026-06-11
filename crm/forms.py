@@ -99,6 +99,10 @@ class LeadNoteForm(forms.Form):
     note = forms.CharField(widget=forms.Textarea(attrs={"class": "form-control", "rows": 3, "placeholder": "Add call note, WhatsApp update or client feedback"}))
 
 
+class LeadArchiveForm(forms.Form):
+    reason = forms.CharField(required=False, widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "Archive reason"}))
+
+
 class LeadFollowUpForm(forms.ModelForm):
     class Meta:
         model = LeadFollowUp
@@ -237,6 +241,8 @@ class LeadAssignmentRuleForm(forms.ModelForm):
             self.add_error("city", "Add a city for city-based assignment.")
         if mode == AssignmentMode.CATEGORY and not cleaned.get("property_category"):
             self.add_error("property_category", "Select a category for category-based assignment.")
-        if not cleaned.get("default_assignee") and not cleaned.get("default_role"):
+        if mode in {AssignmentMode.ROUND_ROBIN, AssignmentMode.WORKLOAD} and not cleaned.get("default_role"):
+            self.add_error("default_role", "Select a role for round-robin or workload assignment.")
+        if mode not in {AssignmentMode.ROUND_ROBIN, AssignmentMode.WORKLOAD} and not cleaned.get("default_assignee") and not cleaned.get("default_role"):
             raise forms.ValidationError("Select either a default assignee or a default role.")
         return cleaned

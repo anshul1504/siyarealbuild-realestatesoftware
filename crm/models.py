@@ -41,6 +41,8 @@ class AssignmentMode(models.TextChoices):
     SOURCE = "source", "Source Based"
     CITY = "city", "City Based"
     CATEGORY = "category", "Property Category Based"
+    ROUND_ROBIN = "round_robin", "Round Robin"
+    WORKLOAD = "workload", "Workload Based"
 
 
 class Lead(models.Model):
@@ -72,6 +74,10 @@ class Lead(models.Model):
     converted_at = models.DateTimeField(null=True, blank=True)
     lost_reason = models.CharField(max_length=220, blank=True)
     notes = models.TextField(blank=True)
+    is_archived = models.BooleanField(default=False)
+    archive_reason = models.CharField(max_length=220, blank=True)
+    archived_at = models.DateTimeField(null=True, blank=True)
+    archived_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="archived_crm_leads")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -81,6 +87,7 @@ class Lead(models.Model):
             models.Index(fields=["company", "status"]),
             models.Index(fields=["company", "assigned_to"]),
             models.Index(fields=["company", "source"]),
+            models.Index(fields=["company", "is_archived"]),
         ]
 
     def __str__(self):
@@ -139,6 +146,7 @@ class LeadAssignmentRule(models.Model):
     property_category = models.CharField(max_length=40, choices=Property.Category.choices, blank=True)
     default_assignee = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="crm_assignment_rules")
     default_role = models.CharField(max_length=32, choices=Role.choices, blank=True)
+    last_assigned_to = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="last_used_crm_assignment_rules")
     priority = models.PositiveSmallIntegerField(default=100)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)

@@ -9,6 +9,12 @@
     <div class="d-flex gap-2 flex-wrap">
         <a class="btn btn-light" href="{% url 'crm:dashboard' %}">CRM Dashboard</a>
         <a class="btn btn-light" href="{% url 'crm:lead_list' %}">Lead List</a>
+        {% if lead.is_archived %}
+        <form method="post" action="{% url 'crm:lead_restore' lead.id %}">
+            {% csrf_token %}
+            <button class="btn btn-outline-primary" type="submit">Restore Lead</button>
+        </form>
+        {% endif %}
         {% if can_edit %}<a class="btn btn-primary" href="{% url 'crm:lead_edit' lead.id %}">Edit Lead</a>{% endif %}
     </div>
 </div>
@@ -20,6 +26,7 @@
             <div class="profile-detail-grid">
                 <div><span>Phone</span><strong>{{ lead.phone|default:"-" }}</strong></div>
                 <div><span>Email</span><strong>{{ lead.email|default:"-" }}</strong></div>
+                <div><span>Archive Status</span><strong>{% if lead.is_archived %}Archived{% else %}Active{% endif %}</strong></div>
                 <div><span>Location</span><strong>{{ lead.locality|default:"-" }}{% if lead.city %}, {{ lead.city }}{% endif %}</strong></div>
                 <div><span>Budget</span><strong>{% if lead.budget_min or lead.budget_max %}Rs {{ lead.budget_min|default:0|floatformat:0 }} - {{ lead.budget_max|default:0|floatformat:0 }}{% else %}-{% endif %}</strong></div>
                 <div><span>Assigned To</span><strong>{% if lead.assigned_to %}{{ lead.assigned_to.get_full_name|default:lead.assigned_to.email }}{% else %}Unassigned{% endif %}</strong></div>
@@ -83,6 +90,14 @@
                 {{ note_form.note }}
                 <button class="btn btn-light w-100 mt-3" type="submit">Add Note</button>
             </form>
+            {% if can_assign and not lead.is_archived %}
+            <form method="post" action="{% url 'crm:lead_archive' lead.id %}" class="mt-3">
+                {% csrf_token %}
+                <label class="form-label" for="{{ archive_form.reason.id_for_label }}">Archive Reason</label>
+                {{ archive_form.reason }}
+                <button class="btn btn-outline-danger w-100 mt-3" type="submit">Archive Lead</button>
+            </form>
+            {% endif %}
             {% endif %}
         </section>
     </div>

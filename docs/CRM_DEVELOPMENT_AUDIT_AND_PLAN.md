@@ -6,7 +6,7 @@ Audit date: 2026-06-11
 
 The CRM is no longer only a planning idea. It now has a working Django app, lead pipeline, role-aware visibility, lead assignment, follow-ups, property matching, visit scheduling, CSV export, reports, activity history, Meta source configuration, and Meta webhook ingestion foundation.
 
-Current practical readiness is about 85% for an internal operational CRM and about 70-75% for a production-grade Meta-connected CRM. The remaining work is mostly external-platform integration, background processing, and richer analytics rather than core CRM workflows.
+Current practical readiness is about 90% for an internal operational CRM and about 78-82% for a production-grade Meta-connected CRM. The remaining work is mostly external-platform integration, background processing, and deeper analytics rather than core CRM workflows.
 
 ## Current Completion Estimate
 
@@ -15,15 +15,15 @@ Current practical readiness is about 85% for an internal operational CRM and abo
 - Role-wise access foundation: 80%
 - Follow-up workflow: 85%
 - Property and site-visit integration: 80%
-- Assignment automation: 75%
+- Assignment automation: 90%
 - Meta webhook foundation: 80%
 - Meta production integration: 55%
 - Duplicate detection and lifecycle rules: 80%
-- Reports and analytics: 60%
+- Reports and analytics: 65%
 - Frontend CRM polish: 70%
 - Production readiness: 55%
 
-Overall professional CRM progress: 80-85% complete for internal use, and 70-75% complete for production Meta-connected use.
+Overall professional CRM progress: 88-90% complete for internal use, and 78-82% complete for production Meta-connected use.
 
 ## Existing Features
 
@@ -52,6 +52,8 @@ Overall professional CRM progress: 80-85% complete for internal use, and 70-75% 
 - Meta app signature verification support through `SIYA_META_APP_SECRET`.
 - Global `AuditLog` creation for CRM lead activity.
 - Owner-configurable CRM assignment rules for default, source, city, and property-category routing.
+- Round-robin and workload-based assignment rules for role-based lead distribution.
+- Lead archive and restore workflow with archive reason and activity audit.
 - Failed Meta event reprocess action from reports.
 - Advanced lead filters for assignee, city, and date range.
 - Assignee distribution and Meta health metrics in reports.
@@ -95,8 +97,7 @@ No-company user:
 P0:
 - Add a structured team hierarchy for Team Lead visibility instead of relying on `reporting_manager` text.
 - Add dedicated Channel Partner CRM workflow for referral leads, partner-owned leads, conversion visibility, and payout status.
-- Add round-robin and workload-based assignment on top of existing owner-configured assignment rules.
-- Add proper lead archive/delete flow with audit log.
+- Add permanent delete only if the business decides archived leads are not sufficient.
 - Add Meta token management UI.
 - Add Meta OAuth/page/form sync for real production connection.
 - Add production monitoring for token expiry and background job failures.

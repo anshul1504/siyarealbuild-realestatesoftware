@@ -74,6 +74,27 @@ class CrmLeadWorkflowTests(TestCase):
         self.assertRedirects(response, reverse("crm:lead_detail", args=[lead.id]))
         self.assertEqual(lead.assigned_to, self.executive)
 
+    def test_round_robin_assignment_rule_rotates_by_role(self):
+        LeadAssignmentRule.objects.create(company=self.company, name="Round robin executives", mode=AssignmentMode.ROUND_ROBIN, default_role=Role.EXECUTIVE, priority=1)
+        self.client.force_login(self.manager)
+        for index in range(2):
+            self.client.post(
+                reverse("crm:lead_create"),
+                data={"client_name": f"Round Buyer {index}", "phone": f"+91 900000000{index}", "source": LeadSource.MANUAL, "priority": "medium"},
+            )
+        self.assertEqual(Lead.objects.get(client_name="Round Buyer 0").assigned_to, self.executive)
+        self.assertEqual(Lead.objects.get(client_name="Round Buyer 1").assigned_to, self.other)
+
+    def test_workload_assignment_rule_picks_least_loaded_member(self):
+        Lead.objects.create(company=self.company, client_name="Existing Load", phone="+91 9111111111", assigned_to=self.executive)
+        LeadAssignmentRule.objects.create(company=self.company, name="Least loaded executives", mode=AssignmentMode.WORKLOAD, default_role=Role.EXECUTIVE, priority=1)
+        self.client.force_login(self.manager)
+        self.client.post(
+            reverse("crm:lead_create"),
+            data={"client_name": "Workload Buyer", "phone": "+91 9222222222", "source": LeadSource.MANUAL, "priority": "medium"},
+        )
+        self.assertEqual(Lead.objects.get(client_name="Workload Buyer").assigned_to, self.other)
+
     def test_owner_can_create_assignment_rule(self):
         self.client.force_login(self.owner)
         response = self.client.post(
@@ -92,6 +113,23 @@ class CrmLeadWorkflowTests(TestCase):
         )
         self.assertRedirects(response, reverse("crm:assignment_rule_list"))
         self.assertTrue(LeadAssignmentRule.objects.filter(name="Meta default", default_assignee=self.manager).exists())
+
+    def test_manager_can_archive_and_restore_lead(self):
+        lead = Lead.objects.create(company=self.company, client_name="Archive Buyer", phone="+91 9333333333", assigned_to=self.manager)
+        self.client.force_login(self.manager)
+        response = self.client.post(reverse("crm:lead_archive", args=[lead.id]), {"reason": "Duplicate enquiry"})
+        lead.refresh_from_db()
+        self.assertRedirects(response, reverse("crm:lead_list"))
+        self.assertTrue(lead.is_archived)
+        self.assertEqual(lead.archive_reason, "Duplicate enquiry")
+        list_response = self.client.get(reverse("crm:lead_list"))
+        self.assertNotContains(list_response, "Archive Buyer")
+        archived_response = self.client.get(reverse("crm:lead_list"), {"archived": "1"})
+        self.assertContains(archived_response, "Archive Buyer")
+        response = self.client.post(reverse("crm:lead_restore", args=[lead.id]))
+        lead.refresh_from_db()
+        self.assertRedirects(response, reverse("crm:lead_detail", args=[lead.id]))
+        self.assertFalse(lead.is_archived)
 
     def test_executive_sees_only_assigned_or_created_leads(self):
         assigned = Lead.objects.create(company=self.company, client_name="Assigned", assigned_to=self.executive)

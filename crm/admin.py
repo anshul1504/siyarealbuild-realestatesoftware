@@ -12,8 +12,8 @@ class LeadActivityInline(admin.TabularInline):
 
 @admin.register(Lead)
 class LeadAdmin(admin.ModelAdmin):
-    list_display = ("client_name", "phone", "status", "priority", "source", "assigned_to", "company", "created_at")
-    list_filter = ("company", "status", "priority", "source", "created_at")
+    list_display = ("client_name", "phone", "status", "priority", "source", "assigned_to", "company", "is_archived", "created_at")
+    list_filter = ("company", "status", "priority", "source", "is_archived", "created_at")
     search_fields = ("client_name", "phone", "email", "meta_lead_id", "city", "locality")
     inlines = [LeadActivityInline]
 
@@ -27,7 +27,7 @@ class LeadFollowUpAdmin(admin.ModelAdmin):
 
 @admin.register(LeadAssignmentRule)
 class LeadAssignmentRuleAdmin(admin.ModelAdmin):
-    list_display = ("name", "mode", "source", "city", "property_category", "default_assignee", "default_role", "priority", "is_active")
+    list_display = ("name", "mode", "source", "city", "property_category", "default_assignee", "default_role", "last_assigned_to", "priority", "is_active")
     list_filter = ("company", "mode", "source", "property_category", "is_active")
     search_fields = ("name", "city", "default_assignee__email")
 
