@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Employee Profile History - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div><h1 class="app-page-title mb-0">Employee Profile History</h1><p class="text-body mb-0">{{ employee_profile.user.get_full_name|default:employee_profile.user.email }}</p></div>
+    <a class="btn btn-outline-primary" href="{% url 'accounts:team_profile_detail' employee_profile.id %}">Employee Detail</a>
+</div>
+<section class="profile-panel table-responsive">
+    <table class="table align-middle"><thead><tr><th>Time</th><th>Changed By</th><th>Changes</th></tr></thead><tbody>
+    {% for change in changes %}<tr><td>{{ change.created_at|date:"d M Y, h:i A" }}</td><td>{{ change.changed_by|default:"System" }}</td><td>{{ change.changes }}</td></tr>
+    {% empty %}<tr><td colspan="3">No profile changes recorded yet.</td></tr>{% endfor %}
+    </tbody></table>
+</section>
+{% endblock %}

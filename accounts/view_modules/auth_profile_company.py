@@ -18,6 +18,7 @@ from ..forms import EmailLoginForm, InviteOTPVerifyForm, OTPVerifyForm, OwnerCom
 from ..models import AuditLog, AuthenticationSupportRequest, CompanyProfile, EmailOTP, EmployeeEmailChangeRequest, EmployeeInvite, OfficeLocation, Role, SignupRequest, SignupRequestStatus, UserProfile
 from ..security import auth_request_limited, client_ip, rate_limit_exceeded
 from ..services import record_audit
+from ..services import update_employee_profile
 from .onboarding import _next_employee_code
 
 
@@ -461,7 +462,7 @@ def profile_edit(request):
                 ).exclude(employee=request.user).exists():
                     messages.error(request, "This email already has a pending change request.")
                     return redirect("accounts:profile_edit")
-                profile_form.save(skip_email=True)
+                update_employee_profile(profile=user_profile, form=profile_form, actor=request.user, skip_email=True)
                 signup = SignupRequest.objects.filter(user=request.user).first()
                 if signup:
                     signup.name = request.user.get_full_name() or request.user.first_name or request.user.username
@@ -497,7 +498,7 @@ def profile_edit(request):
                 messages.success(request, "OTP sent to your new email. Verify it to complete email change.")
                 return redirect("accounts:verify_email_change")
 
-            profile_form.save()
+            update_employee_profile(profile=user_profile, form=profile_form, actor=request.user)
             _sync_signup_from_user(request.user)
             messages.success(request, "Profile details updated.")
             return redirect("accounts:profile")

@@ -136,7 +136,13 @@ class InviteOTPVerifyForm(forms.Form):
 
 
 class UserProfileForm(forms.ModelForm):
-    full_name = forms.CharField(max_length=150, required=False, widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "Full name"}))
+    SELF_EDITABLE_FIELDS = {
+        "full_name", "email", "profile_image", "phone", "date_of_birth", "gender", "blood_group", "marital_status", "personal_email",
+        "aadhaar_number", "aadhaar_document", "pan_number", "pan_document", "emergency_contact_name",
+        "emergency_contact_phone", "bank_name", "bank_account_name", "bank_account_number", "bank_ifsc",
+        "address", "city", "state", "pincode",
+    }
+    full_name = forms.CharField(max_length=150, required=True, widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "Full name"}))
     email = forms.EmailField(widget=forms.EmailInput(attrs={"class": "form-control", "placeholder": "Email address"}))
 
     class Meta:
@@ -219,7 +225,12 @@ class UserProfileForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop("user")
+        self.allow_official_fields = kwargs.pop("allow_official_fields", False)
         super().__init__(*args, **kwargs)
+        if not self.allow_official_fields:
+            for field_name in list(self.fields):
+                if field_name not in self.SELF_EDITABLE_FIELDS:
+                    self.fields.pop(field_name)
         self.fields["full_name"].initial = self.user.get_full_name() or self.user.first_name
         self.fields["email"].initial = self.user.email
         if not self.instance.phone:
@@ -279,6 +290,17 @@ class UserProfileForm(forms.ModelForm):
 
     def clean_pan_document(self):
         return self._clean_profile_document("pan_document")
+
+    def clean_profile_image(self):
+        image = self.cleaned_data.get("profile_image")
+        if not image or not hasattr(image, "size"):
+            return image
+        if image.size > 2 * 1024 * 1024:
+            raise forms.ValidationError("Profile image size must be 2 MB or less.")
+        content_type = getattr(image, "content_type", "")
+        if content_type and content_type not in {"image/jpeg", "image/png", "image/webp"}:
+            raise forms.ValidationError("Upload JPG, PNG, or WebP profile image only.")
+        return image
 
     def _clean_profile_document(self, field_name):
         document = self.cleaned_data.get(field_name)

@@ -61,10 +61,10 @@
     <div class="profile-overview-section">
         <h2>Aadhaar & PAN</h2>
         <div class="profile-overview-grid">
-            <div><span>Aadhaar Number</span><strong>{{ user_profile.aadhaar_number|default:"Not added" }}</strong></div>
-            <div><span>PAN Number</span><strong>{{ user_profile.pan_number|default:"Not added" }}</strong></div>
-            <div><span>Aadhaar Document</span><strong>{% if user_profile.aadhaar_document %}<a href="{{ user_profile.aadhaar_document.url }}" target="_blank" rel="noopener">View Aadhaar</a>{% else %}Not uploaded{% endif %}</strong></div>
-            <div><span>PAN Document</span><strong>{% if user_profile.pan_document %}<a href="{{ user_profile.pan_document.url }}" target="_blank" rel="noopener">View PAN</a>{% else %}Not uploaded{% endif %}</strong></div>
+            <div><span>Aadhaar Number</span><strong>{{ user_profile.masked_aadhaar_number }}</strong></div>
+            <div><span>PAN Number</span><strong>{{ user_profile.masked_pan_number }}</strong></div>
+            <div><span>Aadhaar Document</span><strong>{% if user_profile.aadhaar_document %}<a href="{% url 'accounts:profile_document' user_profile.id 'aadhaar' %}">Download Aadhaar</a>{% else %}Not uploaded{% endif %}</strong></div>
+            <div><span>PAN Document</span><strong>{% if user_profile.pan_document %}<a href="{% url 'accounts:profile_document' user_profile.id 'pan' %}">Download PAN</a>{% else %}Not uploaded{% endif %}</strong></div>
         </div>
     </div>
 

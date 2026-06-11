@@ -5,14 +5,14 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import models
-from django.http import Http404, HttpResponse
+from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.html import escape
 from django.views.decorators.http import require_http_methods
 
 from ..email_utils import send_employee_custom_email
 from ..forms import EmployeeBulkUpdateForm, TeamEmailMessageForm, UserProfileForm
-from ..models import EmailOTP, EmployeeEmailChangeRequest, EmployeeInvite, Role, SignupRequest, TeamEmailMessage, UserProfile
+from ..models import EmailOTP, EmployeeEmailChangeRequest, EmployeeInvite, EmployeeProfileChange, Role, SignupRequest, TeamEmailMessage, UserProfile
 from ..services import bulk_update_profiles, record_audit, update_employee_profile
 
 
@@ -288,6 +288,7 @@ def team_profile_detail(request, profile_id):
             "company": company,
             "user_profile": user_profile,
             "can_view_sensitive_profile_data": can_view_sensitive_profile_data,
+            "can_view_private_profile_data": can_view_sensitive_profile_data,
         },
     )
 
@@ -299,12 +300,45 @@ def team_profile_edit(request, profile_id):
         messages.error(request, "Only company owner can edit employee profiles.")
         return redirect("accounts:team_profile_detail", profile_id=profile_id)
     profile = get_object_or_404(UserProfile.objects.select_related("user"), id=profile_id, company=company)
-    form = UserProfileForm(request.POST or None, request.FILES or None, instance=profile, user=profile.user)
+    form = UserProfileForm(request.POST or None, request.FILES or None, instance=profile, user=profile.user, allow_official_fields=True)
     if request.method == "POST" and form.is_valid():
         update_employee_profile(profile=profile, form=form, actor=request.user)
         messages.success(request, "Employee profile updated and recorded.")
         return redirect("accounts:team_profile_detail", profile_id=profile.id)
-    return render(request, "accounts/team_profile_edit.html", {"form": form, "employee_profile": profile, "user_profile": user_profile})
+    section_names = {
+        "Basic": {"full_name", "email", "profile_image", "phone", "designation"},
+        "Personal & KYC": {"date_of_birth", "gender", "blood_group", "marital_status", "personal_email", "aadhaar_number", "aadhaar_document", "pan_number", "pan_document"},
+        "Official Work Details": {"department", "reporting_manager", "joining_date", "work_location", "territory", "channel_partner_reference"},
+        "Bank, Emergency & Address": {"bank_name", "bank_account_name", "bank_account_number", "bank_ifsc", "emergency_contact_name", "emergency_contact_phone", "address", "city", "state", "pincode"},
+    }
+    form_sections = [(name, [form[field] for field in form.fields if field in fields]) for name, fields in section_names.items()]
+    return render(request, "accounts/team_profile_edit.html", {"form": form, "form_sections": form_sections, "employee_profile": profile, "user_profile": user_profile})
+
+
+@login_required
+def team_profile_history(request, profile_id):
+    user_profile, company, _ = _profile_context(request)
+    if user_profile.role != Role.COMPANY_OWNER:
+        messages.error(request, "Only company owner can view employee profile history.")
+        return redirect("accounts:team_profile_detail", profile_id=profile_id)
+    profile = get_object_or_404(UserProfile.objects.select_related("user"), id=profile_id, company=company)
+    changes = EmployeeProfileChange.objects.filter(profile=profile).select_related("changed_by")[:100]
+    return render(request, "accounts/team_profile_history.html", {"employee_profile": profile, "changes": changes, "user_profile": user_profile})
+
+
+@login_required
+def profile_document(request, profile_id, document_type):
+    user_profile, company, _ = _profile_context(request)
+    profile = get_object_or_404(UserProfile, id=profile_id, company=company)
+    if request.user != profile.user and user_profile.role != Role.COMPANY_OWNER:
+        raise Http404("Document not found.")
+    field_name = {"aadhaar": "aadhaar_document", "pan": "pan_document"}.get(document_type)
+    if not field_name:
+        raise Http404("Document not found.")
+    document = getattr(profile, field_name)
+    if not document:
+        raise Http404("Document not found.")
+    return FileResponse(document.open("rb"), as_attachment=True, filename=document.name.rsplit("/", 1)[-1])
 
 
 @login_required
@@ -466,4 +500,3 @@ def team_profiles_export(request, export_format):
         response.write("</tr>")
     response.write("</table>")
     return response
-

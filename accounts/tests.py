@@ -1,5 +1,6 @@
 from django.core import mail
 from django.core.cache import cache
+from django.core.files.base import ContentFile
 from django.contrib.auth import get_user_model
 from django.contrib.admin.sites import AdminSite
 from django.db import IntegrityError
@@ -588,9 +589,86 @@ class SignupApprovalEmailTests(TestCase):
         self.assertEqual(user.get_full_name(), "Amit Verma")
         self.assertEqual(profile.aadhaar_number, "123456789012")
         self.assertEqual(profile.pan_number, "ABCDE1234F")
-        self.assertEqual(profile.department, "Sales")
+        self.assertEqual(profile.department, "")
         self.assertEqual(profile.bank_ifsc, "HDFC0123456")
         self.assertEqual(profile.emergency_contact_phone, "+91 8888888888")
+        self.assertTrue(profile.change_history.filter(changed_by=user).exists())
+
+    def test_self_profile_edit_cannot_change_official_work_fields(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        user = User.objects.create_user(username="exec@example.com", email="exec@example.com", first_name="Executive")
+        profile = UserProfile.objects.create(user=user, role=Role.EXECUTIVE, company=company, department="Sales", designation="Executive")
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse("accounts:profile_edit"),
+            data={"profile-full_name": "Executive User", "profile-email": user.email, "profile-department": "Finance", "profile-designation": "Manager"},
+        )
+
+        self.assertRedirects(response, reverse("accounts:profile"))
+        profile.refresh_from_db()
+        self.assertEqual(profile.department, "Sales")
+        self.assertEqual(profile.designation, "Executive")
+
+    def test_manager_employee_detail_hides_private_bank_and_address_data(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        manager = User.objects.create_user(username="manager@example.com", email="manager@example.com")
+        employee = User.objects.create_user(username="exec@example.com", email="exec@example.com")
+        UserProfile.objects.create(user=manager, role=Role.MANAGER, company=company)
+        profile = UserProfile.objects.create(
+            user=employee, role=Role.EXECUTIVE, company=company, bank_account_number="123456789012",
+            address="Private Address", personal_email="private@example.com",
+        )
+        self.client.force_login(manager)
+
+        response = self.client.get(reverse("accounts:team_profile_detail", args=[profile.id]))
+
+        self.assertNotContains(response, "123456789012")
+        self.assertNotContains(response, "Private Address")
+        self.assertNotContains(response, "private@example.com")
+        self.assertContains(response, "Owner only")
+
+    def test_owner_employee_edit_records_real_change_history(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        employee = User.objects.create_user(username="exec@example.com", email="exec@example.com", first_name="Executive")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        profile = UserProfile.objects.create(user=employee, role=Role.EXECUTIVE, company=company, department="Sales")
+        self.client.force_login(owner)
+
+        response = self.client.post(
+            reverse("accounts:team_profile_edit", args=[profile.id]),
+            data={"full_name": "Executive User", "email": employee.email, "department": "Operations"},
+        )
+
+        self.assertRedirects(response, reverse("accounts:team_profile_detail", args=[profile.id]))
+        change = profile.change_history.get()
+        self.assertEqual(change.changes["department"]["from"], "Sales")
+        self.assertEqual(change.changes["department"]["to"], "Operations")
+        history = self.client.get(reverse("accounts:team_profile_history", args=[profile.id]))
+        self.assertContains(history, "Operations")
+
+    def test_profile_documents_are_available_only_to_self_or_owner(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        manager = User.objects.create_user(username="manager@example.com", email="manager@example.com")
+        employee = User.objects.create_user(username="exec@example.com", email="exec@example.com")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        UserProfile.objects.create(user=manager, role=Role.MANAGER, company=company)
+        profile = UserProfile.objects.create(user=employee, role=Role.EXECUTIVE, company=company)
+        profile.aadhaar_document.save("aadhaar.pdf", ContentFile(b"private-document"), save=True)
+
+        self.client.force_login(manager)
+        denied = self.client.get(reverse("accounts:profile_document", args=[profile.id, "aadhaar"]))
+        self.assertEqual(denied.status_code, 404)
+
+        self.client.force_login(owner)
+        allowed = self.client.get(reverse("accounts:profile_document", args=[profile.id, "aadhaar"]))
+        self.assertEqual(allowed.status_code, 200)
 
     def test_any_role_email_change_creates_request_and_updates_after_otp(self):
         User = get_user_model()

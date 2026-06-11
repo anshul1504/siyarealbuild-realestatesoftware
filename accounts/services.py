@@ -16,10 +16,11 @@ def record_audit(*, actor, action, target, company=None, details=None, target_la
 
 
 @transaction.atomic
-def update_employee_profile(*, profile, form, actor):
+def update_employee_profile(*, profile, form, actor, skip_email=False):
     tracked = set(form.changed_data) - {"profile_image", "aadhaar_document", "pan_document"}
-    before = {field: str(getattr(profile, field, "") or "") for field in tracked if hasattr(profile, field)}
-    updated = form.save()
+    persisted = profile.__class__.objects.get(pk=profile.pk)
+    before = {field: str(getattr(persisted, field, "") or "") for field in tracked if hasattr(persisted, field)}
+    updated = form.save(skip_email=skip_email)
     changes = {
         field: {"from": before.get(field, ""), "to": str(getattr(updated, field, "") or "")}
         for field in tracked
@@ -28,6 +29,11 @@ def update_employee_profile(*, profile, form, actor):
     if changes:
         EmployeeProfileChange.objects.create(profile=updated, changed_by=actor, changes=changes)
         record_audit(actor=actor, action="employee.profile_updated", target=updated, company=updated.company, details=changes)
+    file_fields = set(form.changed_data).intersection({"profile_image", "aadhaar_document", "pan_document"})
+    if file_fields:
+        file_changes = {field: {"from": "Previous file", "to": "Updated file"} for field in file_fields}
+        EmployeeProfileChange.objects.create(profile=updated, changed_by=actor, changes=file_changes)
+        record_audit(actor=actor, action="employee.profile_documents_updated", target=updated, company=updated.company, details=file_changes)
     return updated
 
 
