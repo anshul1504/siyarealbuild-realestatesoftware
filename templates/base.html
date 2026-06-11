@@ -116,6 +116,9 @@
                         <small>{{ dashboard_company.tagline|default:"Real estate workspace" }}</small>
                     </span>
                 </a>
+                <button class="sidebar-close-btn" type="button" aria-label="Close sidebar">
+                    <span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></span>
+                </button>
             </div>
             <nav class="app-navbar">
                 <ul class="menubar">
@@ -280,17 +283,7 @@
 
         <footer class="footer-wrapper">
             <div class="container-fluid">
-                <div class="row g-3">
-                    <div class="col-md-8 text-center text-md-start">
-                        <p class="mb-0">2026 Siya Real Build Pvt. Ltd. Design and developed by <a class="text-body fw-semibold" href="https://www.thewebfix.in/" target="_blank" rel="noopener noreferrer">The Webfix</a>.</p>
-                    </div>
-                    <div class="col-md-4">
-                        <ul class="d-flex list-inline mb-0 gap-4 flex-wrap justify-content-center justify-content-md-end">
-                            <li><a class="text-body" href="{% url 'properties:dashboard' %}">Home</a></li>
-                            <li><a class="text-body" href="javascript:void(0);">Support</a></li>
-                        </ul>
-                    </div>
-                </div>
+                <p class="footer-copy">2026 Siya Real Build Pvt. Ltd. Design and Developed by <a href="https://www.thewebfix.in/" target="_blank" rel="noopener noreferrer">The Webfix</a>.</p>
             </div>
         </footer>
 
@@ -351,7 +344,13 @@
           toast.querySelector(".toast-close")?.addEventListener("click", hide);
           window.setTimeout(hide, 3000);
         });
+        const menubar = document.querySelector(".app-menubar");
+        const sidebarMedia = window.matchMedia("(max-width: 1199.98px)");
         const setSidebarMode = (mode) => {
+          if (sidebarMedia.matches) {
+            document.documentElement.removeAttribute("data-app-sidebar");
+            return;
+          }
           if (mode === "mini") {
             document.documentElement.setAttribute("data-app-sidebar", "mini");
           } else {
@@ -359,13 +358,44 @@
           }
           localStorage.setItem("siya-sidebar", mode);
         };
+        const closeMobileSidebar = () => {
+          menubar?.classList.remove("open");
+          document.body.classList.remove("sidebar-open");
+          document.querySelectorAll(".app-toggler").forEach((button) => {
+            button.classList.remove("active");
+            button.setAttribute("aria-expanded", "false");
+          });
+        };
         setSidebarMode(localStorage.getItem("siya-sidebar") || "full");
+        sidebarMedia.addEventListener?.("change", () => {
+          closeMobileSidebar();
+          setSidebarMode(localStorage.getItem("siya-sidebar") || "full");
+        });
         document.querySelectorAll(".app-toggler").forEach((button) => {
+          button.setAttribute("aria-controls", "menubar");
+          button.setAttribute("aria-expanded", "false");
           button.addEventListener("click", () => {
+            if (sidebarMedia.matches) {
+              const willOpen = !menubar?.classList.contains("open");
+              menubar?.classList.toggle("open", willOpen);
+              document.body.classList.toggle("sidebar-open", willOpen);
+              document.querySelectorAll(".app-toggler").forEach((toggle) => {
+                toggle.classList.toggle("active", willOpen);
+                toggle.setAttribute("aria-expanded", willOpen ? "true" : "false");
+              });
+              return;
+            }
             const isMini = document.documentElement.getAttribute("data-app-sidebar") === "mini";
             setSidebarMode(isMini ? "full" : "mini");
           });
         });
+        document.addEventListener("keydown", (event) => {
+          if (event.key === "Escape") closeMobileSidebar();
+        });
+        menubar?.querySelectorAll("a.menu-link").forEach((link) => {
+          link.addEventListener("click", closeMobileSidebar);
+        });
+        menubar?.querySelector(".sidebar-close-btn")?.addEventListener("click", closeMobileSidebar);
         const closeOtherSidebarMenus = (currentItem = null) => {
           document.querySelectorAll(".app-navbar .menu-item.open").forEach((item) => {
             if (item !== currentItem) {

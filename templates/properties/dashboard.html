@@ -1,268 +1,273 @@
 {% extends "base.html" %}
 {% block title %}Dashboard - Siya Real Build{% endblock %}
 {% block content %}
-<div class="app-page-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
-    <div class="clearfix">
-        <h1 class="app-page-title mb-0">Dashboard</h1>
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb mb-0">
-                <li class="breadcrumb-item"><a href="{% url 'properties:dashboard' %}" class="text-body d-inline-flex align-items-center gap-1"><span class="ui-icon breadcrumb-icon"><svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10.5V20h14v-9.5"/></svg></span> Home</a></li>
-                <li class="breadcrumb-item active" aria-current="page">Dashboard</li>
-            </ol>
-        </nav>
+<section class="real-dashboard-hero">
+    <div>
+        <span class="dashboard-eyebrow">{{ dashboard_role_label|default:"Team member" }} Workspace</span>
+        <h1>Real Estate Command Center</h1>
+        <p>Track inventory, visits, follow-ups, role actions, and approvals from one clean dashboard.</p>
     </div>
-    <div class="d-flex gap-2 flex-wrap">
-        <span class="badge rounded-pill bg-primary-subtle text-primary px-3 py-2">{{ dashboard_role_label|default:"Team member" }}</span>
+    <div class="dashboard-hero-actions">
+        <a class="btn btn-light" href="{% url 'properties:list' %}">Inventory</a>
         {% if dashboard_can_add_property %}
-            <a class="btn btn-primary" href="{% url 'properties:create' %}"><i class="fi fi-rr-plus me-2"></i>Add Property</a>
+        <a class="btn btn-primary" href="{% url 'properties:create' %}">Add Property</a>
         {% endif %}
     </div>
-</div>
-
-<div class="row g-4">
-    <div class="col-xxl-3 col-md-6">
-        <div class="card stat-card">
-            <div class="card-body d-flex align-items-center justify-content-between">
-                <div>
-                    <h6 class="text-body mb-1">Total Properties</h6>
-                    <h2 class="fw-bold mb-0">{{ stats.total_properties|default:0 }}</h2>
-                </div>
-                <div class="avatar avatar-md rounded-2 bg-primary-subtle text-primary"><span class="ui-icon"><svg viewBox="0 0 24 24"><path d="M4 21V7l8-4 8 4v14"/><path d="M9 21v-7h6v7"/><path d="M8 9h.01M12 9h.01M16 9h.01"/></svg></span></div>
-            </div>
-        </div>
-    </div>
-    <div class="col-xxl-3 col-md-6">
-        <div class="card stat-card">
-            <div class="card-body d-flex align-items-center justify-content-between">
-                <div>
-                    <h6 class="text-body mb-1">Active Listings</h6>
-                    <h2 class="fw-bold mb-0">{{ active_count }}</h2>
-                </div>
-                <div class="avatar avatar-md rounded-2 bg-success-subtle text-success"><span class="ui-icon"><svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10.5V20h14v-9.5"/><path d="M10 20v-5h4v5"/></svg></span></div>
-            </div>
-        </div>
-    </div>
-    <div class="col-xxl-3 col-md-6">
-        <div class="card stat-card">
-            <div class="card-body d-flex align-items-center justify-content-between">
-                <div>
-                    <h6 class="text-body mb-1">Total Value</h6>
-                    <h2 class="fw-bold mb-0">Rs {{ stats.total_value|default:0 }}</h2>
-                </div>
-                <div class="avatar avatar-md rounded-2 bg-warning-subtle text-warning"><span class="ui-icon"><svg viewBox="0 0 24 24"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"/></svg></span></div>
-            </div>
-        </div>
-    </div>
-    <div class="col-xxl-3 col-md-6">
-        <div class="card stat-card">
-            <div class="card-body d-flex align-items-center justify-content-between">
-                <div>
-                    <h6 class="text-body mb-1">Leads</h6>
-                    <h2 class="fw-bold mb-0">{{ lead_total }}</h2>
-                </div>
-                <div class="avatar avatar-md rounded-2 bg-info-subtle text-info"><span class="ui-icon"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span></div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row g-4 mt-1">
-    <div class="col-xl-8">
-        <div class="card">
-            <div class="card-header d-flex align-items-center justify-content-between">
-                <div>
-                    <h5 class="card-title mb-0">Recent Properties</h5>
-                    <p class="text-body mb-0">Latest records connected with your account.</p>
-                </div>
-                <a class="btn btn-sm btn-outline-primary" href="{% url 'properties:list' %}">View All</a>
-            </div>
-            <div class="card-body">
-                {% if properties %}
-                    {% include "properties/partials/property_table.html" %}
-                {% else %}
-                    <div class="text-center py-5">
-                        <h5 class="mb-1">No properties added yet</h5>
-                        <p class="text-body mb-3">Your role dashboard is ready. Start by adding the first property record.</p>
-                        {% if dashboard_can_add_property %}
-                            <a class="btn btn-primary" href="{% url 'properties:create' %}">Add Property</a>
-                        {% endif %}
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    <div class="col-xl-4">
-        <div class="card h-100">
-            <div class="card-header border-0">
-                <h5 class="card-title mb-0">Role Workspace</h5>
-                <p class="text-body mb-0">Available actions for {{ dashboard_role_label|default:"your role" }}.</p>
-            </div>
-            <div class="card-body pt-0">
-                <div class="list-group list-group-smooth list-group-unlined">
-                    <a class="list-group-item d-flex align-items-center justify-content-between" href="{% url 'accounts:profile' %}">
-                        <span><i class="fi fi-rr-user me-2 text-primary"></i>Profile Details</span>
-                        <i class="fi fi-rr-angle-small-right"></i>
-                    </a>
-                    <a class="list-group-item d-flex align-items-center justify-content-between" href="{% url 'accounts:company_detail' %}">
-                        <span><i class="fi fi-rr-building me-2 text-primary"></i>Company Overview</span>
-                        <i class="fi fi-rr-angle-small-right"></i>
-                    </a>
-                    {% if dashboard_can_manage_team %}
-                    <a class="list-group-item d-flex align-items-center justify-content-between" href="{% url 'accounts:employee_invites' %}">
-                        <span><i class="fi fi-rr-users-alt me-2 text-primary"></i>Team Invites</span>
-                        <i class="fi fi-rr-angle-small-right"></i>
-                    </a>
-                    {% endif %}
-                    {% if dashboard_can_manage_access %}
-                    <a class="list-group-item d-flex align-items-center justify-content-between" href="{% url 'accounts:access_control' %}">
-                        <span><i class="fi fi-rr-shield-check me-2 text-primary"></i>Access Control</span>
-                        <i class="fi fi-rr-angle-small-right"></i>
-                    </a>
-                    <a class="list-group-item d-flex align-items-center justify-content-between" href="{% url 'accounts:owner_requests' %}">
-                        <span><i class="fi fi-rr-check-circle me-2 text-primary"></i>Bulk Approvals</span>
-                        <i class="fi fi-rr-angle-small-right"></i>
-                    </a>
-                    <a class="list-group-item d-flex align-items-center justify-content-between" href="{% url 'accounts:owner_meetings' %}">
-                        <span><i class="fi fi-rr-calendar me-2 text-primary"></i>Meetings & Events</span>
-                        <i class="fi fi-rr-angle-small-right"></i>
-                    </a>
-                    <a class="list-group-item d-flex align-items-center justify-content-between" href="{% url 'accounts:owner_popups' %}">
-                        <span><i class="fi fi-rr-picture me-2 text-primary"></i>Offer Popups</span>
-                        <i class="fi fi-rr-angle-small-right"></i>
-                    </a>
-                    <a class="list-group-item d-flex align-items-center justify-content-between" href="{% url 'accounts:owner_role_matrix' %}">
-                        <span><i class="fi fi-rr-apps me-2 text-primary"></i>Role Matrix</span>
-                        <i class="fi fi-rr-angle-small-right"></i>
-                    </a>
-                    <a class="list-group-item d-flex align-items-center justify-content-between" href="{% url 'accounts:owner_support' %}">
-                        <span><i class="fi fi-rr-interrogation me-2 text-primary"></i>Support Tickets</span>
-                        <i class="fi fi-rr-angle-small-right"></i>
-                    </a>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-{% if visible_events %}
-<section class="profile-panel mt-4">
-    <div class="profile-panel-head">
-        <div>
-            <h2>Events For Your Role</h2>
-            <p>Latest announcements shared with your workspace access level.</p>
-        </div>
-    </div>
-    <div class="event-post-grid event-post-grid-large">
-        {% for event in visible_events %}
-        <article class="event-post-card">
-            <a class="event-post-cover" href="{% url 'accounts:event_detail' event.id %}">
-                {% if event.cover_image %}
-                    <img src="{{ event.cover_image.url }}" alt="{{ event.title }}">
-                {% else %}
-                    <span>{{ event.title|slice:":1"|upper }}</span>
-                {% endif %}
-            </a>
-            <div class="event-post-body">
-                <div class="event-post-meta">
-                    <strong>{{ event.title }}</strong>
-                    <span>{{ event.starts_at|date:"d M Y, h:i A" }}</span>
-                </div>
-                <p>{{ event.caption|default:event.description|truncatechars:140 }}</p>
-                <div class="event-post-badges">
-                    <span class="badge bg-primary-subtle text-primary">{% if event.is_global %}All roles{% else %}Role wise{% endif %}</span>
-                    {% if event.show_as_popup %}<span class="badge bg-warning-subtle text-warning">Important</span>{% endif %}
-                </div>
-            </div>
-        </article>
-        {% endfor %}
-    </div>
 </section>
-{% endif %}
 
-{% if is_company_owner %}
-<div class="row g-4 mt-1">
-    <div class="col-xl-6">
-        <div class="card">
-            <div class="card-header d-flex align-items-center justify-content-between">
-                <div>
-                    <h5 class="card-title mb-0">Pending Signup Requests</h5>
-                    <p class="text-body mb-0">Email-verified users waiting for approval.</p>
-                </div>
-                <a class="btn btn-sm btn-outline-primary" href="{% url 'accounts:owner_requests' %}">Review Requests</a>
+<section class="dashboard-kpi-grid">
+    <article class="dashboard-kpi-card">
+        <span>Total Inventory</span>
+        <strong>{{ stats.total_properties|default:0 }}</strong>
+        <small>{{ active_count }} active listings</small>
+    </article>
+    <article class="dashboard-kpi-card">
+        <span>Portfolio Value</span>
+        <strong>Rs {{ total_value|floatformat:0 }}</strong>
+        <small>Avg Rs {{ avg_price|floatformat:0 }}</small>
+    </article>
+    <article class="dashboard-kpi-card">
+        <span>Client Leads</span>
+        <strong>{{ lead_total }}</strong>
+        <small>{{ upcoming_visits }} upcoming visits</small>
+    </article>
+    <article class="dashboard-kpi-card">
+        <span>Closures</span>
+        <strong>{{ conversion_count }}</strong>
+        <small>{{ conversion_percent }}% inventory closed</small>
+    </article>
+</section>
+
+<section class="dashboard-main-grid">
+    <article class="dashboard-panel dashboard-panel-large">
+        <div class="dashboard-panel-head">
+            <div>
+                <span>Inventory Health</span>
+                <h2>Status Wise Pipeline</h2>
             </div>
-            <div class="card-body">
-                {% if pending_signup_requests %}
-                    <div class="table-responsive">
-                        <table class="table align-middle mb-0">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Email</th>
-                                    <th>Role</th>
-                                    <th>Requested</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for signup in pending_signup_requests %}
-                                    <tr>
-                                        <td>{{ signup.name }}</td>
-                                        <td>{{ signup.email }}</td>
-                                        <td>{{ signup.get_requested_role_display }}</td>
-                                        <td>{{ signup.created_at|date:"d M Y" }}</td>
-                                        <td><a class="btn btn-sm btn-outline-primary" href="{% url 'accounts:owner_signup_request_detail' signup.id %}">Review</a></td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                {% else %}
-                    <p class="text-body mb-0">No signup requests are pending approval.</p>
-                {% endif %}
+            <a href="{% url 'properties:list' %}">View all</a>
+        </div>
+        <div class="dashboard-status-chart">
+            {% for item in status_chart %}
+            <div class="dashboard-bar-row">
+                <div class="dashboard-bar-meta">
+                    <span>{{ item.label }}</span>
+                    <strong>{{ item.count }}</strong>
+                </div>
+                <div class="dashboard-bar-track"><span style="width: {{ item.percent }}%"></span></div>
+            </div>
+            {% endfor %}
+        </div>
+    </article>
+
+    <article class="dashboard-panel">
+        <div class="dashboard-panel-head">
+            <div>
+                <span>Site Visits</span>
+                <h2>Visit Pipeline</h2>
             </div>
         </div>
-    </div>
-    <div class="col-xl-6">
-        <div class="card">
-            <div class="card-header d-flex align-items-center justify-content-between">
+        <div class="dashboard-ring-list">
+            {% for item in visit_chart %}
+            <div class="dashboard-ring-item">
+                <div class="dashboard-ring" style="--value: {{ item.percent }}%"><span>{{ item.count }}</span></div>
                 <div>
-                    <h5 class="card-title mb-0">Authentication Support</h5>
-                    <p class="text-body mb-0">Recent unresolved support requests.</p>
+                    <strong>{{ item.label }}</strong>
+                    <small>{{ item.percent }}% of tracked visits</small>
                 </div>
-                <a class="btn btn-sm btn-outline-primary" href="{% url 'admin:accounts_authenticationsupportrequest_changelist' %}">Open Admin</a>
             </div>
-            <div class="card-body">
-                {% if support_requests %}
-                    <div class="table-responsive">
-                        <table class="table align-middle mb-0">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Contact</th>
-                                    <th>Issue</th>
-                                    <th>Submitted</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for support in support_requests %}
-                                    <tr>
-                                        <td>{{ support.name }}</td>
-                                        <td>{{ support.contact|default:"-" }}</td>
-                                        <td>{{ support.issue|truncatechars:45 }}</td>
-                                        <td>{{ support.created_at|date:"d M Y" }}</td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                {% else %}
-                    <p class="text-body mb-0">No unresolved authentication support requests.</p>
-                {% endif %}
+            {% endfor %}
+        </div>
+    </article>
+</section>
+
+<section class="dashboard-main-grid dashboard-main-grid-secondary">
+    <article class="dashboard-panel">
+        <div class="dashboard-panel-head">
+            <div>
+                <span>Property Mix</span>
+                <h2>Category Breakdown</h2>
             </div>
         </div>
-    </div>
-</div>
+        <div class="dashboard-chip-chart">
+            {% if category_chart %}
+                {% for item in category_chart %}
+                <div>
+                    <span>{{ item.label }}</span>
+                    <strong>{{ item.count }}</strong>
+                    <small>{{ item.percent }}%</small>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="dashboard-empty">No category data available yet.</p>
+            {% endif %}
+        </div>
+    </article>
+
+    <article class="dashboard-panel">
+        <div class="dashboard-panel-head">
+            <div>
+                <span>Sale/Rent/Lease</span>
+                <h2>Listing Split</h2>
+            </div>
+        </div>
+        <div class="dashboard-listing-bars">
+            {% for item in listing_chart %}
+            <div>
+                <span>{{ item.label }}</span>
+                <strong>{{ item.count }}</strong>
+                <i style="width: {{ item.percent }}%"></i>
+            </div>
+            {% endfor %}
+        </div>
+    </article>
+
+    <article class="dashboard-panel">
+        <div class="dashboard-panel-head">
+            <div>
+                <span>Colony Stock</span>
+                <h2>Plot Availability</h2>
+            </div>
+        </div>
+        <div class="dashboard-plot-stock">
+            <strong>{{ available_plots }}</strong>
+            <span>available plots</span>
+            <p>{{ total_plots }} total plots recorded across colony projects.</p>
+        </div>
+    </article>
+</section>
+
+<section class="dashboard-main-grid">
+    <article class="dashboard-panel dashboard-panel-large">
+        <div class="dashboard-panel-head">
+            <div>
+                <span>Latest Inventory</span>
+                <h2>Recent Properties</h2>
+            </div>
+            <a href="{% url 'properties:list' %}">Open directory</a>
+        </div>
+        {% if properties %}
+        <div class="dashboard-property-list">
+            {% for property in properties %}
+            <a class="dashboard-property-row" href="{% url 'properties:detail' property.id %}">
+                <div>
+                    <strong>{{ property.title }}</strong>
+                    <span>{{ property.locality|default:property.city }} · {{ property.get_category_display }}</span>
+                </div>
+                <div>
+                    <strong>Rs {{ property.price|floatformat:0 }}</strong>
+                    <span>{{ property.get_status_display }}</span>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="dashboard-empty-state">
+            <h3>No properties added yet</h3>
+            <p>Start with your first listing to activate inventory, leads and visit tracking.</p>
+            {% if dashboard_can_add_property %}<a class="btn btn-primary" href="{% url 'properties:create' %}">Add Property</a>{% endif %}
+        </div>
+        {% endif %}
+    </article>
+
+    <article class="dashboard-panel">
+        <div class="dashboard-panel-head">
+            <div>
+                <span>Role Wise</span>
+                <h2>Quick Actions</h2>
+            </div>
+        </div>
+        <div class="dashboard-action-list">
+            {% for action in role_actions %}
+            <a href="{% url action.url_name %}">
+                <span class="dashboard-action-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        {% if action.icon == "home" %}
+                        <path d="M3 11.5 12 4l9 7.5"/><path d="M5 10.5V21h14V10.5"/><path d="M9 21v-6h6v6"/>
+                        {% elif action.icon == "plus" %}
+                        <path d="M12 5v14"/><path d="M5 12h14"/>
+                        {% elif action.icon == "user" %}
+                        <circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>
+                        {% elif action.icon == "building" %}
+                        <path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/><path d="M9 10h.01M12 10h.01M15 10h.01"/>
+                        {% elif action.icon == "users" %}
+                        <circle cx="9" cy="7" r="4"/><path d="M2 21v-2a4 4 0 0 1 4-4h6"/><path d="M17 11h5"/><path d="M19.5 8.5v5"/>
+                        {% else %}
+                        <path d="M20 6 9 17l-5-5"/>
+                        {% endif %}
+                    </svg>
+                </span>
+                <span>
+                    <strong>{{ action.label }}</strong>
+                    <small>{{ action.caption }}</small>
+                </span>
+            </a>
+            {% endfor %}
+        </div>
+    </article>
+</section>
+
+{% if visible_events or is_company_owner %}
+<section class="dashboard-main-grid dashboard-main-grid-secondary">
+    {% if visible_events %}
+    <article class="dashboard-panel dashboard-panel-large">
+        <div class="dashboard-panel-head">
+            <div>
+                <span>Announcements</span>
+                <h2>Events For Your Role</h2>
+            </div>
+        </div>
+        <div class="dashboard-event-strip">
+            {% for event in visible_events|slice:":4" %}
+            <a href="{% url 'accounts:event_detail' event.id %}">
+                {% if event.cover_image %}
+                <img src="{{ event.cover_image.url }}" alt="{{ event.title }}">
+                {% else %}
+                <span>{{ event.title|slice:":1"|upper }}</span>
+                {% endif %}
+                <strong>{{ event.title }}</strong>
+                <small>{{ event.starts_at|date:"d M Y, h:i A" }}</small>
+            </a>
+            {% endfor %}
+        </div>
+    </article>
+    {% endif %}
+
+    {% if is_company_owner %}
+    <article class="dashboard-panel">
+        <div class="dashboard-panel-head">
+            <div>
+                <span>Owner Control</span>
+                <h2>Pending Work</h2>
+            </div>
+        </div>
+        <div class="dashboard-owner-queue">
+            <a href="{% url 'accounts:owner_requests' %}">
+                <span>Pending Signup Requests</span>
+                <strong>{{ pending_signup_requests|length }}</strong>
+            </a>
+            <a href="{% url 'admin:accounts_authenticationsupportrequest_changelist' %}">
+                <span>Authentication Support</span>
+                <strong>{{ support_requests|length }}</strong>
+            </a>
+        </div>
+        <div class="dashboard-owner-details">
+            {% for signup in pending_signup_requests|slice:":3" %}
+            <a href="{% url 'accounts:owner_signup_request_detail' signup.id %}">
+                <strong>{{ signup.name }}</strong>
+                <span>{{ signup.email }}</span>
+            </a>
+            {% endfor %}
+            {% for support in support_requests|slice:":3" %}
+            <a href="{% url 'admin:accounts_authenticationsupportrequest_change' support.id %}">
+                <strong>{{ support.name }}</strong>
+                <span>{{ support.issue }}</span>
+            </a>
+            {% endfor %}
+        </div>
+    </article>
+    {% endif %}
+</section>
 {% endif %}
 
 {% if dashboard_offer_popup %}
@@ -324,5 +329,4 @@
   });
 </script>
 {% endif %}
-
 {% endblock %}
