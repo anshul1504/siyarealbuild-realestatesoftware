@@ -10,7 +10,7 @@ from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
 
 from ..forms import ReferralSettingForm, RoleTargetForm, SoftwarePopupForm
-from ..models import ReferralReward, ReferralSetting, Role, RoleTarget, SignupRequest, SignupRequestStatus, SoftwarePopup
+from ..models import ReferralReward, ReferralSetting, Role, RoleTarget, SignupRequest, SignupRequestStatus, SoftwarePopup, UserProfile
 from ..marketing import MARKETING_MODULE, can_perform_marketing
 from ..operations import OPERATIONS_MODULE, can_perform_operations
 from ..services import record_audit
@@ -22,6 +22,20 @@ def _reward_queryset(company):
         ReferralReward.objects.filter(company=company)
         .select_related("referrer", "referrer__profile", "referred_user", "referred_user__profile", "signup_request")
         .order_by("-activated_at", "-created_at")
+    )
+
+
+def _pending_referral_queryset(company):
+    lookup = models.Q()
+    for profile in UserProfile.objects.filter(company=company).select_related("user"):
+        for value in (profile.employee_code, profile.user.email, profile.user.username):
+            if value:
+                lookup |= models.Q(channel_partner_reference__iexact=value.strip())
+    if not lookup:
+        return SignupRequest.objects.none()
+    return SignupRequest.objects.filter(
+        lookup,
+        status__in=[SignupRequestStatus.OTP_PENDING, SignupRequestStatus.PENDING_APPROVAL],
     )
 
 
@@ -57,10 +71,7 @@ def owner_marketing_dashboard(request):
         "redeemed_coupons": rewards.filter(
             models.Q(referrer_coupon_redeemed_at__isnull=False) | models.Q(referred_coupon_redeemed_at__isnull=False)
         ).count(),
-        "pending_references": SignupRequest.objects.filter(
-            channel_partner_reference__gt="",
-            status__in=[SignupRequestStatus.OTP_PENDING, SignupRequestStatus.PENDING_APPROVAL],
-        ).count(),
+        "pending_references": _pending_referral_queryset(company).count(),
     }
     popup_stats = {
         "total_popups": len(popups),
@@ -118,6 +129,9 @@ def owner_referrals(request):
         else:
             messages.error(request, "Choose a valid referral action.")
         return redirect("accounts:owner_referrals")
+    if request.method == "POST" and not can_perform_marketing(user_profile, "update"):
+        messages.error(request, "You do not have permission to update referral settings.")
+        return redirect("accounts:owner_referrals")
     if request.method == "POST" and form.is_valid():
         form.save()
         record_audit(actor=request.user, action="marketing.referral_settings_updated", target=setting, company=company)
@@ -145,10 +159,7 @@ def owner_referrals(request):
         "total_referred_amount": rewards.filter(status=ReferralReward.Status.ACTIVE).aggregate(total=models.Sum("referred_reward_amount"))["total"] or 0,
         "unpaid_payouts": rewards.filter(payout_status=ReferralReward.PayoutStatus.UNPAID).count(),
         "paid_payouts": rewards.filter(payout_status=ReferralReward.PayoutStatus.PAID).count(),
-        "pending_references": SignupRequest.objects.filter(
-            channel_partner_reference__gt="",
-            status__in=[SignupRequestStatus.OTP_PENDING, SignupRequestStatus.PENDING_APPROVAL],
-        ).count(),
+        "pending_references": _pending_referral_queryset(company).count(),
     }
     if request.GET.get("export") == "csv":
         response = HttpResponse(content_type="text/csv")

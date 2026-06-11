@@ -36,5 +36,6 @@
     </tr>
     {% empty %}<tr><td colspan="7" class="text-center text-body py-4">No support requests.</td></tr>{% endfor %}
   </tbody></table></div>
+  {% include "accounts/partials/pagination.html" with page_obj=page_obj %}
 </section>
 {% endblock %}

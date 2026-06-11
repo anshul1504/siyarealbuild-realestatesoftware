@@ -28,7 +28,7 @@ def allowed_managed_roles(profile):
     return set()
 
 
-def role_matrix_allows(profile, permission, module=TEAM_MODULE):
+def role_matrix_allows(profile, permission, module=TEAM_MODULE, default=True):
     if not profile:
         return False
     if profile.role == Role.COMPANY_OWNER:
@@ -39,7 +39,7 @@ def role_matrix_allows(profile, permission, module=TEAM_MODULE):
         module__iexact=module,
     ).first()
     if not rule:
-        return True
+        return default
     return bool(getattr(rule, f"can_{permission}", False))
 
 

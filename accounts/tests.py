@@ -915,6 +915,40 @@ class SignupApprovalEmailTests(TestCase):
         self.assertIsNotNone(support.resolved_at)
         self.assertTrue(AuditLog.objects.filter(action="operations.support_updated").exists())
 
+    def test_operations_support_list_is_scoped_to_company_users(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        other_company = CompanyProfile.objects.create(name="Other Company", singleton_key=False)
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        employee = User.objects.create_user(username="employee@example.com", email="employee@example.com")
+        other_employee = User.objects.create_user(username="other@example.com", email="other@example.com")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        UserProfile.objects.create(user=employee, role=Role.EXECUTIVE, company=company)
+        UserProfile.objects.create(user=other_employee, role=Role.EXECUTIVE, company=other_company)
+        AuthenticationSupportRequest.objects.create(name="Visible", contact=employee.email, issue="Need help")
+        AuthenticationSupportRequest.objects.create(name="Hidden", contact=other_employee.email, issue="Other help")
+        self.client.force_login(owner)
+
+        response = self.client.get(reverse("accounts:owner_support"))
+
+        self.assertContains(response, "Visible")
+        self.assertNotContains(response, "Hidden")
+
+    def test_administration_sidebar_and_support_pagination_render(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        for index in range(18):
+            AuthenticationSupportRequest.objects.create(name=f"Client {index}", contact=f"client{index}@example.com", issue="Need help")
+        self.client.force_login(owner)
+
+        response = self.client.get(reverse("accounts:owner_support"))
+
+        self.assertContains(response, "Administration")
+        self.assertContains(response, "Support Desk")
+        self.assertContains(response, "Page 1 of 2")
+
     def test_meeting_create_records_delivery_and_audit(self):
         User = get_user_model()
         company = CompanyProfile.objects.create(name="Siya Real Build")
@@ -1924,6 +1958,54 @@ class MarketingOfferWorkflowTests(TestCase):
         self.assertEqual(export_response.status_code, 200)
         self.assertContains(export_response, "REF-001")
 
+    def test_marketing_view_only_role_cannot_update_referral_settings(self):
+        manager = get_user_model().objects.create_user(username="marketing-view@example.com", email="marketing-view@example.com")
+        UserProfile.objects.create(user=manager, role=Role.MANAGER, company=self.company)
+        RoleMatrixRule.objects.create(company=self.company, role=Role.MANAGER, module="marketing", can_view=True, can_update=False)
+        self.client.force_login(manager)
+
+        response = self.client.post(
+            reverse("accounts:owner_referrals"),
+            data={
+                "referral-is_active": "on",
+                "referral-referrer_reward_amount": "1000",
+                "referral-referrer_coupon_code": "",
+                "referral-referred_reward_amount": "500",
+                "referral-referred_coupon_code": "",
+                "referral-terms": "Updated by view-only user",
+            },
+        )
+
+        self.assertRedirects(response, reverse("accounts:owner_referrals"))
+        setting = self.company.referral_setting
+        self.assertFalse(setting.is_active)
+        self.assertEqual(setting.referrer_reward_amount, 0)
+
+    def test_referral_pending_count_only_includes_company_referrer_codes(self):
+        self.referrer.profile.employee_code = "SIYA-MGR-001"
+        self.referrer.profile.save(update_fields=["employee_code", "updated_at"])
+        SignupRequest.objects.create(
+            name="Visible Pending",
+            phone="+91 9999999999",
+            email="visible-pending@example.com",
+            channel_partner_reference="SIYA-MGR-001",
+            status=SignupRequestStatus.PENDING_APPROVAL,
+            is_email_verified=True,
+        )
+        SignupRequest.objects.create(
+            name="Hidden Pending",
+            phone="+91 9999999999",
+            email="hidden-pending@example.com",
+            channel_partner_reference="OTHER-CODE",
+            status=SignupRequestStatus.PENDING_APPROVAL,
+            is_email_verified=True,
+        )
+        self.client.force_login(self.owner)
+
+        response = self.client.get(reverse("accounts:owner_referrals"))
+
+        self.assertContains(response, "1 referral reference")
+
     def test_popup_tracking_and_role_overlap_activation(self):
         manager_popup = SoftwarePopup.objects.create(
             company=self.company,
@@ -1983,3 +2065,15 @@ class MarketingOfferWorkflowTests(TestCase):
 
         self.assertFalse(form.is_valid())
         self.assertIn("CTA label and CTA URL", str(form.errors))
+
+    def test_sidebar_shows_my_referrals_without_owner_marketing_links(self):
+        executive = get_user_model().objects.create_user(username="exec-sidebar@example.com", email="exec-sidebar@example.com")
+        UserProfile.objects.create(user=executive, role=Role.EXECUTIVE, company=self.company)
+        self.client.force_login(executive)
+
+        response = self.client.get(reverse("properties:dashboard"))
+
+        self.assertContains(response, "Marketing & Referrals")
+        self.assertContains(response, "My Referrals")
+        self.assertNotContains(response, "Marketing Dashboard")
+        self.assertNotContains(response, "Referral Settings")

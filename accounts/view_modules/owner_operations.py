@@ -1,14 +1,20 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.db import models
 from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
 
 from ..forms import OfficeLocationForm, RoleMatrixRuleForm
-from ..models import AuthenticationSupportRequest, AuditLog, CompanyEvent, Meeting, NotificationDelivery, OfficeLocation, RoleMatrixRule, RoleTarget, SoftwarePopup
+from ..models import AuthenticationSupportRequest, AuditLog, CompanyEvent, Meeting, NotificationDelivery, OfficeLocation, RoleMatrixRule, RoleTarget, SoftwarePopup, UserProfile
 from ..operations import OPERATIONS_MODULE, can_perform_operations
 from ..services import record_audit
 from .owner_common import owner_context, owner_render
+
+
+def _support_queryset_for_company(company):
+    other_company_emails = UserProfile.objects.exclude(company=company).values("user__email")
+    return AuthenticationSupportRequest.objects.exclude(contact__in=other_company_emails)
 
 
 @login_required
@@ -17,7 +23,7 @@ def owner_operations_dashboard(request):
     if not allowed:
         return redirect("properties:dashboard")
     context = {
-        "support_open": AuthenticationSupportRequest.objects.filter(is_resolved=False).count(),
+        "support_open": _support_queryset_for_company(company).filter(is_resolved=False).count(),
         "meetings_active": Meeting.objects.filter(company=company, is_active=True).count(),
         "events_active": CompanyEvent.objects.filter(company=company, is_active=True).count(),
         "popups_active": SoftwarePopup.objects.filter(company=company, is_active=True).count(),
@@ -59,7 +65,7 @@ def owner_support(request):
         if not can_perform_operations(user_profile, "update"):
             messages.error(request, "You do not have permission to update support tickets.")
             return redirect("accounts:owner_support")
-        support = AuthenticationSupportRequest.objects.filter(id=request.POST.get("support_id")).first()
+        support = _support_queryset_for_company(company).filter(id=request.POST.get("support_id")).first()
         if support:
             support.is_resolved = request.POST.get("status") == "resolved"
             support.owner_note = request.POST.get("owner_note", "").strip()
@@ -68,7 +74,7 @@ def owner_support(request):
             record_audit(actor=request.user, action="operations.support_updated", target=support, company=company, details={"resolved": support.is_resolved})
             messages.success(request, "Support ticket status updated.")
         return redirect("accounts:owner_support")
-    support_requests = AuthenticationSupportRequest.objects.all()
+    support_requests = _support_queryset_for_company(company)
     status = request.GET.get("status", "").strip()
     query = request.GET.get("q", "").strip()
     if status == "open":
@@ -77,7 +83,22 @@ def owner_support(request):
         support_requests = support_requests.filter(is_resolved=True)
     if query:
         support_requests = support_requests.filter(models.Q(name__icontains=query) | models.Q(contact__icontains=query) | models.Q(issue__icontains=query))
-    return owner_render(request, "accounts/owner_support.html", {"support_requests": support_requests[:100], "selected_status": status, "query": query, "user_profile": user_profile})
+    paginator = Paginator(support_requests.order_by("-created_at"), 15)
+    page_obj = paginator.get_page(request.GET.get("page"))
+    query_params = request.GET.copy()
+    query_params.pop("page", None)
+    return owner_render(
+        request,
+        "accounts/owner_support.html",
+        {
+            "support_requests": page_obj.object_list,
+            "page_obj": page_obj,
+            "query_string": query_params.urlencode(),
+            "selected_status": status,
+            "query": query,
+            "user_profile": user_profile,
+        },
+    )
 
 
 @login_required
@@ -121,7 +142,15 @@ def owner_audit_logs(request):
     query = request.GET.get("q", "").strip()
     if query:
         logs = logs.filter(models.Q(action__icontains=query) | models.Q(target_label__icontains=query) | models.Q(target_type__icontains=query))
-    return owner_render(request, "accounts/owner_audit_logs.html", {"logs": logs[:200], "query": query, "user_profile": user_profile})
+    paginator = Paginator(logs.order_by("-created_at"), 25)
+    page_obj = paginator.get_page(request.GET.get("page"))
+    query_params = request.GET.copy()
+    query_params.pop("page", None)
+    return owner_render(
+        request,
+        "accounts/owner_audit_logs.html",
+        {"logs": page_obj.object_list, "page_obj": page_obj, "query_string": query_params.urlencode(), "query": query, "user_profile": user_profile},
+    )
 
 
 @login_required
@@ -136,4 +165,20 @@ def owner_notification_deliveries(request):
         deliveries = deliveries.filter(status=status)
     if query:
         deliveries = deliveries.filter(models.Q(recipient__icontains=query) | models.Q(subject__icontains=query) | models.Q(category__icontains=query))
-    return owner_render(request, "accounts/owner_notification_deliveries.html", {"deliveries": deliveries[:200], "status_choices": NotificationDelivery.Status.choices, "selected_status": status, "query": query, "user_profile": user_profile})
+    paginator = Paginator(deliveries.order_by("-created_at"), 25)
+    page_obj = paginator.get_page(request.GET.get("page"))
+    query_params = request.GET.copy()
+    query_params.pop("page", None)
+    return owner_render(
+        request,
+        "accounts/owner_notification_deliveries.html",
+        {
+            "deliveries": page_obj.object_list,
+            "page_obj": page_obj,
+            "query_string": query_params.urlencode(),
+            "status_choices": NotificationDelivery.Status.choices,
+            "selected_status": status,
+            "query": query,
+            "user_profile": user_profile,
+        },
+    )
