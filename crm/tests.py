@@ -315,6 +315,22 @@ class CrmLeadWorkflowTests(TestCase):
         self.assertRedirects(response, reverse("crm:lead_list"))
         self.assertEqual(lead.assigned_to, self.executive)
 
+    def test_non_owner_reports_hide_meta_controls_and_events(self):
+        MetaWebhookEvent.objects.create(company=self.company, event_id="hidden-meta-event", status=MetaWebhookEvent.Status.FAILED, error_message="Owner only")
+        self.client.force_login(self.manager)
+        response = self.client.get(reverse("crm:reports"))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Meta Health")
+        self.assertNotContains(response, "Assignment Rules")
+        self.assertNotContains(response, "hidden-meta-event")
+
+    def test_executive_archived_detail_hides_restore_control(self):
+        lead = Lead.objects.create(company=self.company, client_name="Archived Executive Lead", assigned_to=self.executive, is_archived=True)
+        self.client.force_login(self.executive)
+        response = self.client.get(reverse("crm:lead_detail", args=[lead.id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Restore Lead")
+
     def test_property_match_and_visit_schedule_from_lead(self):
         property_obj = Property.objects.create(
             owner=self.owner,

@@ -524,6 +524,7 @@ def meta_event_reprocess(request, event_id):
 def crm_reports(request):
     leads = visible_leads_for(request.user)
     now = timezone.now()
+    can_manage_meta = can_configure_meta(request.user)
     assignee_counts = (
         leads.values("assigned_to__email", "assigned_to__first_name", "assigned_to__last_name")
         .annotate(total=Count("id"))
@@ -537,9 +538,11 @@ def crm_reports(request):
         "status_counts": [{"label": label, "count": leads.filter(status=value).count()} for value, label in LeadStatus.choices],
         "priority_counts": [{"label": label, "count": leads.filter(priority=value).count()} for value, label in LeadPriority.choices],
         "overdue_followups": LeadFollowUp.objects.filter(lead__in=leads, status=LeadFollowUp.Status.OPEN, due_at__lt=now).select_related("lead", "assigned_to")[:20],
-        "meta_events": MetaWebhookEvent.objects.filter(company=user_company(request.user)).select_related("company")[:20],
+        "meta_events": MetaWebhookEvent.objects.filter(company=user_company(request.user)).select_related("company")[:20] if can_manage_meta else [],
         "assignee_counts": assignee_counts,
-        "failed_meta_count": MetaWebhookEvent.objects.filter(company=user_company(request.user), status=MetaWebhookEvent.Status.FAILED).count(),
+        "failed_meta_count": MetaWebhookEvent.objects.filter(company=user_company(request.user), status=MetaWebhookEvent.Status.FAILED).count() if can_manage_meta else 0,
+        "can_configure_meta": can_manage_meta,
+        "can_export": can_assign_leads(request.user),
     }
     return render(request, "crm/reports.html", context)
 

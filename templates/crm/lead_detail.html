@@ -9,7 +9,7 @@
     <div class="d-flex gap-2 flex-wrap">
         <a class="btn btn-light" href="{% url 'crm:dashboard' %}">CRM Dashboard</a>
         <a class="btn btn-light" href="{% url 'crm:lead_list' %}">Lead List</a>
-        {% if lead.is_archived %}
+        {% if can_assign and lead.is_archived %}
         <form method="post" action="{% url 'crm:lead_restore' lead.id %}">
             {% csrf_token %}
             <button class="btn btn-outline-primary" type="submit">Restore Lead</button>
