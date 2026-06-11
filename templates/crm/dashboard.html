@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}CRM Dashboard - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">CRM Dashboard</h1>
+        <p class="text-body mb-0">Lead intake, assignment, follow-ups and conversion health.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        {% if can_configure_meta %}<a class="btn btn-outline-primary" href="{% url 'crm:meta_source_list' %}">Meta Sources</a>{% endif %}
+        <a class="btn btn-light" href="{% url 'crm:lead_kanban' %}">Kanban</a>
+        <a class="btn btn-light" href="{% url 'crm:followup_list' %}">Follow-ups</a>
+        <a class="btn btn-light" href="{% url 'crm:reports' %}">Reports</a>
+        <a class="btn btn-primary" href="{% url 'crm:lead_create' %}">Add Lead</a>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-6 col-xl-2"><section class="profile-panel h-100"><span class="text-body small">Total Leads</span><h2 class="mb-0">{{ total_leads }}</h2></section></div>
+    <div class="col-md-6 col-xl-2"><section class="profile-panel h-100"><span class="text-body small">New Today</span><h2 class="mb-0">{{ new_today }}</h2></section></div>
+    <div class="col-md-6 col-xl-2"><section class="profile-panel h-100"><span class="text-body small">Unassigned</span><h2 class="mb-0">{{ unassigned }}</h2></section></div>
+    <div class="col-md-6 col-xl-2"><section class="profile-panel h-100"><span class="text-body small">Overdue</span><h2 class="mb-0">{{ overdue_followups }}</h2></section></div>
+    <div class="col-md-6 col-xl-2"><section class="profile-panel h-100"><span class="text-body small">Active</span><h2 class="mb-0">{{ active_pipeline }}</h2></section></div>
+    <div class="col-md-6 col-xl-2"><section class="profile-panel h-100"><span class="text-body small">Converted</span><h2 class="mb-0">{{ converted }}</h2></section></div>
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-7">
+        <section class="profile-panel h-100">
+            <div class="profile-panel-head">
+                <div><h2>Pipeline By Status</h2><p>Current CRM stage distribution.</p></div>
+                <a class="btn btn-sm btn-light" href="{% url 'crm:lead_list' %}">Open Pipeline</a>
+            </div>
+            {% for item in status_counts %}
+            <div class="d-flex align-items-center gap-3 py-2 border-bottom">
+                <div class="flex-grow-1">{{ item.label }}</div>
+                <strong>{{ item.count }}</strong>
+                <div class="progress flex-grow-1" style="height: 8px; max-width: 220px;">
+                    <div class="progress-bar" style="width: {% widthratio item.count total_leads 100 %}%"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </section>
+    </div>
+    <div class="col-xl-5">
+        <section class="profile-panel h-100">
+            <div class="profile-panel-head"><div><h2>Lead Sources</h2><p>Where enquiries are coming from.</p></div></div>
+            {% for item in source_counts %}
+            <div class="d-flex align-items-center justify-content-between py-2 border-bottom">
+                <span>{{ item.label }}</span>
+                <strong>{{ item.count }}</strong>
+            </div>
+            {% endfor %}
+        </section>
+    </div>
+</div>
+
+<div class="row g-4 mt-1">
+    <div class="col-xl-7">
+        <section class="profile-panel h-100">
+            <div class="profile-panel-head"><div><h2>Recent Leads</h2><p>Latest enquiries requiring action.</p></div></div>
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead><tr><th>Client</th><th>Status</th><th>Assigned</th><th></th></tr></thead>
+                    <tbody>
+                    {% for lead in recent_leads %}
+                    <tr>
+                        <td><strong>{{ lead.client_name }}</strong><br><small>{{ lead.get_source_display }}</small></td>
+                        <td>{{ lead.get_status_display }}</td>
+                        <td>{% if lead.assigned_to %}{{ lead.assigned_to.get_full_name|default:lead.assigned_to.email }}{% else %}<span class="text-warning">Unassigned</span>{% endif %}</td>
+                        <td><a class="btn btn-sm btn-outline-primary" href="{% url 'crm:lead_detail' lead.id %}">Open</a></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="text-center py-4">No leads yet.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+    <div class="col-xl-5">
+        <section class="profile-panel h-100">
+            <div class="profile-panel-head">
+                <div><h2>Due Follow-ups</h2><p>Today and overdue actions.</p></div>
+                <a class="btn btn-sm btn-light" href="{% url 'crm:followup_list' %}">View All</a>
+            </div>
+            <div class="list-group list-group-flush">
+                {% for followup in due_followups %}
+                <a class="list-group-item px-0" href="{% url 'crm:lead_detail' followup.lead.id %}">
+                    <strong>{{ followup.lead.client_name }}</strong>
+                    <p class="mb-1">{{ followup.note|default:"Follow up with client." }}</p>
+                    <small>{{ followup.due_at|date:"d M Y, h:i A" }}{% if followup.assigned_to %} - {{ followup.assigned_to.get_full_name|default:followup.assigned_to.email }}{% endif %}</small>
+                </a>
+                {% empty %}
+                <p class="text-body mb-0">No due follow-ups.</p>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}

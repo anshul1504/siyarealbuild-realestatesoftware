@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}CRM Kanban - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">Kanban Pipeline</h1>
+        <p class="text-body mb-0">Stage-wise operational CRM board.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-light" href="{% url 'crm:dashboard' %}">CRM Dashboard</a>
+        <a class="btn btn-light" href="{% url 'crm:lead_list' %}">List View</a>
+    </div>
+</div>
+
+<div class="d-flex gap-3 overflow-auto pb-3">
+    {% for column in columns %}
+    <section class="profile-panel flex-shrink-0" style="width: 320px;">
+        <div class="profile-panel-head">
+            <div><h2>{{ column.label }}</h2><p>{{ column.count }} lead(s)</p></div>
+        </div>
+        <div class="list-group list-group-flush">
+            {% for lead in column.leads %}
+            <a class="list-group-item px-0" href="{% url 'crm:lead_detail' lead.id %}">
+                <strong>{{ lead.client_name }}</strong>
+                <p class="mb-1">{{ lead.city|default:"No city" }} - {{ lead.get_source_display }}</p>
+                <small>{% if lead.assigned_to %}{{ lead.assigned_to.get_full_name|default:lead.assigned_to.email }}{% else %}Unassigned{% endif %}</small>
+            </a>
+            {% empty %}
+            <p class="text-body mb-0">No leads in this stage.</p>
+            {% endfor %}
+        </div>
+    </section>
+    {% endfor %}
+</div>
+{% endblock %}

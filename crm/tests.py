@@ -1,0 +1,296 @@
+import hashlib
+import hmac
+
+from django.contrib.auth import get_user_model
+from django.test import TestCase, override_settings
+from django.urls import reverse
+from django.utils import timezone
+
+from accounts.models import AuditLog, CompanyProfile, Role, UserProfile
+from properties.models import Property, PropertyVisit
+
+from .models import Lead, LeadActivity, LeadFollowUp, LeadSource, LeadStatus, MetaLeadSource
+from .services import ingest_meta_payload
+
+
+class CrmLeadWorkflowTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.company = CompanyProfile.objects.create(name="Siya CRM")
+        self.owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        self.manager = User.objects.create_user(username="manager@example.com", email="manager@example.com")
+        self.executive = User.objects.create_user(username="executive@example.com", email="executive@example.com")
+        self.tl = User.objects.create_user(username="tl@example.com", email="tl@example.com")
+        self.other = User.objects.create_user(username="other@example.com", email="other@example.com")
+        self.external = User.objects.create_user(username="external@example.com", email="external@example.com")
+        UserProfile.objects.create(user=self.owner, company=self.company, role=Role.COMPANY_OWNER)
+        UserProfile.objects.create(user=self.manager, company=self.company, role=Role.MANAGER)
+        UserProfile.objects.create(user=self.tl, company=self.company, role=Role.TL)
+        UserProfile.objects.create(user=self.executive, company=self.company, role=Role.EXECUTIVE)
+        UserProfile.objects.create(user=self.other, company=self.company, role=Role.EXECUTIVE)
+        UserProfile.objects.create(user=self.external, role=Role.MANAGER)
+
+    def test_owner_can_create_lead_and_activity_is_recorded(self):
+        self.client.force_login(self.owner)
+        response = self.client.post(
+            reverse("crm:lead_create"),
+            data={
+                "client_name": "Meta Client",
+                "phone": "+91 9999999999",
+                "email": "client@example.com",
+                "city": "Indore",
+                "source": LeadSource.MANUAL,
+                "priority": "high",
+                "assigned_to": self.executive.id,
+            },
+        )
+        lead = Lead.objects.get(client_name="Meta Client")
+        self.assertRedirects(response, reverse("crm:lead_detail", args=[lead.id]))
+        self.assertEqual(lead.assigned_to, self.executive)
+        self.assertEqual(lead.activities.filter(activity_type=LeadActivity.ActivityType.CREATED).count(), 1)
+
+    def test_executive_sees_only_assigned_or_created_leads(self):
+        assigned = Lead.objects.create(company=self.company, client_name="Assigned", assigned_to=self.executive)
+        Lead.objects.create(company=self.company, client_name="Other", assigned_to=self.other)
+        self.client.force_login(self.executive)
+        response = self.client.get(reverse("crm:lead_list"))
+        visible_ids = {lead.id for lead in response.context["leads"]}
+        self.assertContains(response, assigned.client_name)
+        self.assertIn(assigned.id, visible_ids)
+        self.assertNotIn(Lead.objects.get(client_name="Other").id, visible_ids)
+
+    def test_team_lead_sees_only_assigned_or_created_leads(self):
+        assigned = Lead.objects.create(company=self.company, client_name="TL Assigned", assigned_to=self.tl)
+        Lead.objects.create(company=self.company, client_name="Manager Only", assigned_to=self.manager)
+        self.client.force_login(self.tl)
+        response = self.client.get(reverse("crm:lead_list"))
+        visible_ids = {lead.id for lead in response.context["leads"]}
+        self.assertIn(assigned.id, visible_ids)
+        self.assertNotIn(Lead.objects.get(client_name="Manager Only").id, visible_ids)
+
+    def test_status_update_creates_activity(self):
+        lead = Lead.objects.create(company=self.company, client_name="Buyer", assigned_to=self.executive)
+        self.client.force_login(self.executive)
+        response = self.client.post(reverse("crm:lead_status_update", args=[lead.id]), {"status": LeadStatus.CONTACTED, "note": "Called client."})
+        lead.refresh_from_db()
+        self.assertRedirects(response, reverse("crm:lead_detail", args=[lead.id]))
+        self.assertEqual(lead.status, LeadStatus.CONTACTED)
+        self.assertTrue(lead.activities.filter(activity_type=LeadActivity.ActivityType.STATUS, note="Called client.").exists())
+        self.assertTrue(AuditLog.objects.filter(action="crm.status", target_id=str(lead.id)).exists())
+
+    def test_lost_and_closed_status_require_note(self):
+        lead = Lead.objects.create(company=self.company, client_name="Lifecycle Buyer", phone="+91 1111111112", assigned_to=self.executive)
+        self.client.force_login(self.executive)
+        response = self.client.post(reverse("crm:lead_status_update", args=[lead.id]), {"status": LeadStatus.LOST, "note": ""})
+        lead.refresh_from_db()
+        self.assertRedirects(response, reverse("crm:lead_detail", args=[lead.id]))
+        self.assertNotEqual(lead.status, LeadStatus.LOST)
+        response = self.client.post(reverse("crm:lead_status_update", args=[lead.id]), {"status": LeadStatus.LOST, "note": "Budget mismatch"})
+        lead.refresh_from_db()
+        self.assertRedirects(response, reverse("crm:lead_detail", args=[lead.id]))
+        self.assertEqual(lead.status, LeadStatus.LOST)
+        self.assertEqual(lead.lost_reason, "Budget mismatch")
+
+    def test_lead_form_requires_contact_and_valid_budget(self):
+        self.client.force_login(self.manager)
+        response = self.client.post(
+            reverse("crm:lead_create"),
+            data={
+                "client_name": "Invalid Buyer",
+                "budget_min": "2000000",
+                "budget_max": "1000000",
+                "source": LeadSource.MANUAL,
+                "priority": "medium",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertFormError(response.context["form"], None, "Add at least one client contact: phone or email.")
+        self.assertFormError(response.context["form"], "budget_max", "Maximum budget cannot be less than minimum budget.")
+
+    def test_lead_edit_updates_details_and_records_activity(self):
+        lead = Lead.objects.create(company=self.company, client_name="Old Buyer", phone="+91 1111111111", assigned_to=self.executive)
+        self.client.force_login(self.manager)
+        response = self.client.post(
+            reverse("crm:lead_edit", args=[lead.id]),
+            data={
+                "client_name": "Updated Buyer",
+                "phone": "+91 2222222222",
+                "email": "",
+                "city": "Indore",
+                "locality": "",
+                "budget_min": "",
+                "budget_max": "",
+                "requirement": "Needs 3 BHK",
+                "property_category": "",
+                "listing_for": "",
+                "source": LeadSource.MANUAL,
+                "priority": "urgent",
+                "assigned_to": self.executive.id,
+                "property": "",
+                "notes": "VIP",
+            },
+        )
+        self.assertRedirects(response, reverse("crm:lead_detail", args=[lead.id]))
+        lead.refresh_from_db()
+        self.assertEqual(lead.client_name, "Updated Buyer")
+        self.assertEqual(lead.priority, "urgent")
+        self.assertTrue(lead.activities.filter(new_value="details_updated").exists())
+
+    def test_executive_cannot_directly_view_or_edit_unassigned_lead(self):
+        lead = Lead.objects.create(company=self.company, client_name="Private Buyer", phone="+91 3333333333")
+        self.client.force_login(self.executive)
+        detail_response = self.client.get(reverse("crm:lead_detail", args=[lead.id]))
+        edit_response = self.client.post(reverse("crm:lead_edit", args=[lead.id]), {"client_name": "Changed", "phone": "+91 4444444444", "source": LeadSource.MANUAL, "priority": "medium"})
+        lead.refresh_from_db()
+        self.assertRedirects(detail_response, reverse("crm:lead_list"))
+        self.assertRedirects(edit_response, reverse("crm:lead_list"))
+        self.assertEqual(lead.client_name, "Private Buyer")
+
+    def test_user_without_company_cannot_access_lead(self):
+        lead = Lead.objects.create(company=self.company, client_name="Scoped Buyer", phone="+91 5555555555")
+        self.client.force_login(self.external)
+        response = self.client.get(reverse("crm:lead_detail", args=[lead.id]))
+        self.assertRedirects(response, reverse("crm:lead_list"))
+
+    def test_dashboard_and_followup_completion_work(self):
+        lead = Lead.objects.create(company=self.company, client_name="Follow Buyer", assigned_to=self.executive)
+        followup = LeadFollowUp.objects.create(lead=lead, assigned_to=self.executive, due_at=timezone.now(), note="Call")
+        self.client.force_login(self.executive)
+        self.assertEqual(self.client.get(reverse("crm:dashboard")).status_code, 200)
+        response = self.client.post(reverse("crm:followup_complete", args=[followup.id]), {"outcome": "Interested"})
+        followup.refresh_from_db()
+        self.assertRedirects(response, reverse("crm:followup_list"))
+        self.assertEqual(followup.status, LeadFollowUp.Status.DONE)
+        self.assertTrue(lead.activities.filter(activity_type=LeadActivity.ActivityType.FOLLOW_UP, new_value="completed").exists())
+
+    def test_manager_can_assign_and_add_note(self):
+        lead = Lead.objects.create(company=self.company, client_name="Assign Buyer")
+        self.client.force_login(self.manager)
+        response = self.client.post(reverse("crm:lead_assign", args=[lead.id]), {"assigned_to": self.executive.id, "note": "Assign to sales"})
+        lead.refresh_from_db()
+        self.assertRedirects(response, reverse("crm:lead_detail", args=[lead.id]))
+        self.assertEqual(lead.assigned_to, self.executive)
+        response = self.client.post(reverse("crm:lead_note_create", args=[lead.id]), {"note": "Client wants corner plot."})
+        self.assertRedirects(response, reverse("crm:lead_detail", args=[lead.id]))
+        self.assertTrue(lead.activities.filter(activity_type=LeadActivity.ActivityType.NOTE, note="Client wants corner plot.").exists())
+
+    def test_bulk_action_kanban_reports_and_export_work(self):
+        lead = Lead.objects.create(company=self.company, client_name="Bulk Buyer")
+        self.client.force_login(self.manager)
+        self.assertEqual(self.client.get(reverse("crm:lead_kanban")).status_code, 200)
+        self.assertEqual(self.client.get(reverse("crm:reports")).status_code, 200)
+        export_response = self.client.get(reverse("crm:lead_export"))
+        self.assertEqual(export_response.status_code, 200)
+        response = self.client.post(
+            reverse("crm:lead_bulk_action"),
+            {"lead_ids": str(lead.id), "action": "assign", "assigned_to": self.executive.id, "status": "", "priority": "", "note": "Bulk assign"},
+        )
+        lead.refresh_from_db()
+        self.assertRedirects(response, reverse("crm:lead_list"))
+        self.assertEqual(lead.assigned_to, self.executive)
+
+    def test_property_match_and_visit_schedule_from_lead(self):
+        property_obj = Property.objects.create(
+            owner=self.owner,
+            title="Premium Plot",
+            city="Indore",
+            address="MR 10",
+            price=2500000,
+        )
+        lead = Lead.objects.create(company=self.company, client_name="Visit Buyer", phone="+91 6666666666")
+        self.client.force_login(self.manager)
+        response = self.client.post(reverse("crm:lead_property_match", args=[lead.id]), {"property": property_obj.id, "note": "Budget match"})
+        lead.refresh_from_db()
+        self.assertRedirects(response, reverse("crm:lead_detail", args=[lead.id]))
+        self.assertEqual(lead.property, property_obj)
+        self.assertEqual(lead.status, LeadStatus.PROPERTY_MATCHED)
+        response = self.client.post(
+            reverse("crm:lead_visit_schedule", args=[lead.id]),
+            {"property": property_obj.id, "visit_at": timezone.now().strftime("%Y-%m-%dT%H:%M"), "assigned_employee": self.executive.id, "notes": "Visit planned"},
+        )
+        lead.refresh_from_db()
+        visit = PropertyVisit.objects.get(client_name="Visit Buyer")
+        self.assertRedirects(response, reverse("properties:visit_detail", args=[visit.id]))
+        self.assertEqual(lead.visit, visit)
+        self.assertEqual(lead.status, LeadStatus.VISIT_SCHEDULED)
+
+    def test_meta_ingest_dedupes_by_meta_lead_id(self):
+        source = MetaLeadSource.objects.create(company=self.company, page_id="page-1", form_id="form-1", default_assignee=self.manager)
+        lead, event = ingest_meta_payload(
+            source=source,
+            payload={"event_id": "event-1", "leadgen_id": "lead-1"},
+            fetched_data={"client_name": "Meta Buyer", "phone": "+91 8888888888", "email": "meta@example.com"},
+        )
+        duplicate, duplicate_event = ingest_meta_payload(source=source, payload={"event_id": "event-2", "leadgen_id": "lead-1"}, fetched_data={"client_name": "Meta Buyer"})
+        self.assertIsNotNone(lead)
+        self.assertEqual(lead.assigned_to, self.manager)
+        self.assertEqual(event.status, "processed")
+        self.assertIsNone(duplicate)
+        self.assertEqual(duplicate_event.status, "duplicate")
+
+    def test_meta_ingest_uses_mapping_and_dedupes_by_phone(self):
+        source = MetaLeadSource.objects.create(
+            company=self.company,
+            page_id="page-map",
+            form_id="form-map",
+            default_assignee=self.manager,
+            field_mapping={"client_name": "buyer_name", "phone": "mobile"},
+        )
+        Lead.objects.create(company=self.company, client_name="Existing Buyer", phone="+91 9876543210")
+        lead, event = ingest_meta_payload(
+            source=source,
+            payload={"event_id": "event-map-1", "leadgen_id": "lead-map-1"},
+            fetched_data={"buyer_name": "Mapped Buyer", "mobile": "9876543210"},
+        )
+        self.assertIsNone(lead)
+        self.assertEqual(event.status, "duplicate")
+        lead, event = ingest_meta_payload(
+            source=source,
+            payload={"event_id": "event-map-2", "leadgen_id": "lead-map-2"},
+            fetched_data={"buyer_name": "Mapped Buyer 2", "mobile": "9123456789"},
+        )
+        self.assertIsNotNone(lead)
+        self.assertEqual(lead.client_name, "Mapped Buyer 2")
+        self.assertEqual(lead.phone, "9123456789")
+
+    @override_settings(META_WEBHOOK_VERIFY_TOKEN="verify-me")
+    def test_meta_webhook_verification_and_ingest(self):
+        MetaLeadSource.objects.create(company=self.company, page_id="page-1", form_id="form-1", default_assignee=self.manager)
+        verify = self.client.get(reverse("crm:meta_webhook"), {"hub.mode": "subscribe", "hub.verify_token": "verify-me", "hub.challenge": "123"})
+        self.assertEqual(verify.content, b"123")
+        response = self.client.post(
+            reverse("crm:meta_webhook"),
+            data={
+                "entry": [
+                    {
+                        "id": "page-1",
+                        "changes": [
+                            {
+                                "value": {
+                                    "page_id": "page-1",
+                                    "form_id": "form-1",
+                                    "leadgen_id": "lead-webhook-1",
+                                    "full_name": "Webhook Buyer",
+                                    "phone_number": "+91 7777777777",
+                                }
+                            }
+                        ],
+                    }
+                ]
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(Lead.objects.filter(meta_lead_id="lead-webhook-1", client_name="Webhook Buyer").exists())
+
+    @override_settings(META_APP_SECRET="secret")
+    def test_meta_webhook_rejects_invalid_signature(self):
+        response = self.client.post(reverse("crm:meta_webhook"), data={"entry": []}, content_type="application/json", HTTP_X_HUB_SIGNATURE_256="sha256=bad")
+        self.assertEqual(response.status_code, 403)
+
+    @override_settings(META_APP_SECRET="secret")
+    def test_meta_webhook_accepts_valid_signature(self):
+        body = b'{"entry":[]}'
+        signature = hmac.new(b"secret", body, hashlib.sha256).hexdigest()
+        response = self.client.post(reverse("crm:meta_webhook"), data=body, content_type="application/json", HTTP_X_HUB_SIGNATURE_256=f"sha256={signature}")
+        self.assertEqual(response.status_code, 200)

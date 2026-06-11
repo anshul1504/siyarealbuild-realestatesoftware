@@ -37,6 +37,10 @@ DEBUG = env_bool("SIYA_DEBUG", True)
 
 ALLOWED_HOSTS = env_list("SIYA_ALLOWED_HOSTS", "127.0.0.1,localhost,testserver")
 CSRF_TRUSTED_ORIGINS = env_list("SIYA_CSRF_TRUSTED_ORIGINS")
+META_WEBHOOK_VERIFY_TOKEN = os.environ.get("SIYA_META_WEBHOOK_VERIFY_TOKEN", "siya-meta-local-verify")
+META_GRAPH_API_VERSION = os.environ.get("SIYA_META_GRAPH_API_VERSION", "v20.0")
+META_PAGE_ACCESS_TOKEN = os.environ.get("SIYA_META_PAGE_ACCESS_TOKEN", "")
+META_APP_SECRET = os.environ.get("SIYA_META_APP_SECRET", "")
 
 
 # Application definition
@@ -51,6 +55,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "accounts",
     "properties",
+    "crm",
 ]
 
 JAZZMIN_SETTINGS = {

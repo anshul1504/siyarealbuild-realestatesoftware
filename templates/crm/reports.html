@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}CRM Reports - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">CRM Reports</h1>
+        <p class="text-body mb-0">Source, status, priority, overdue and Meta sync insights.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-light" href="{% url 'crm:dashboard' %}">CRM Dashboard</a>
+        <a class="btn btn-primary" href="{% url 'crm:lead_export' %}">Export Leads</a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-4">
+        <section class="profile-panel h-100">
+            <div class="profile-panel-head"><div><h2>By Source</h2><p>Lead acquisition split.</p></div></div>
+            {% for item in source_counts %}<div class="d-flex justify-content-between py-2 border-bottom"><span>{{ item.label }}</span><strong>{{ item.count }}</strong></div>{% endfor %}
+        </section>
+    </div>
+    <div class="col-xl-4">
+        <section class="profile-panel h-100">
+            <div class="profile-panel-head"><div><h2>By Status</h2><p>Pipeline health.</p></div></div>
+            {% for item in status_counts %}<div class="d-flex justify-content-between py-2 border-bottom"><span>{{ item.label }}</span><strong>{{ item.count }}</strong></div>{% endfor %}
+        </section>
+    </div>
+    <div class="col-xl-4">
+        <section class="profile-panel h-100">
+            <div class="profile-panel-head"><div><h2>By Priority</h2><p>Urgency split.</p></div></div>
+            {% for item in priority_counts %}<div class="d-flex justify-content-between py-2 border-bottom"><span>{{ item.label }}</span><strong>{{ item.count }}</strong></div>{% endfor %}
+        </section>
+    </div>
+</div>
+
+<div class="row g-4 mt-1">
+    <div class="col-xl-6">
+        <section class="profile-panel h-100">
+            <div class="profile-panel-head"><div><h2>Overdue Follow-ups</h2><p>Pending actions that need attention.</p></div></div>
+            <div class="list-group list-group-flush">
+                {% for followup in overdue_followups %}
+                <a class="list-group-item px-0" href="{% url 'crm:lead_detail' followup.lead.id %}">
+                    <strong>{{ followup.lead.client_name }}</strong>
+                    <p class="mb-1">{{ followup.note|default:"Follow-up due." }}</p>
+                    <small>{{ followup.due_at|date:"d M Y, h:i A" }}</small>
+                </a>
+                {% empty %}<p class="text-body mb-0">No overdue follow-ups.</p>{% endfor %}
+            </div>
+        </section>
+    </div>
+    <div class="col-xl-6">
+        <section class="profile-panel h-100">
+            <div class="profile-panel-head"><div><h2>Meta Sync Events</h2><p>Recent webhook processing records.</p></div></div>
+            <div class="list-group list-group-flush">
+                {% for event in meta_events %}
+                <div class="list-group-item px-0">
+                    <strong>{{ event.event_id }}</strong>
+                    <p class="mb-1">{{ event.get_status_display }}{% if event.error_message %} - {{ event.error_message }}{% endif %}</p>
+                    <small>{{ event.created_at|date:"d M Y, h:i A" }}</small>
+                </div>
+                {% empty %}<p class="text-body mb-0">No Meta events yet.</p>{% endfor %}
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}CRM Follow-ups - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">CRM Follow-ups</h1>
+        <p class="text-body mb-0">Pending, missed and completed lead actions.</p>
+    </div>
+    <a class="btn btn-light" href="{% url 'crm:dashboard' %}">CRM Dashboard</a>
+</div>
+
+<section class="profile-panel mb-3">
+    <form method="get" class="row g-3 align-items-end">
+        <div class="col-md-4">
+            <label class="form-label" for="followupStatus">Status</label>
+            <select id="followupStatus" class="form-control" name="status">
+                <option value="">All</option>
+                {% for value,label in status_choices %}<option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+            <button class="btn btn-primary w-100">Filter</button>
+            <a class="btn btn-light" href="{% url 'crm:followup_list' %}">Clear</a>
+        </div>
+    </form>
+</section>
+
+<section class="profile-panel">
+    <div class="profile-panel-head"><div><h2>Follow-up Queue</h2><p>Complete follow-ups after call, WhatsApp or visit update.</p></div></div>
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead><tr><th>Lead</th><th>Due</th><th>Assigned</th><th>Status</th><th>Outcome</th></tr></thead>
+            <tbody>
+            {% for followup in followups %}
+            <tr>
+                <td><a href="{% url 'crm:lead_detail' followup.lead.id %}"><strong>{{ followup.lead.client_name }}</strong></a><br><small>{{ followup.note|default:"-" }}</small></td>
+                <td>{{ followup.due_at|date:"d M Y, h:i A" }}</td>
+                <td>{% if followup.assigned_to %}{{ followup.assigned_to.get_full_name|default:followup.assigned_to.email }}{% else %}-{% endif %}</td>
+                <td>{{ followup.get_status_display }}</td>
+                <td>
+                    {% if followup.status == "open" %}
+                    <form method="post" action="{% url 'crm:followup_complete' followup.id %}" class="d-flex gap-2">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{% url 'crm:followup_list' %}">
+                        <input class="form-control form-control-sm" name="outcome" placeholder="Outcome">
+                        <button class="btn btn-sm btn-primary" type="submit">Done</button>
+                    </form>
+                    {% else %}
+                    {{ followup.outcome|default:"-" }}
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center py-4">No follow-ups found.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% include "accounts/partials/pagination.html" with page_obj=page_obj %}
+</section>
+{% endblock %}

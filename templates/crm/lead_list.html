@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}CRM Leads - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">CRM Leads</h1>
+        <p class="text-body mb-0">Role-wise lead pipeline for Meta, manual, referral, WhatsApp and website leads.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-light" href="{% url 'crm:dashboard' %}">CRM Dashboard</a>
+        <a class="btn btn-light" href="{% url 'crm:lead_kanban' %}">Kanban</a>
+        <a class="btn btn-light" href="{% url 'crm:followup_list' %}">Follow-ups</a>
+        {% if can_assign %}<a class="btn btn-light" href="{% url 'crm:lead_export' %}">Export</a>{% endif %}
+        {% if dashboard_is_owner %}<a class="btn btn-outline-primary" href="{% url 'crm:meta_source_list' %}">Meta Sources</a>{% endif %}
+        <a class="btn btn-primary" href="{% url 'crm:lead_create' %}">Add Lead</a>
+    </div>
+</div>
+
+<section class="profile-panel mb-3">
+    <form method="get" class="row g-3 align-items-end">
+        <div class="col-lg-4">
+            <label class="form-label" for="leadSearch">Search</label>
+            <input id="leadSearch" class="form-control" type="search" name="q" value="{{ query }}" placeholder="Name, phone, email">
+        </div>
+        <div class="col-lg-2">
+            <label class="form-label" for="leadStatus">Status</label>
+            <select id="leadStatus" class="form-control" name="status">
+                <option value="">All</option>
+                {% for value,label in status_choices %}<option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="col-lg-2">
+            <label class="form-label" for="leadSource">Source</label>
+            <select id="leadSource" class="form-control" name="source">
+                <option value="">All</option>
+                {% for value,label in source_choices %}<option value="{{ value }}" {% if selected_source == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="col-lg-2">
+            <label class="form-label" for="leadPriority">Priority</label>
+            <select id="leadPriority" class="form-control" name="priority">
+                <option value="">All</option>
+                {% for value,label in priority_choices %}<option value="{{ value }}" {% if selected_priority == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="col-lg-2 d-flex gap-2">
+            <button class="btn btn-primary w-100">Filter</button>
+            <a class="btn btn-light" href="{% url 'crm:lead_list' %}">Clear</a>
+        </div>
+    </form>
+</section>
+
+<section class="profile-panel">
+    <div class="profile-panel-head">
+        <div>
+            <h2>Lead Pipeline</h2>
+            <p>Track source, owner, status, next follow-up and matched property.</p>
+        </div>
+    </div>
+    {% if can_assign %}
+    <form method="post" action="{% url 'crm:lead_bulk_action' %}" class="row g-2 align-items-end mb-3" data-crm-bulk-form>
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{% url 'crm:lead_list' %}">
+        {{ bulk_form.lead_ids }}
+        <div class="col-md-2"><label class="form-label">Action</label>{{ bulk_form.action }}</div>
+        <div class="col-md-3"><label class="form-label">Assign To</label>{{ bulk_form.assigned_to }}</div>
+        <div class="col-md-2"><label class="form-label">Status</label>{{ bulk_form.status }}</div>
+        <div class="col-md-2"><label class="form-label">Priority</label>{{ bulk_form.priority }}</div>
+        <div class="col-md-2"><label class="form-label">Note</label>{{ bulk_form.note }}</div>
+        <div class="col-md-1"><button class="btn btn-primary w-100" type="submit">Apply</button></div>
+    </form>
+    {% endif %}
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead>
+                <tr>
+                    {% if can_assign %}<th><input class="form-check-input" type="checkbox" data-crm-select-all></th>{% endif %}
+                    <th>Client</th>
+                    <th>Source</th>
+                    <th>Status</th>
+                    <th>Priority</th>
+                    <th>Assigned</th>
+                    <th>Follow-up</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for lead in leads %}
+                <tr>
+                    {% if can_assign %}<td><input class="form-check-input" type="checkbox" value="{{ lead.id }}" data-crm-lead-check></td>{% endif %}
+                    <td><strong>{{ lead.client_name }}</strong><br><small>{{ lead.phone|default:lead.email|default:"-" }}</small></td>
+                    <td>{{ lead.get_source_display }}</td>
+                    <td><span class="badge bg-primary-subtle text-primary">{{ lead.get_status_display }}</span></td>
+                    <td>{{ lead.get_priority_display }}</td>
+                    <td>{% if lead.assigned_to %}{{ lead.assigned_to.get_full_name|default:lead.assigned_to.email }}{% else %}<span class="text-warning">Unassigned</span>{% endif %}</td>
+                    <td>{% if lead.next_follow_up_at %}{{ lead.next_follow_up_at|date:"d M Y, h:i A" }}{% else %}-{% endif %}</td>
+                    <td><a class="btn btn-sm btn-outline-primary" href="{% url 'crm:lead_detail' lead.id %}">Open</a></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="{% if can_assign %}8{% else %}7{% endif %}" class="text-center py-4">No CRM leads found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% include "accounts/partials/pagination.html" with page_obj=page_obj %}
+</section>
+{% if can_assign %}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const checks = Array.from(document.querySelectorAll("[data-crm-lead-check]"));
+  const hidden = document.querySelector("[data-crm-bulk-form] [name='lead_ids']");
+  const sync = () => {
+    if (hidden) hidden.value = checks.filter((item) => item.checked).map((item) => item.value).join(",");
+  };
+  document.querySelector("[data-crm-select-all]")?.addEventListener("change", (event) => {
+    checks.forEach((item) => { item.checked = event.target.checked; });
+    sync();
+  });
+  checks.forEach((item) => item.addEventListener("change", sync));
+});
+</script>
+{% endif %}
+{% endblock %}

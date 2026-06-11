@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}Lead - {{ lead.client_name }}{% endblock %}
+{% block content %}
+<div class="app-page-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">{{ lead.client_name }}</h1>
+        <p class="text-body mb-0">{{ lead.get_source_display }} lead - {{ lead.get_status_display }}</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-light" href="{% url 'crm:dashboard' %}">CRM Dashboard</a>
+        <a class="btn btn-light" href="{% url 'crm:lead_list' %}">Lead List</a>
+        {% if can_edit %}<a class="btn btn-primary" href="{% url 'crm:lead_edit' lead.id %}">Edit Lead</a>{% endif %}
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-7">
+        <section class="profile-panel h-100">
+            <div class="profile-panel-head"><div><h2>Lead Summary</h2><p>Client requirement, assignment and matched property.</p></div></div>
+            <div class="profile-detail-grid">
+                <div><span>Phone</span><strong>{{ lead.phone|default:"-" }}</strong></div>
+                <div><span>Email</span><strong>{{ lead.email|default:"-" }}</strong></div>
+                <div><span>Location</span><strong>{{ lead.locality|default:"-" }}{% if lead.city %}, {{ lead.city }}{% endif %}</strong></div>
+                <div><span>Budget</span><strong>{% if lead.budget_min or lead.budget_max %}Rs {{ lead.budget_min|default:0|floatformat:0 }} - {{ lead.budget_max|default:0|floatformat:0 }}{% else %}-{% endif %}</strong></div>
+                <div><span>Assigned To</span><strong>{% if lead.assigned_to %}{{ lead.assigned_to.get_full_name|default:lead.assigned_to.email }}{% else %}Unassigned{% endif %}</strong></div>
+                <div><span>Matched Property</span><strong>{% if lead.property %}<a href="{% url 'properties:detail' lead.property.id %}">{{ lead.property.title }}</a>{% else %}-{% endif %}</strong></div>
+            </div>
+            <div class="mt-3"><span class="text-body small text-uppercase fw-bold">Requirement</span><p class="mb-0">{{ lead.requirement|default:"No requirement note added." }}</p></div>
+        </section>
+    </div>
+    <div class="col-xl-5">
+        <section class="profile-panel h-100">
+            <div class="profile-panel-head"><div><h2>Actions</h2><p>Assign, update stage, schedule follow-up or record notes.</p></div></div>
+            {% if can_edit %}
+            {% if can_assign %}
+            <form method="post" action="{% url 'crm:lead_assign' lead.id %}" class="mb-3">
+                {% csrf_token %}
+                <label class="form-label" for="{{ assignment_form.assigned_to.id_for_label }}">Assign Lead</label>
+                {{ assignment_form.assigned_to }}
+                <label class="form-label mt-2" for="{{ assignment_form.note.id_for_label }}">Assignment Note</label>
+                {{ assignment_form.note }}
+                <button class="btn btn-outline-primary w-100 mt-3" type="submit">Update Assignment</button>
+            </form>
+            {% endif %}
+            <form method="post" action="{% url 'crm:lead_status_update' lead.id %}" class="mb-3">
+                {% csrf_token %}
+                <label class="form-label" for="{{ status_form.status.id_for_label }}">Status</label>
+                {{ status_form.status }}
+                <label class="form-label mt-2" for="{{ status_form.note.id_for_label }}">Note</label>
+                {{ status_form.note }}
+                <button class="btn btn-primary w-100 mt-3" type="submit">Update Status</button>
+            </form>
+            <form method="post" action="{% url 'crm:lead_followup_create' lead.id %}">
+                {% csrf_token %}
+                <div class="row g-2">
+                    <div class="col-md-6"><label class="form-label">Assign To</label>{{ followup_form.assigned_to }}</div>
+                    <div class="col-md-6"><label class="form-label">Due At</label>{{ followup_form.due_at }}</div>
+                    <div class="col-12"><label class="form-label">Follow-up Note</label>{{ followup_form.note }}</div>
+                </div>
+                <button class="btn btn-outline-primary w-100 mt-3" type="submit">Schedule Follow-up</button>
+            </form>
+            <form method="post" action="{% url 'crm:lead_property_match' lead.id %}" class="mt-3">
+                {% csrf_token %}
+                <label class="form-label" for="{{ match_form.property.id_for_label }}">Match Property</label>
+                {{ match_form.property }}
+                <label class="form-label mt-2" for="{{ match_form.note.id_for_label }}">Match Note</label>
+                {{ match_form.note }}
+                <button class="btn btn-outline-primary w-100 mt-3" type="submit">Match Property</button>
+            </form>
+            <form method="post" action="{% url 'crm:lead_visit_schedule' lead.id %}" class="mt-3">
+                {% csrf_token %}
+                <div class="row g-2">
+                    <div class="col-md-6"><label class="form-label">Property</label>{{ visit_form.property }}</div>
+                    <div class="col-md-6"><label class="form-label">Visit Date</label>{{ visit_form.visit_at }}</div>
+                    <div class="col-md-6"><label class="form-label">Assigned Employee</label>{{ visit_form.assigned_employee }}</div>
+                    <div class="col-md-6"><label class="form-label">Visit Note</label>{{ visit_form.notes }}</div>
+                </div>
+                <button class="btn btn-primary w-100 mt-3" type="submit">Schedule Site Visit</button>
+            </form>
+            <form method="post" action="{% url 'crm:lead_note_create' lead.id %}" class="mt-3">
+                {% csrf_token %}
+                <label class="form-label" for="{{ note_form.note.id_for_label }}">Internal Note</label>
+                {{ note_form.note }}
+                <button class="btn btn-light w-100 mt-3" type="submit">Add Note</button>
+            </form>
+            {% endif %}
+        </section>
+    </div>
+</div>
+
+<div class="row g-4 mt-1">
+    <div class="col-xl-6">
+        <section class="profile-panel h-100">
+            <div class="profile-panel-head"><div><h2>Activity Timeline</h2><p>Every assignment, status update, note and Meta sync event.</p></div></div>
+            <div class="list-group list-group-flush">
+                {% for activity in activities %}
+                <div class="list-group-item px-0">
+                    <strong>{{ activity.get_activity_type_display }}</strong>
+                    <p class="mb-1">{{ activity.note|default:activity.new_value|default:"Activity recorded." }}</p>
+                    <small>{{ activity.created_at|date:"d M Y, h:i A" }}{% if activity.actor %} - {{ activity.actor.get_full_name|default:activity.actor.email }}{% endif %}</small>
+                </div>
+                {% empty %}
+                <p class="text-body mb-0">No activity recorded yet.</p>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+    <div class="col-xl-6">
+        <section class="profile-panel h-100">
+            <div class="profile-panel-head"><div><h2>Follow-ups</h2><p>Pending and completed follow-up actions.</p></div></div>
+            <div class="list-group list-group-flush">
+                {% for followup in followups %}
+                <div class="list-group-item px-0">
+                    <strong>{{ followup.due_at|date:"d M Y, h:i A" }}</strong>
+                    <p class="mb-1">{{ followup.note|default:"Follow-up scheduled." }}</p>
+                    <small>{{ followup.get_status_display }}{% if followup.assigned_to %} - {{ followup.assigned_to.get_full_name|default:followup.assigned_to.email }}{% endif %}</small>
+                    {% if can_edit and followup.status == "open" %}
+                    <form method="post" action="{% url 'crm:followup_complete' followup.id %}" class="d-flex gap-2 mt-2">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{% url 'crm:lead_detail' lead.id %}">
+                        <input class="form-control form-control-sm" name="outcome" placeholder="Outcome">
+                        <button class="btn btn-sm btn-primary" type="submit">Done</button>
+                    </form>
+                    {% endif %}
+                </div>
+                {% empty %}
+                <p class="text-body mb-0">No follow-ups scheduled.</p>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}
