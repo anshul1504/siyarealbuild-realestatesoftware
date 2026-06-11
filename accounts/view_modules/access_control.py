@@ -7,6 +7,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from ..email_utils import send_role_change_rejected_email, send_role_change_requested_email, send_role_changed_email
 from ..forms import EmployeeRoleChangeRequestForm
 from ..models import EmployeeRoleChangeRequest, Role, UserProfile
+from ..services import record_audit
 from .auth_profile_company import profile_context
 
 
@@ -106,6 +107,7 @@ def role_change_request_create(request):
             change.current_role = employee.profile.role
             change.requested_by = request.user
             change.save()
+            record_audit(actor=request.user, action="employee.role_change_requested", target=change, company=company, details={"current_role": change.current_role, "requested_role": change.requested_role})
             _send_role_change_requested(change, request.user)
             messages.success(request, "Role change request created and employee email sent.")
             return redirect("accounts:role_change_request_detail", request_id=change.id)
@@ -131,6 +133,7 @@ def role_change_request_detail(request, request_id):
             old_role = _role_label(change.current_role)
             new_role = _role_label(change.requested_role)
             if change.approve(reviewed_by=request.user, review_note=review_note):
+                record_audit(actor=request.user, action="employee.role_change_approved", target=change, company=company, details={"requested_role": change.requested_role})
                 send_role_changed_email(
                     to_email=change.employee.email,
                     name=change.employee.get_full_name() or change.employee.email,
@@ -145,6 +148,7 @@ def role_change_request_detail(request, request_id):
             return redirect("accounts:role_change_request_detail", request_id=change.id)
         if action == "reject":
             if change.reject(reviewed_by=request.user, review_note=review_note):
+                record_audit(actor=request.user, action="employee.role_change_rejected", target=change, company=company, details={"requested_role": change.requested_role})
                 send_role_change_rejected_email(
                     to_email=change.employee.email,
                     name=change.employee.get_full_name() or change.employee.email,

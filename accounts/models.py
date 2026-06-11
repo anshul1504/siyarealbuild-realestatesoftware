@@ -327,6 +327,15 @@ class UserProfile(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["company", "employee_code"],
+                condition=~models.Q(employee_code=""),
+                name="unique_company_employee_code",
+            ),
+        ]
+
     def __str__(self):
         return self.user.get_full_name() or self.user.email or self.user.username
 
@@ -755,7 +764,10 @@ class EmployeeEmailChangeRequest(models.Model):
 
     @transaction.atomic
     def approve(self, approved_by=None):
-        if not self.is_email_verified:
+        if self.status != self.Status.PENDING or not self.is_email_verified:
+            return False
+        User = get_user_model()
+        if User.objects.filter(email__iexact=self.requested_email).exclude(pk=self.employee_id).exists():
             return False
         old_email = (self.employee.email or "").lower().strip()
         new_email = self.requested_email.lower().strip()
@@ -806,18 +818,12 @@ class EmployeeRoleChangeRequest(models.Model):
         if self.status != self.Status.PENDING:
             return False
         profile = self.employee.profile
+        if profile.role != self.current_role or profile.role == self.requested_role:
+            return False
         profile.role = self.requested_role
         if not profile.employee_code:
-            prefix_map = {
-                Role.COMPANY_OWNER: "OWN",
-                Role.MANAGER: "MGR",
-                Role.TL: "TL",
-                Role.EXECUTIVE: "EXE",
-                Role.CHANNEL_PARTNER: "CP",
-            }
-            prefix = prefix_map.get(self.requested_role, "EMP")
-            next_number = UserProfile.objects.filter(company=self.company, role=self.requested_role).count() + 1
-            profile.employee_code = f"{prefix}-{next_number:04d}"
+            from .employee_codes import next_employee_code
+            profile.employee_code = next_employee_code(self.requested_role, company=self.company)
             profile.save(update_fields=["role", "employee_code", "updated_at"])
         else:
             profile.save(update_fields=["role", "updated_at"])

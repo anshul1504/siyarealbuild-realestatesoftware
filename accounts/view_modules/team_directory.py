@@ -96,6 +96,7 @@ def team_profiles_bulk_delete(request):
     user_ids = [user.id for user in users]
     user_emails = [user.email.lower().strip() for user in users if user.email]
     deleted_count = len(user_ids)
+    record_audit(actor=request.user, action="employee.bulk_deleted", target=request.user, company=company, details={"count": deleted_count, "employee_ids": user_ids})
     _delete_employee_identity_records(company=company, user_ids=user_ids, emails=user_emails)
     get_user_model().objects.filter(id__in=user_ids).delete()
     messages.success(request, f"{deleted_count} employee record(s) deleted from database.")
@@ -137,6 +138,7 @@ def team_profiles_bulk_email(request):
         sent_count += 1
 
     if sent_count:
+        record_audit(actor=request.user, action="employee.bulk_email_sent", target=request.user, company=company, details={"count": sent_count, "role": role, "department": department, "subject": subject})
         messages.success(request, f"Email sent to {sent_count} employee(s).")
     else:
         messages.error(request, "No employees matched this email target.")
@@ -203,6 +205,7 @@ def team_emails(request):
                 recipients=recipients,
                 sent_count=len(recipients),
             )
+            record_audit(actor=request.user, action="employee.team_email_sent", target=team_email, company=company, details={"count": len(recipients), "role": role, "department": department})
             messages.success(request, f"Email sent to {len(recipients)} employee(s).")
             return redirect("accounts:team_email_detail", email_id=team_email.id)
         messages.error(request, "Please check email details.")

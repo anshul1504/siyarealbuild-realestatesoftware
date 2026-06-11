@@ -16,6 +16,8 @@ from django.views.decorators.http import require_http_methods
 
 from ..forms import AddEmployeeForm, EmployeeInviteForm
 from ..models import DesignationCodeRule, EmailOTP, EmployeeInvite, ReferralReward, ReferralSetting, Role, SignupRequest, SignupRequestStatus, UserProfile
+from ..employee_codes import next_employee_code
+from ..services import record_audit
 
 
 ADD_EMPLOYEE_EMAIL_RESEND_SECONDS = 30
@@ -74,6 +76,7 @@ def employee_invites(request):
                 invite.employee_code = _next_employee_code(invite.role, company=company)
             invite.last_invite_sent_at = timezone.now()
             invite.save()
+            record_audit(actor=request.user, action="employee.invite_created", target=invite, company=company)
             otp = EmailOTP.create_for_email(invite.email)
             verify_url = request.build_absolute_uri(f"{reverse('accounts:verify_invite_email')}?email={invite.email}&code={otp.code}")
             send_otp_email(to_email=invite.email, code=otp.code, purpose="invite", cta_url=verify_url)
@@ -471,60 +474,62 @@ def add_employee(request):
                 return redirect("accounts:add_employee")
             User = get_user_model()
             name = form.cleaned_data["name"]
-            user = User.objects.create_user(
-                username=email,
-                email=email,
-                first_name=name,
-                is_active=True,
-            )
-            profile, _ = UserProfile.objects.get_or_create(user=user)
-            profile.company = company
-            profile.role = form.cleaned_data["role"]
-            profile.phone = form.cleaned_data["phone"]
-            profile.designation = form.cleaned_data["designation"]
-            submitted_code = form.cleaned_data["employee_code"]
-            profile.employee_code = "" if submitted_code.endswith("-AUTO") else submitted_code
-            profile.employee_code = profile.employee_code or _next_employee_code(
-                profile.role,
-                company=company,
-                designation=profile.designation,
-            )
-            profile.personal_email = form.cleaned_data["personal_email"]
-            profile.date_of_birth = form.cleaned_data["date_of_birth"]
-            profile.gender = form.cleaned_data["gender"]
-            profile.blood_group = form.cleaned_data["blood_group"]
-            profile.marital_status = form.cleaned_data["marital_status"]
-            profile.department = form.cleaned_data["department"]
-            profile.reporting_manager = form.cleaned_data["reporting_manager"]
-            profile.work_location = _selected_work_location(company, form.cleaned_data["office_location"], form.cleaned_data["custom_work_location"])
-            profile.joining_date = form.cleaned_data["joining_date"]
-            profile.aadhaar_number = form.cleaned_data["aadhaar_number"]
-            profile.aadhaar_document = form.cleaned_data["aadhaar_document"]
-            profile.pan_number = form.cleaned_data["pan_number"]
-            profile.pan_document = form.cleaned_data["pan_document"]
-            profile.emergency_contact_name = form.cleaned_data["emergency_contact_name"]
-            profile.emergency_contact_phone = form.cleaned_data["emergency_contact_phone"]
-            profile.bank_name = form.cleaned_data["bank_name"]
-            profile.bank_account_name = form.cleaned_data["bank_account_name"]
-            profile.bank_account_number = form.cleaned_data["bank_account_number"]
-            profile.bank_ifsc = form.cleaned_data["bank_ifsc"]
-            profile.address = form.cleaned_data["address"]
-            profile.city = form.cleaned_data["city"]
-            profile.state = form.cleaned_data["state"]
-            profile.pincode = form.cleaned_data["pincode"]
-            profile.save()
-            SignupRequest.objects.update_or_create(
-                email=email,
-                defaults={
-                    "name": name,
-                    "phone": profile.phone,
-                    "requested_role": profile.role,
-                    "approved_role": profile.role,
-                    "status": SignupRequestStatus.APPROVED,
-                    "is_email_verified": True,
-                    "user": user,
-                },
-            )
+            with transaction.atomic():
+                user = User.objects.create_user(
+                    username=email,
+                    email=email,
+                    first_name=name,
+                    is_active=True,
+                )
+                profile, _ = UserProfile.objects.get_or_create(user=user)
+                profile.company = company
+                profile.role = form.cleaned_data["role"]
+                profile.phone = form.cleaned_data["phone"]
+                profile.designation = form.cleaned_data["designation"]
+                submitted_code = form.cleaned_data["employee_code"]
+                profile.employee_code = "" if submitted_code.endswith("-AUTO") else submitted_code
+                profile.employee_code = profile.employee_code or _next_employee_code(
+                    profile.role,
+                    company=company,
+                    designation=profile.designation,
+                )
+                profile.personal_email = form.cleaned_data["personal_email"]
+                profile.date_of_birth = form.cleaned_data["date_of_birth"]
+                profile.gender = form.cleaned_data["gender"]
+                profile.blood_group = form.cleaned_data["blood_group"]
+                profile.marital_status = form.cleaned_data["marital_status"]
+                profile.department = form.cleaned_data["department"]
+                profile.reporting_manager = form.cleaned_data["reporting_manager"]
+                profile.work_location = _selected_work_location(company, form.cleaned_data["office_location"], form.cleaned_data["custom_work_location"])
+                profile.joining_date = form.cleaned_data["joining_date"]
+                profile.aadhaar_number = form.cleaned_data["aadhaar_number"]
+                profile.aadhaar_document = form.cleaned_data["aadhaar_document"]
+                profile.pan_number = form.cleaned_data["pan_number"]
+                profile.pan_document = form.cleaned_data["pan_document"]
+                profile.emergency_contact_name = form.cleaned_data["emergency_contact_name"]
+                profile.emergency_contact_phone = form.cleaned_data["emergency_contact_phone"]
+                profile.bank_name = form.cleaned_data["bank_name"]
+                profile.bank_account_name = form.cleaned_data["bank_account_name"]
+                profile.bank_account_number = form.cleaned_data["bank_account_number"]
+                profile.bank_ifsc = form.cleaned_data["bank_ifsc"]
+                profile.address = form.cleaned_data["address"]
+                profile.city = form.cleaned_data["city"]
+                profile.state = form.cleaned_data["state"]
+                profile.pincode = form.cleaned_data["pincode"]
+                profile.save()
+                SignupRequest.objects.update_or_create(
+                    email=email,
+                    defaults={
+                        "name": name,
+                        "phone": profile.phone,
+                        "requested_role": profile.role,
+                        "approved_role": profile.role,
+                        "status": SignupRequestStatus.APPROVED,
+                        "is_email_verified": True,
+                        "user": user,
+                    },
+                )
+                record_audit(actor=request.user, action="employee.created", target=profile, company=company, details={"employee_code": profile.employee_code, "role": profile.role})
             request.session.pop("add_employee_verified_email", None)
             request.session.pop("add_employee_email_otp_id", None)
             messages.success(request, "Employee added. Email is verified and account is ready for login.")
@@ -550,39 +555,7 @@ def add_employee(request):
 
 
 def _next_employee_code(role, company=None, designation=""):
-    designation = (designation or "").strip()
-    if company and designation:
-        with transaction.atomic():
-            rule = (
-                DesignationCodeRule.objects.select_for_update()
-                .filter(
-                    company=company,
-                    role=role,
-                    designation__iexact=designation,
-                    is_active=True,
-                )
-                .order_by("id")
-                .first()
-            )
-            if rule:
-                code = rule.preview_code()
-                rule.next_number += 1
-                rule.save(update_fields=["next_number"])
-                return code
-
-    prefix_map = {
-        Role.COMPANY_OWNER: "OWN",
-        Role.MANAGER: "MGR",
-        Role.TL: "TL",
-        Role.EXECUTIVE: "EXE",
-        Role.CHANNEL_PARTNER: "CP",
-    }
-    prefix = prefix_map.get(role, "EMP")
-    profiles = UserProfile.objects.filter(role=role)
-    if company:
-        profiles = profiles.filter(company=company)
-    next_number = profiles.count() + 1
-    return f"{prefix}-{next_number:04d}"
+    return next_employee_code(role, company=company)
 
 
 def _selected_work_location(company, office_location, custom_work_location):
@@ -629,6 +602,8 @@ def add_employee_verify_otp(request):
     otp = EmailOTP.objects.filter(id=otp_id, email=email, is_used=False).first()
     if not otp or otp.is_expired:
         return JsonResponse({"ok": False, "message": "OTP expired. Send a new OTP."}, status=400)
+    if otp.attempts >= 5:
+        return JsonResponse({"ok": False, "message": "Too many attempts. Send a new OTP."}, status=429)
     if not otp.matches(code):
         otp.attempts += 1
         otp.save(update_fields=["attempts"])

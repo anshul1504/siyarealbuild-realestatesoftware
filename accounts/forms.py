@@ -1045,6 +1045,17 @@ class EmployeeEmailChangeRequestForm(forms.ModelForm):
             raise forms.ValidationError("This email already has a pending change request.")
         return email
 
+    def clean(self):
+        cleaned_data = super().clean()
+        employee = cleaned_data.get("employee")
+        if employee and EmployeeEmailChangeRequest.objects.filter(
+            company=self.company,
+            employee=employee,
+            status=EmployeeEmailChangeRequest.Status.PENDING,
+        ).exclude(pk=self.instance.pk).exists():
+            raise forms.ValidationError("This employee already has a pending email change request.")
+        return cleaned_data
+
 
 class EmployeeRoleChangeRequestForm(forms.ModelForm):
     class Meta:

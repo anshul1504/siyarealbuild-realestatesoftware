@@ -9,6 +9,7 @@ from django.utils import timezone
 from ..email_utils import send_email_updated_email, send_otp_email
 from ..forms import EmployeeEmailChangeRequestForm
 from ..models import EmailOTP, EmployeeEmailChangeRequest, Role
+from ..services import record_audit
 from .owner_common import owner_context, owner_render
 
 
@@ -40,6 +41,7 @@ def owner_email_changes(request):
             else:
                 old_email = change.employee.email
                 if change.approve(approved_by=request.user):
+                    record_audit(actor=request.user, action="employee.email_change_approved", target=change, company=company, details={"old_email": old_email, "new_email": change.requested_email})
                     _send_email_change_applied_email(change, old_email)
                     messages.success(request, "Employee email changed.")
                 else:
@@ -101,6 +103,7 @@ def owner_email_changes(request):
         if change:
             change.status = EmployeeEmailChangeRequest.Status.REJECTED
             change.save(update_fields=["status", "updated_at"])
+            record_audit(actor=request.user, action="employee.email_change_rejected", target=change, company=company)
             messages.success(request, "Email change request rejected.")
         return redirect("accounts:owner_email_changes")
 
@@ -159,6 +162,7 @@ def owner_email_change_create(request):
         change.company = company
         change.requested_by = request.user
         change.save()
+        record_audit(actor=request.user, action="employee.email_change_requested", target=change, company=company, details={"requested_email": change.requested_email})
         otp = EmailOTP.create_for_email(change.requested_email)
         otp.user = change.employee
         otp.save(update_fields=["user"])
