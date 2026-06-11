@@ -63,7 +63,7 @@ class SignupRequestForm(forms.ModelForm):
 
     class Meta:
         model = SignupRequest
-        fields = ["name", "phone", "email", "requested_role", "channel_partner_reference"]
+        fields = ["name", "phone", "email", "channel_partner_reference"]
         labels = {"channel_partner_reference": "Referral Code"}
         widgets = {
             "name": forms.TextInput(
@@ -73,7 +73,6 @@ class SignupRequestForm(forms.ModelForm):
             "email": forms.EmailInput(
                 attrs={"class": "form-control", "placeholder": "info@example.com", "autocomplete": "email", "id": "registerEmail"}
             ),
-            "requested_role": forms.Select(attrs={"class": "form-control", "id": "registerRole"}),
             "channel_partner_reference": forms.TextInput(
                 attrs={"class": "form-control", "placeholder": "Referrer employee code or email", "id": "registerInviteCode"}
             ),
@@ -717,7 +716,7 @@ class InviteBulkActionForm(forms.Form):
 
 class SignupBulkActionForm(forms.Form):
     action = forms.ChoiceField(
-        choices=(("approve", "Approve"), ("reject", "Reject"), ("pending", "Move to Pending")),
+        choices=(("reject", "Reject"), ("pending", "Move to Pending")),
         widget=forms.Select(attrs={"class": "form-control"}),
     )
     signup_ids = forms.MultipleChoiceField(widget=forms.CheckboxSelectMultiple, required=False)
@@ -728,6 +727,12 @@ class SignupBulkActionForm(forms.Form):
 
 
 class SignupRequestReviewForm(forms.ModelForm):
+    approved_role = forms.ChoiceField(
+        choices=[("", "Select role"), *Role.choices],
+        required=False,
+        widget=forms.Select(attrs={"class": "form-control"}),
+    )
+
     class Meta:
         model = SignupRequest
         fields = ["approved_role", "admin_note"]

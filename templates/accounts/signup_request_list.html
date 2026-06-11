@@ -19,7 +19,7 @@
             {% endfor %}
         </select>
         <select class="form-control" name="role">
-            <option value="">All Roles</option>
+            <option value="">All Assigned Roles</option>
             {% for value, label in role_choices %}
                 <option value="{{ value }}" {% if selected_role == value %}selected{% endif %}>{{ label }}</option>
             {% endfor %}
@@ -43,8 +43,7 @@
                 <tr>
                     <th class="approval-check"></th>
                     <th>Applicant</th>
-                    <th>Requested Role</th>
-                    <th>Approved Role</th>
+                    <th>Assigned Role</th>
                     <th>Status</th>
                     <th>Email</th>
                     <th>Requested</th>
@@ -59,7 +58,6 @@
                         <strong><a href="{% url 'accounts:owner_signup_request_detail' signup.id %}">{{ signup.name }}</a></strong>
                         {% if signup.phone %}<small>{{ signup.phone }}</small>{% endif %}
                     </td>
-                    <td>{{ signup.get_requested_role_display }}</td>
                     <td>{% if signup.approved_role %}{{ signup.get_approved_role_display }}{% else %}-{% endif %}</td>
                     <td>
                         <span class="approval-status {% if signup.status == 'approved' or signup.status == 'pending_approval' and signup.is_email_verified %}ready{% elif signup.status == 'otp_pending' %}waiting{% elif signup.status == 'rejected' %}danger{% endif %}">
@@ -74,7 +72,7 @@
                     <td><a class="btn btn-sm btn-outline-primary" href="{% url 'accounts:owner_signup_request_detail' signup.id %}">Open</a></td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="8" class="text-center text-body py-4">No signup requests found.</td></tr>
+                <tr><td colspan="7" class="text-center text-body py-4">No signup requests found.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

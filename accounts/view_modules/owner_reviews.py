@@ -11,6 +11,9 @@ from ..forms import DesignationCodeRuleForm, SignupBulkActionForm, SignupRequest
 from ..models import DesignationCodeRule, EmailOTP, EmployeeInvite, Role, SignupRequest, SignupRequestOwnerMessage, SignupRequestStatus, UserProfile
 from .onboarding import _next_employee_code
 from .owner_common import owner_context, owner_render
+
+
+@login_required
 def owner_codes(request):
     return redirect("accounts:owner_serial_rules")
 
@@ -224,15 +227,9 @@ def owner_requests(request):
             messages.error(request, "Select at least one signup request.")
             return redirect("accounts:owner_requests")
         updated = 0
-        skipped = 0
         for signup in selected:
             action = signup_form.cleaned_data["action"]
-            if action == "approve":
-                if not signup.is_email_verified or signup.status == SignupRequestStatus.OTP_PENDING:
-                    skipped += 1
-                    continue
-                signup.approve()
-            elif action == "reject":
+            if action == "reject":
                 signup.reject()
             else:
                 signup.status = SignupRequestStatus.PENDING_APPROVAL
@@ -240,8 +237,6 @@ def owner_requests(request):
             updated += 1
         if updated:
             messages.success(request, f"{updated} signup request(s) updated.")
-        if skipped:
-            messages.warning(request, f"{skipped} signup request(s) skipped because email verification is pending.")
         return redirect("accounts:owner_requests")
     request_counts = {
         "signup_pending": signups.filter(status=SignupRequestStatus.PENDING_APPROVAL, is_email_verified=True).count(),
@@ -274,7 +269,7 @@ def owner_signup_request_list(request):
     if status:
         requests = requests.filter(status=status)
     if role:
-        requests = requests.filter(requested_role=role)
+        requests = requests.filter(approved_role=role)
     if query:
         requests = requests.filter(models.Q(name__icontains=query) | models.Q(email__icontains=query) | models.Q(phone__icontains=query))
 
@@ -355,6 +350,9 @@ def owner_signup_request_detail(request, request_id):
                 if action == "approve":
                     if not signup.is_email_verified or signup.status == SignupRequestStatus.OTP_PENDING:
                         messages.error(request, "This signup cannot be approved until email verification is complete.")
+                    elif not signup.approved_role:
+                        review_form.add_error("approved_role", "Select a role before approving this signup request.")
+                        messages.error(request, "Select a role before approving this signup request.")
                     else:
                         signup.approve()
                         messages.success(request, "Signup request approved and applicant notified.")

@@ -3,6 +3,7 @@ import secrets
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.auth.hashers import check_password, make_password
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.utils import timezone
@@ -27,7 +28,7 @@ class SignupRequest(models.Model):
     name = models.CharField(max_length=120)
     phone = models.CharField(max_length=20)
     email = models.EmailField(unique=True)
-    requested_role = models.CharField(max_length=32, choices=Role.choices)
+    requested_role = models.CharField(max_length=32, choices=Role.choices, blank=True)
     approved_role = models.CharField(max_length=32, choices=Role.choices, blank=True)
     channel_partner_reference = models.CharField(max_length=160, blank=True)
     status = models.CharField(
@@ -56,7 +57,9 @@ class SignupRequest(models.Model):
             and previous.status == SignupRequestStatus.APPROVED
             and previous.user_id
         )
-        role = self.approved_role or self.requested_role
+        role = self.approved_role
+        if not role:
+            raise ValidationError({"approved_role": "Select a role before approving this signup request."})
         User = get_user_model()
         user, _ = User.objects.get_or_create(
             username=self.email.lower().strip(),
@@ -122,7 +125,7 @@ class SignupRequestOwnerMessage(models.Model):
 
 class EmailOTP(models.Model):
     email = models.EmailField(db_index=True)
-    code = models.CharField(max_length=6)
+    code = models.CharField(max_length=128)
     attempts = models.PositiveSmallIntegerField(default=0)
     is_used = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -134,16 +137,26 @@ class EmailOTP(models.Model):
         ordering = ["-created_at"]
 
     def __str__(self):
-        return f"{self.email} - {self.code}"
+        return f"{self.email} - OTP"
 
     @classmethod
     def create_for_email(cls, email, signup_request=None):
-        return cls.objects.create(
+        raw_code = f"{secrets.randbelow(1_000_000):06d}"
+        otp = cls.objects.create(
             email=email.lower().strip(),
-            code=f"{secrets.randbelow(1_000_000):06d}",
+            code=make_password(raw_code),
             expires_at=timezone.now() + timedelta(minutes=10),
             signup_request=signup_request,
         )
+        otp.code = raw_code
+        return otp
+
+    def matches(self, raw_code):
+        return check_password(raw_code, self.code)
+
+    def set_code(self, raw_code):
+        self.code = make_password(raw_code)
+        self.save(update_fields=["code"])
 
     @property
     def is_expired(self):

@@ -56,6 +56,7 @@ def _mark_invite_email_verified(invite):
         },
     )
     send_signup_pending_review_email(to_email=invite.email, name=invite.name)
+@login_required
 def employee_invites(request):
     user_profile, company, is_owner = _profile_context(request)
     can_manage_team = user_profile.role in {Role.COMPANY_OWNER, Role.MANAGER}
@@ -96,13 +97,17 @@ def employee_invites(request):
             },
         },
     )
+@login_required
 def employee_invite_list(request):
     user_profile, company, is_owner = _profile_context(request)
     if user_profile.role not in {Role.COMPANY_OWNER, Role.MANAGER}:
         messages.error(request, "Only company owner or manager can view employee invites.")
         return redirect("accounts:profile")
     allowed_roles = _allowed_invite_roles(user_profile.role)
-    base_invites = EmployeeInvite.objects.filter(company=company).select_related("invited_by", "accepted_user", "approved_by")
+    base_invites = EmployeeInvite.objects.filter(
+        company=company,
+        role__in=allowed_roles,
+    ).select_related("invited_by", "accepted_user", "approved_by")
     invite_counts = {
         "all": base_invites.count(),
         "pending_verification": base_invites.filter(status=EmployeeInvite.Status.PENDING_VERIFICATION).count(),
@@ -297,7 +302,7 @@ def employee_invite_verify_otp(request, invite_id):
     if otp.attempts >= 5:
         messages.error(request, "Too many attempts. Please resend invite verification.")
         return redirect("accounts:employee_invite_detail", invite_id=invite.id)
-    if code != otp.code:
+    if not otp.matches(code):
         otp.attempts += 1
         otp.save(update_fields=["attempts"])
         messages.error(request, "Invalid invite OTP.")
@@ -624,7 +629,7 @@ def add_employee_verify_otp(request):
     otp = EmailOTP.objects.filter(id=otp_id, email=email, is_used=False).first()
     if not otp or otp.is_expired:
         return JsonResponse({"ok": False, "message": "OTP expired. Send a new OTP."}, status=400)
-    if otp.code != code:
+    if not otp.matches(code):
         otp.attempts += 1
         otp.save(update_fields=["attempts"])
         return JsonResponse({"ok": False, "message": "Invalid OTP."}, status=400)

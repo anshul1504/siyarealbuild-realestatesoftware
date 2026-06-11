@@ -81,6 +81,20 @@
     </div>
 
     <div class="profile-overview-section">
+        <h2>Account Security</h2>
+        <div class="profile-overview-grid">
+            <div class="profile-overview-wide">
+                <span>Other Devices</span>
+                <strong>Sign out any other browser sessions connected to your account.</strong>
+                <form method="post" action="{% url 'accounts:logout_other_sessions' %}" class="mt-2">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-danger btn-sm">Log Out Other Devices</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="profile-overview-section">
         <h2>Address</h2>
         <div class="profile-overview-grid">
             <div><span>City</span><strong>{{ user_profile.city|default:"Not added" }}</strong></div>

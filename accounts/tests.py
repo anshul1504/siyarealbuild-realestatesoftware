@@ -1,4 +1,5 @@
 from django.core import mail
+from django.core.cache import cache
 from django.contrib.auth import get_user_model
 from django.contrib.admin.sites import AdminSite
 from django.db import IntegrityError
@@ -15,6 +16,147 @@ from .models import AuthenticationSupportRequest, CompanyProfile, EmailOTP, Empl
 
 @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
 class SignupApprovalEmailTests(TestCase):
+    def tearDown(self):
+        cache.clear()
+        super().tearDown()
+
+    def test_otp_is_hashed_at_rest_and_matches_only_raw_code(self):
+        otp = EmailOTP.create_for_email("secure@example.com")
+        raw_code = otp.code
+        otp.refresh_from_db()
+
+        self.assertNotEqual(otp.code, raw_code)
+        self.assertTrue(otp.matches(raw_code))
+        self.assertFalse(otp.matches("000000"))
+
+    @override_settings(AUTH_RATE_LIMIT_EMAIL_ATTEMPTS=1, AUTH_RATE_LIMIT_IP_ATTEMPTS=100)
+    def test_login_otp_requests_are_rate_limited_by_email(self):
+        User = get_user_model()
+        user = User.objects.create_user(username="approved@example.com", email="approved@example.com")
+        SignupRequest.objects.create(
+            name="Approved",
+            phone="+91 9999999999",
+            email=user.email,
+            approved_role=Role.EXECUTIVE,
+            status=SignupRequestStatus.APPROVED,
+            is_email_verified=True,
+            user=user,
+        )
+
+        first = self.client.post(reverse("accounts:login"), {"email": user.email})
+        second = self.client.post(reverse("accounts:login"), {"email": user.email})
+
+        self.assertRedirects(first, reverse("accounts:verify"))
+        self.assertRedirects(second, reverse("accounts:login"))
+        self.assertEqual(EmailOTP.objects.filter(email=user.email).count(), 1)
+
+    def test_user_can_logout_other_active_sessions(self):
+        User = get_user_model()
+        user = User.objects.create_user(username="approved@example.com", email="approved@example.com")
+        self.client.force_login(user)
+        current_session_key = self.client.session.session_key
+        other_client = self.client_class()
+        other_client.force_login(user)
+        other_session_key = other_client.session.session_key
+
+        response = self.client.post(reverse("accounts:logout_other_sessions"))
+
+        self.assertRedirects(response, reverse("accounts:profile"))
+        from django.contrib.sessions.models import Session
+        self.assertTrue(Session.objects.filter(session_key=current_session_key).exists())
+        self.assertFalse(Session.objects.filter(session_key=other_session_key).exists())
+
+    def test_login_otp_cannot_be_used_after_approval_is_revoked(self):
+        User = get_user_model()
+        user = User.objects.create_user(username="approved@example.com", email="approved@example.com")
+        signup = SignupRequest.objects.create(
+            name="Approved User",
+            phone="+91 9999999999",
+            email=user.email,
+            requested_role=Role.EXECUTIVE,
+            approved_role=Role.EXECUTIVE,
+            status=SignupRequestStatus.APPROVED,
+            is_email_verified=True,
+            user=user,
+        )
+        otp = EmailOTP.create_for_email(user.email, signup_request=signup)
+        session = self.client.session
+        session["otp_email"] = user.email
+        session["otp_id"] = otp.id
+        session["otp_purpose"] = "login"
+        session.save()
+        signup.status = SignupRequestStatus.REJECTED
+        signup.save(update_fields=["status", "updated_at"])
+
+        response = self.client.post(reverse("accounts:verify"), {"code": otp.code})
+
+        self.assertRedirects(response, reverse("accounts:login"))
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_protected_role_pages_redirect_anonymous_users_to_login(self):
+        protected_urls = [
+            reverse("accounts:access_control"),
+            reverse("accounts:role_change_request_list"),
+            reverse("accounts:employee_invites"),
+            reverse("accounts:employee_invite_list"),
+        ]
+
+        for url in protected_urls:
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, 302)
+                self.assertIn(reverse("accounts:login"), response.url)
+
+    def test_pending_signup_cannot_change_authenticated_users_role(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        user = User.objects.create_user(username="employee@example.com", email="employee@example.com")
+        profile = UserProfile.objects.create(user=user, role=Role.EXECUTIVE, company=company)
+        SignupRequest.objects.create(
+            name="Employee",
+            phone="+91 9999999999",
+            email=user.email,
+            requested_role=Role.MANAGER,
+            status=SignupRequestStatus.PENDING_APPROVAL,
+            is_email_verified=True,
+        )
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("accounts:profile"))
+
+        self.assertEqual(response.status_code, 200)
+        profile.refresh_from_db()
+        self.assertEqual(profile.role, Role.EXECUTIVE)
+
+    def test_manager_invite_list_excludes_roles_outside_manager_scope(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        manager = User.objects.create_user(username="manager@example.com", email="manager@example.com")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        UserProfile.objects.create(user=manager, role=Role.MANAGER, company=company)
+        EmployeeInvite.objects.create(
+            company=company,
+            invited_by=owner,
+            name="Future Owner",
+            email="future-owner@example.com",
+            role=Role.COMPANY_OWNER,
+        )
+        visible_invite = EmployeeInvite.objects.create(
+            company=company,
+            invited_by=owner,
+            name="Future Executive",
+            email="future-executive@example.com",
+            role=Role.EXECUTIVE,
+        )
+        self.client.force_login(manager)
+
+        response = self.client.get(reverse("accounts:employee_invite_list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Future Owner")
+        self.assertContains(response, visible_invite.name)
+
     def test_owner_can_edit_pending_invite_and_email_change_resets_verification(self):
         User = get_user_model()
         company = CompanyProfile.objects.create(name="Siya Real Build")
@@ -71,6 +213,7 @@ class SignupApprovalEmailTests(TestCase):
         self.assertRedirects(response, reverse("accounts:verify"))
         signup = SignupRequest.objects.get(email="anshul@example.com")
         self.assertEqual(signup.status, SignupRequestStatus.OTP_PENDING)
+        self.assertEqual(signup.requested_role, "")
         self.assertFalse(signup.is_email_verified)
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to, ["anshul@example.com"])
@@ -107,8 +250,9 @@ class SignupApprovalEmailTests(TestCase):
         mail.outbox = []
         signup = SignupRequest.objects.get(email="anshul@example.com")
         otp = signup.emailotp_set.latest("created_at")
+        otp.set_code("123456")
 
-        response = self.client.post(reverse("accounts:verify"), data={"code": otp.code})
+        response = self.client.post(reverse("accounts:verify"), data={"code": "123456"})
 
         self.assertRedirects(response, reverse("accounts:login"))
         self.assertEqual(len(mail.outbox), 1)
@@ -123,6 +267,7 @@ class SignupApprovalEmailTests(TestCase):
             phone="9999999999",
             email="anshul@example.com",
             requested_role=Role.MANAGER,
+            approved_role=Role.MANAGER,
             status=SignupRequestStatus.PENDING_APPROVAL,
             is_email_verified=True,
         )
@@ -144,6 +289,7 @@ class SignupApprovalEmailTests(TestCase):
             phone="9999999999",
             email="anshul@example.com",
             requested_role=Role.MANAGER,
+            approved_role=Role.MANAGER,
             status=SignupRequestStatus.PENDING_APPROVAL,
             is_email_verified=True,
         )
@@ -434,8 +580,9 @@ class SignupApprovalEmailTests(TestCase):
         self.assertEqual(mail.outbox[0].subject, "Verify your new Siya Real Build email")
 
         otp = EmailOTP.objects.get(email="new-executive@example.com")
+        otp.set_code("123456")
         mail.outbox = []
-        response = self.client.post(reverse("accounts:verify_email_change"), data={"code": otp.code})
+        response = self.client.post(reverse("accounts:verify_email_change"), data={"code": "123456"})
 
         self.assertRedirects(response, reverse("accounts:profile"))
         user.refresh_from_db()
@@ -480,10 +627,11 @@ class SignupApprovalEmailTests(TestCase):
         self.assertEqual(employee.email, "exec@example.com")
 
         otp = EmailOTP.objects.get(email="manual-exec@example.com")
+        otp.set_code("123456")
         mail.outbox = []
         response = self.client.post(
             reverse("accounts:owner_email_changes"),
-            data={"verify_request": change.id, "otp_code": otp.code},
+            data={"verify_request": change.id, "otp_code": "123456"},
         )
 
         self.assertRedirects(response, reverse("accounts:owner_email_changes"))
@@ -857,7 +1005,7 @@ class SignupApprovalEmailTests(TestCase):
         self.assertContains(detail_response, "Sales Update")
         self.assertContains(detail_response, "exec@example.com")
 
-    def test_company_owner_can_approve_verified_signup_request(self):
+    def test_company_owner_bulk_queue_does_not_offer_approval_without_role_assignment(self):
         User = get_user_model()
         company = CompanyProfile.objects.create(name="Siya Real Build")
         owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
@@ -872,19 +1020,12 @@ class SignupApprovalEmailTests(TestCase):
         )
         self.client.force_login(owner)
 
-        response = self.client.post(
-            reverse("accounts:owner_requests"),
-            data={
-                "form_kind": "signup",
-                "signup-action": "approve",
-                "signup-signup_ids": [str(signup.id)],
-            },
-        )
+        response = self.client.get(reverse("accounts:owner_requests"))
 
-        self.assertRedirects(response, reverse("accounts:owner_requests"))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, '<option value="approve">Approve</option>', html=True)
         signup.refresh_from_db()
-        self.assertEqual(signup.status, SignupRequestStatus.APPROVED)
-        self.assertTrue(User.objects.filter(email="approved@example.com").exists())
+        self.assertEqual(signup.status, SignupRequestStatus.PENDING_APPROVAL)
 
     def test_company_owner_cannot_approve_unverified_signup_request(self):
         User = get_user_model()
@@ -910,7 +1051,7 @@ class SignupApprovalEmailTests(TestCase):
             },
         )
 
-        self.assertRedirects(response, reverse("accounts:owner_requests"))
+        self.assertEqual(response.status_code, 200)
         signup.refresh_from_db()
         self.assertEqual(signup.status, SignupRequestStatus.OTP_PENDING)
         self.assertFalse(User.objects.filter(email="otp@example.com").exists())

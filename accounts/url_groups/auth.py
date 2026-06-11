@@ -15,4 +15,5 @@ urlpatterns = [
     path("profile/resend-email-otp/", auth_profile_company.resend_email_change_otp, name="resend_email_change_otp"),
     path("support-request/", auth_profile_company.authentication_support_request, name="support_request"),
     path("logout/", auth_profile_company.sign_out, name="logout"),
+    path("sessions/logout-others/", auth_profile_company.logout_other_sessions, name="logout_other_sessions"),
 ]

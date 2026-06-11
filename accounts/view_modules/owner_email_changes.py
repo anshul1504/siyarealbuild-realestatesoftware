@@ -62,7 +62,7 @@ def owner_email_changes(request):
         if otp.attempts >= 5:
             messages.error(request, "Too many OTP attempts. Resend a new OTP.")
             return redirect("accounts:owner_email_changes")
-        if otp_code != otp.code:
+        if not otp.matches(otp_code):
             otp.attempts += 1
             otp.save(update_fields=["attempts"])
             messages.error(request, "Invalid OTP.")

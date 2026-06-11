@@ -12,7 +12,7 @@
       </div>
       <div class="text-center mb-5">
         <h5 class="mb-1">Create your account</h5>
-        <p>{% if is_referral_signup %}Referral link is valid only for Channel Partner signup requests.{% else %}Verify your email first. Admin approval is required before login.{% endif %}</p>
+        <p>Verify your email and submit your request. The Company Owner will assign your role during approval.</p>
       </div>
       <form method="post" action="{% url 'accounts:signup' %}">
         {% csrf_token %}
@@ -33,17 +33,6 @@
           <label class="form-label" for="{{ form.phone.id_for_label }}">Phone</label>
           {{ form.phone }}
           {% for error in form.phone.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
-        </div>
-        <div class="mb-4">
-          <label class="form-label" for="{{ form.requested_role.id_for_label }}">Requested Role</label>
-          {% if is_referral_signup %}
-            <input type="hidden" name="{{ form.requested_role.html_name }}" value="channel_partner">
-            <input class="form-control" type="text" value="Channel Partner" readonly>
-            <div class="text-body small mt-1">This role is locked because this signup came through a referral link.</div>
-          {% else %}
-            {{ form.requested_role }}
-          {% endif %}
-          {% for error in form.requested_role.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
         </div>
         {% if is_referral_signup %}
         <div class="mb-4">

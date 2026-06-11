@@ -4,6 +4,8 @@ from datetime import datetime, timedelta
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login, logout
 from django.contrib.auth.decorators import login_required
+from django.contrib.sessions.models import Session
+from django.conf import settings
 from django.db import models
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
@@ -14,6 +16,7 @@ from django.views.decorators.http import require_http_methods
 from ..email_utils import send_email_updated_email, send_otp_email, send_signup_pending_review_email
 from ..forms import EmailLoginForm, InviteOTPVerifyForm, OTPVerifyForm, OwnerCompanyProfileForm, SignupRequestForm, UserProfileForm
 from ..models import AuthenticationSupportRequest, CompanyProfile, EmailOTP, EmployeeEmailChangeRequest, EmployeeInvite, Role, SignupRequest, SignupRequestStatus, UserProfile
+from ..security import auth_request_limited, client_ip, rate_limit_exceeded
 from .onboarding import _next_employee_code
 
 
@@ -57,6 +60,9 @@ def request_otp(request):
     form = EmailLoginForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         email = form.cleaned_data["email"].lower().strip()
+        if auth_request_limited(request, email):
+            messages.error(request, "Too many authentication requests. Please wait before trying again.")
+            return redirect("accounts:login")
         user = get_user_model().objects.filter(email__iexact=email, is_active=True).first()
         approved_request = SignupRequest.objects.filter(
             email__iexact=email,
@@ -85,16 +91,13 @@ def signup_request(request):
         return redirect("properties:dashboard")
 
     referral_code = (request.POST.get("referral_code") or request.GET.get("ref") or "").strip()
-    initial = {}
-    if referral_code:
-        initial = {
-            "requested_role": Role.CHANNEL_PARTNER,
-            "channel_partner_reference": referral_code,
-        }
+    initial = {"channel_partner_reference": referral_code} if referral_code else {}
     form = SignupRequestForm(request.POST or None, initial=initial)
     if request.method == "POST" and form.is_valid():
         email = form.cleaned_data["email"].lower().strip()
-        requested_role = Role.CHANNEL_PARTNER if referral_code else form.cleaned_data["requested_role"]
+        if auth_request_limited(request, email):
+            messages.error(request, "Too many authentication requests. Please wait before trying again.")
+            return redirect("accounts:signup")
         channel_partner_reference = referral_code if referral_code else form.cleaned_data["channel_partner_reference"]
         company = CompanyProfile.objects.order_by("id").first()
         if referral_code and not _referrer_profile_for_code(referral_code, company=company):
@@ -121,15 +124,13 @@ def signup_request(request):
         if signup:
             signup.name = form.cleaned_data["name"]
             signup.phone = form.cleaned_data["phone"]
-            signup.requested_role = requested_role
             signup.channel_partner_reference = channel_partner_reference
-            signup.save(update_fields=["name", "phone", "requested_role", "channel_partner_reference", "updated_at"])
+            signup.save(update_fields=["name", "phone", "channel_partner_reference", "updated_at"])
         else:
             signup = SignupRequest.objects.create(
                 email=email,
                 name=form.cleaned_data["name"],
                 phone=form.cleaned_data["phone"],
-                requested_role=requested_role,
                 channel_partner_reference=channel_partner_reference,
                 status=SignupRequestStatus.OTP_PENDING,
                 is_email_verified=False,
@@ -198,7 +199,7 @@ def verify_otp(request):
             messages.error(request, "Too many attempts. Request a new OTP.")
             return redirect("accounts:login")
 
-        if form.cleaned_data["code"] != otp.code:
+        if not otp.matches(form.cleaned_data["code"]):
             otp.attempts += 1
             otp.save(update_fields=["attempts"])
             messages.error(request, "Invalid OTP.")
@@ -224,7 +225,13 @@ def verify_otp(request):
                 return redirect("accounts:login")
 
             user = get_user_model().objects.filter(email__iexact=email, is_active=True).first()
-            if not user:
+            is_approved = SignupRequest.objects.filter(
+                email__iexact=email,
+                user=user,
+                status=SignupRequestStatus.APPROVED,
+                is_email_verified=True,
+            ).exists()
+            if not user or not is_approved:
                 messages.error(request, "Account is not approved yet.")
                 return redirect("accounts:login")
             otp.user = user
@@ -301,7 +308,7 @@ def verify_invite_email(request):
         if otp.attempts >= 5:
             messages.error(request, "Too many attempts. Please ask company owner to resend invite.")
             return redirect("accounts:verify_invite_email")
-        if form.cleaned_data["code"] != otp.code:
+        if not otp.matches(form.cleaned_data["code"]):
             otp.attempts += 1
             otp.save(update_fields=["attempts"])
             messages.error(request, "Invalid OTP.")
@@ -350,6 +357,8 @@ def _mark_invite_email_verified(invite):
     send_signup_pending_review_email(to_email=invite.email, name=invite.name)
 
 
+@login_required
+@require_http_methods(["POST"])
 def sign_out(request):
     logout(request)
     return render(request, "accounts/logout.html")
@@ -357,6 +366,8 @@ def sign_out(request):
 
 @require_http_methods(["POST"])
 def authentication_support_request(request):
+    if rate_limit_exceeded("support-ip", client_ip(request), settings.SUPPORT_RATE_LIMIT_ATTEMPTS):
+        return JsonResponse({"ok": False, "message": "Too many support requests. Please try again later."}, status=429)
     name = request.POST.get("support_name", "").strip()
     contact = request.POST.get("support_contact", "").strip()
     issue = request.POST.get("support_issue", "").strip()
@@ -379,7 +390,11 @@ def authentication_support_request(request):
 
 def profile_context(request):
     user_profile, _ = UserProfile.objects.get_or_create(user=request.user)
-    signup = SignupRequest.objects.filter(user=request.user).first() or SignupRequest.objects.filter(email__iexact=request.user.email).first()
+    signup = SignupRequest.objects.filter(
+        user=request.user,
+        status=SignupRequestStatus.APPROVED,
+        is_email_verified=True,
+    ).first()
     changed = False
     if signup:
         if not user_profile.phone and signup.phone:
@@ -545,7 +560,7 @@ def verify_email_change(request):
         if otp.attempts >= 5:
             messages.error(request, "Too many attempts. Request a new OTP.")
             return redirect("accounts:profile")
-        if form.cleaned_data["code"] != otp.code:
+        if not otp.matches(form.cleaned_data["code"]):
             otp.attempts += 1
             otp.save(update_fields=["attempts"])
             messages.error(request, "Invalid OTP.")
@@ -622,6 +637,22 @@ def resend_email_change_otp(request):
     send_otp_email(to_email=pending_email, code=otp.code, purpose="email_change")
     messages.success(request, "A new OTP has been sent to your new email.")
     return redirect("accounts:verify_email_change")
+
+
+@login_required
+@require_http_methods(["POST"])
+def logout_other_sessions(request):
+    current_key = request.session.session_key
+    removed = 0
+    for session in Session.objects.filter(expire_date__gt=timezone.now()):
+        if session.session_key == current_key:
+            continue
+        data = session.get_decoded()
+        if str(data.get("_auth_user_id")) == str(request.user.pk):
+            session.delete()
+            removed += 1
+    messages.success(request, f"{removed} other active session(s) signed out.")
+    return redirect("accounts:profile")
 
 
 @login_required

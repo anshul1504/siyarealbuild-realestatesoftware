@@ -36,7 +36,6 @@
                 <div><span>Name</span><strong>{{ signup.name }}</strong></div>
                 <div><span>Email</span><strong>{{ signup.email }}</strong></div>
                 <div><span>Phone</span><strong>{{ signup.phone|default:"Not added" }}</strong></div>
-                <div><span>Requested Role</span><strong>{{ signup.get_requested_role_display }}</strong></div>
                 <div><span>Approved Role</span><strong>{% if signup.approved_role %}{{ signup.get_approved_role_display }}{% else %}Not selected{% endif %}</strong></div>
                 <div><span>Channel Partner Ref</span><strong>{{ signup.channel_partner_reference|default:"Not added" }}</strong></div>
                 <div><span>Created</span><strong>{{ signup.created_at|date:"d M Y, h:i A" }}</strong></div>
@@ -50,7 +49,7 @@
                 {% csrf_token %}
                 <div class="row g-3">
                     <div class="col-md-5">
-                        <label class="form-label" for="{{ review_form.approved_role.id_for_label }}">Approved Role</label>
+                        <label class="form-label" for="{{ review_form.approved_role.id_for_label }}">Assign Role</label>
                         {{ review_form.approved_role }}
                         {% for error in review_form.approved_role.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
                     </div>

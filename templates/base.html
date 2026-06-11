@@ -88,9 +88,12 @@
                                 </a>
                             </li>
                             <li>
-                                <a class="dropdown-item d-flex align-items-center gap-2 text-danger" href="{% url 'accounts:logout' %}">
+                                <form method="post" action="{% url 'accounts:logout' %}">
+                                    {% csrf_token %}
+                                    <button class="dropdown-item d-flex align-items-center gap-2 text-danger" type="submit">
                                     <span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/><path d="M21 3v18"/></svg></span> Log Out
-                                </a>
+                                    </button>
+                                </form>
                             </li>
                         </ul>
                     </div>
@@ -249,10 +252,13 @@
                         <span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12v7h16v-7"/><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/></svg></span>
                         Refer a Friend
                     </a>
-                    <a href="{% url 'accounts:logout' %}" class="text-danger" role="menuitem">
+                    <form method="post" action="{% url 'accounts:logout' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="text-danger" role="menuitem">
                         <span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/><path d="M21 3v18"/></svg></span>
                         Log Out
-                    </a>
+                        </button>
+                    </form>
                 </div>
             </div>
         </aside>

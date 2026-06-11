@@ -21,7 +21,7 @@
         <div class="profile-panel-head approval-panel-head">
             <div>
                 <h2>Signup Requests</h2>
-                <p>Approve only email-verified users. Full history is available in Signup Request List.</p>
+                <p>Open an email-verified request to assign its role and approve it. Full history is available in Signup Request List.</p>
             </div>
         </div>
         <form method="post" class="approval-form">
@@ -37,7 +37,7 @@
                         <tr>
                             <th class="approval-check"></th>
                             <th>Applicant</th>
-                            <th>Requested Role</th>
+                            <th>Assigned Role</th>
                             <th>Status</th>
                             <th>Requested</th>
                             <th>Note</th>
@@ -53,7 +53,7 @@
                                 <span>{{ signup.email }}</span>
                                 {% if signup.phone %}<small>{{ signup.phone }}</small>{% endif %}
                             </td>
-                            <td>{{ signup.get_requested_role_display }}</td>
+                            <td>{% if signup.approved_role %}{{ signup.get_approved_role_display }}{% else %}Select during review{% endif %}</td>
                             <td>
                                 <span class="approval-status {% if signup.status == 'approved' or signup.status == 'pending_approval' and signup.is_email_verified %}ready{% elif signup.status == 'otp_pending' %}waiting{% elif signup.status == 'rejected' %}danger{% endif %}">
                                     {{ signup.get_status_display }}

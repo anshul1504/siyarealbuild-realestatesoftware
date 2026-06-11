@@ -8,6 +8,9 @@ from ..email_utils import send_role_change_rejected_email, send_role_change_requ
 from ..forms import EmployeeRoleChangeRequestForm
 from ..models import EmployeeRoleChangeRequest, Role, UserProfile
 from .auth_profile_company import profile_context
+
+
+@login_required
 def access_control(request):
     user_profile, company, is_owner = profile_context(request)
     if not is_owner:
@@ -45,6 +48,7 @@ def _send_role_change_requested(change, request_user):
         requested_role=_role_label(change.requested_role),
         requester_name=request_user.get_full_name() or request_user.email or "Company owner",
     )
+@login_required
 def role_change_request_list(request):
     user_profile, company, is_owner = profile_context(request)
     if not is_owner:
