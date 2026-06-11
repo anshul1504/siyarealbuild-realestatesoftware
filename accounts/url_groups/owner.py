@@ -4,6 +4,7 @@ from accounts.view_modules import events_meetings, owner_configuration, owner_em
 
 
 urlpatterns = [
+    path("owner/operations/", owner_operations.owner_operations_dashboard, name="owner_operations_dashboard"),
     path("owner/codes/", owner_reviews.owner_codes, name="owner_codes"),
     path("owner/codes/assigned/", owner_reviews.owner_assigned_codes, name="owner_assigned_codes"),
     path("owner/codes/rules/", owner_reviews.owner_serial_rules, name="owner_serial_rules"),
@@ -13,6 +14,7 @@ urlpatterns = [
     path("owner/requests/signup/<int:request_id>/", owner_reviews.owner_signup_request_detail, name="owner_signup_request_detail"),
     path("owner/meetings/", events_meetings.owner_meetings, name="owner_meetings"),
     path("owner/meetings/new/", events_meetings.owner_meeting_create, name="owner_meeting_create"),
+    path("owner/meetings/<int:meeting_id>/", events_meetings.owner_meeting_detail, name="owner_meeting_detail"),
     path("owner/meetings/<int:meeting_id>/edit/", events_meetings.owner_meeting_edit, name="owner_meeting_edit"),
     path("owner/events/", events_meetings.owner_events, name="owner_events"),
     path("owner/events/new/", events_meetings.owner_event_create, name="owner_event_create"),
@@ -20,6 +22,9 @@ urlpatterns = [
     path("owner/events/<int:event_id>/", events_meetings.owner_event_detail, name="owner_event_detail"),
     path("owner/referrals/", owner_configuration.owner_referrals, name="owner_referrals"),
     path("owner/targets/", owner_configuration.owner_targets, name="owner_targets"),
+    path("owner/targets/<int:target_id>/", owner_configuration.owner_target_detail, name="owner_target_detail"),
+    path("owner/targets/<int:target_id>/edit/", owner_configuration.owner_target_edit, name="owner_target_edit"),
+    path("owner/targets/<int:target_id>/delete/", owner_configuration.owner_target_delete, name="owner_target_delete"),
     path("owner/popups/", owner_configuration.owner_popups, name="owner_popups"),
     path("owner/popups/new/", owner_configuration.owner_popup_create, name="owner_popup_create"),
     path("owner/popups/<int:popup_id>/edit/", owner_configuration.owner_popup_edit, name="owner_popup_edit"),

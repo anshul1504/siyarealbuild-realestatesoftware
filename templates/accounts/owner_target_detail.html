@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ target.title }} - Target{% endblock %}
+{% block content %}
+<div class="app-page-head company-update-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+  <div><h1 class="app-page-title mb-0">{{ target.title }}</h1><p class="text-body mb-0">{{ target.metric }} target progress and status.</p></div>
+  <div class="company-page-actions"><a class="btn btn-primary" href="{% url 'accounts:owner_target_edit' target.id %}">Edit</a><a class="btn btn-outline-primary" href="{% url 'accounts:owner_targets' %}">Targets</a></div>
+</div>
+<section class="profile-panel">
+  <div class="row g-3">
+    <div class="col-md-3"><strong>Target</strong><p>{{ target.target_value }} {{ target.metric }}</p></div>
+    <div class="col-md-3"><strong>Current</strong><p>{{ target.current_value }} {{ target.metric }}</p></div>
+    <div class="col-md-3"><strong>Progress</strong><p>{{ target.progress_percent }}%</p></div>
+    <div class="col-md-3"><strong>Status</strong><p>{{ target.get_status_display }}</p></div>
+  </div>
+  <form method="post" class="profile-form mt-3">
+    {% csrf_token %}
+    <div><label class="form-label">Current Value</label><input class="form-control" type="number" min="0" name="current_value" value="{{ target.current_value }}"></div>
+    <div><label class="form-label">Status</label><select class="form-control" name="status">{% for value,label in status_choices %}<option value="{{ value }}" {% if target.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <div><label class="form-label">Note</label><textarea class="form-control" name="note" rows="3">{{ target.note }}</textarea></div>
+    <div><button class="btn btn-primary" type="submit">Update Progress</button></div>
+  </form>
+  <form method="post" action="{% url 'accounts:owner_target_delete' target.id %}" class="mt-3" data-delete-confirm="Delete this target?">{% csrf_token %}<button class="btn btn-danger" type="submit">Delete Target</button></form>
+</section>
+{% endblock %}

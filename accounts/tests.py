@@ -13,7 +13,7 @@ from django.test import TestCase, override_settings
 from datetime import timedelta
 
 from .forms import AddEmployeeForm, CompanyProfileForm, SignupRequestForm
-from .models import AuditLog, AuthenticationSupportRequest, CompanyProfile, EmailOTP, EmployeeEmailChangeRequest, EmployeeInvite, EmployeeRoleChangeRequest, NotificationDelivery, OfficeLocation, Role, RoleMatrixRule, SignupRequest, SignupRequestOwnerMessage, SignupRequestStatus, TeamEmailMessage, UserProfile
+from .models import AuditLog, AuthenticationSupportRequest, CompanyEvent, CompanyProfile, EmailOTP, EmployeeEmailChangeRequest, EmployeeInvite, EmployeeRoleChangeRequest, Meeting, NotificationDelivery, OfficeLocation, Role, RoleMatrixRule, RoleTarget, SignupRequest, SignupRequestOwnerMessage, SignupRequestStatus, TeamEmailMessage, UserProfile
 
 
 @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
@@ -882,6 +882,80 @@ class SignupApprovalEmailTests(TestCase):
         response = self.client.get(reverse("accounts:team_profiles"))
 
         self.assertRedirects(response, reverse("accounts:profile"))
+
+    def test_operations_dashboard_renders_owner_summary(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        AuthenticationSupportRequest.objects.create(name="Client", contact="client@example.com", issue="Need help")
+        RoleTarget.objects.create(company=company, assigned_by=owner, role=Role.EXECUTIVE, title="Lead Target", target_value=10, metric="Leads", starts_on=timezone.localdate(), ends_on=timezone.localdate())
+        self.client.force_login(owner)
+
+        response = self.client.get(reverse("accounts:owner_operations_dashboard"))
+
+        self.assertContains(response, "Operations Dashboard")
+        self.assertContains(response, "Open Support")
+        self.assertContains(response, "Active Targets")
+
+    def test_support_status_update_records_note_and_audit(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        support = AuthenticationSupportRequest.objects.create(name="Client", contact="client@example.com", issue="Need help")
+        self.client.force_login(owner)
+
+        response = self.client.post(reverse("accounts:owner_support"), data={"support_id": support.id, "status": "resolved", "owner_note": "Called and closed."})
+
+        self.assertRedirects(response, reverse("accounts:owner_support"))
+        support.refresh_from_db()
+        self.assertTrue(support.is_resolved)
+        self.assertEqual(support.owner_note, "Called and closed.")
+        self.assertIsNotNone(support.resolved_at)
+        self.assertTrue(AuditLog.objects.filter(action="operations.support_updated").exists())
+
+    def test_meeting_create_records_delivery_and_audit(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        executive = User.objects.create_user(username="exec@example.com", email="exec@example.com", first_name="Executive")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        UserProfile.objects.create(user=executive, role=Role.EXECUTIVE, company=company)
+        self.client.force_login(owner)
+
+        response = self.client.post(
+            reverse("accounts:owner_meeting_create"),
+            data={
+                "meeting-title": "Sales Review",
+                "meeting-description": "Weekly review",
+                "meeting-starts_at": "2026-06-12T10:00",
+                "meeting-ends_at": "2026-06-12T11:00",
+                "meeting-roles": [Role.EXECUTIVE],
+                "meeting-meeting_link": "https://meet.example.com/sales",
+                "meeting-is_active": "on",
+            },
+        )
+
+        self.assertRedirects(response, reverse("accounts:owner_meetings"))
+        self.assertTrue(AuditLog.objects.filter(action="operations.meeting_created").exists())
+        self.assertTrue(NotificationDelivery.objects.filter(category="meeting", recipient="exec@example.com", status=NotificationDelivery.Status.SENT).exists())
+
+    def test_target_detail_updates_progress_and_audit(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        target = RoleTarget.objects.create(company=company, assigned_by=owner, role=Role.EXECUTIVE, title="Lead Target", target_value=20, metric="Leads", starts_on=timezone.localdate(), ends_on=timezone.localdate())
+        self.client.force_login(owner)
+
+        response = self.client.post(reverse("accounts:owner_target_detail", args=[target.id]), data={"current_value": "12", "status": RoleTarget.Status.ACTIVE, "note": "On track"})
+
+        self.assertRedirects(response, reverse("accounts:owner_target_detail", args=[target.id]))
+        target.refresh_from_db()
+        self.assertEqual(target.current_value, 12)
+        self.assertEqual(target.progress_percent, 60)
+        self.assertTrue(AuditLog.objects.filter(action="operations.target_progress_updated").exists())
 
     def test_company_owner_can_view_full_employee_profile_ids(self):
         User = get_user_model()

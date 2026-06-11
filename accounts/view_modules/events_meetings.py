@@ -8,7 +8,9 @@ from django.utils import timezone
 
 from ..email_utils import send_event_notification_email, send_meeting_notification_email
 from ..forms import CompanyEventForm, MeetingForm
-from ..models import CompanyEvent, Meeting, Role, UserProfile
+from ..models import CompanyEvent, Meeting, NotificationDelivery, Role, UserProfile
+from ..operations import OPERATIONS_MODULE, can_perform_operations
+from ..services import record_audit, record_notification_delivery
 from .owner_common import owner_context, owner_render
 
 
@@ -21,21 +23,29 @@ def _role_label(role):
     return dict(Role.choices).get(role, role)
 @login_required
 def owner_meetings(request):
-    user_profile, company, allowed = owner_context(request)
+    user_profile, company, allowed = owner_context(request, module=OPERATIONS_MODULE)
     if not allowed:
         return redirect("properties:dashboard")
     if request.method == "POST":
         form_kind = request.POST.get("form_kind")
         if form_kind == "meeting_bulk":
+            if not can_perform_operations(user_profile, "delete"):
+                messages.error(request, "You do not have permission to delete meetings.")
+                return redirect("accounts:owner_meetings")
             selected = Meeting.objects.filter(company=company, id__in=request.POST.getlist("meeting_ids"))
             if request.POST.get("action") == "delete" and selected.exists():
                 count = selected.count()
+                for meeting in selected:
+                    record_audit(actor=request.user, action="operations.meeting_deleted", target=meeting, company=company)
                 selected.delete()
                 messages.success(request, f"Deleted {count} meeting(s).")
             else:
                 messages.error(request, "Select meetings and choose delete.")
             return redirect("accounts:owner_meetings")
         if form_kind == "meeting_action":
+            if not can_perform_operations(user_profile, "update"):
+                messages.error(request, "You do not have permission to update meetings.")
+                return redirect("accounts:owner_meetings")
             meeting = get_object_or_404(Meeting.objects.filter(company=company), id=request.POST.get("meeting_id"))
             if request.POST.get("action") == "status":
                 status = request.POST.get("status")
@@ -50,6 +60,7 @@ def owner_meetings(request):
                 meeting.status_note = note
                 meeting.is_active = status == Meeting.Status.ACTIVE
                 meeting.save(update_fields=["status", "status_note", "is_active"])
+                record_audit(actor=request.user, action="operations.meeting_status_updated", target=meeting, company=company, details={"status": status, "note": note})
                 messages.success(request, "Meeting status updated.")
                 _send_meeting_emails(request, meeting, f"Online meeting {meeting.get_status_display().lower()}")
             return redirect("accounts:owner_meetings")
@@ -87,7 +98,7 @@ def owner_meetings(request):
 
 @login_required
 def owner_meeting_create(request):
-    user_profile, company, allowed = owner_context(request)
+    user_profile, company, allowed = owner_context(request, module=OPERATIONS_MODULE, permission="create")
     if not allowed:
         return redirect("properties:dashboard")
     form = MeetingForm(request.POST or None, company=company, prefix="meeting")
@@ -100,6 +111,7 @@ def owner_meeting_create(request):
         meeting.status = Meeting.Status.ACTIVE if meeting.is_active else Meeting.Status.CANCELLED
         meeting.save()
         meeting.employees.clear()
+        record_audit(actor=request.user, action="operations.meeting_created", target=meeting, company=company)
         messages.success(request, "Online meeting created.")
         _send_meeting_emails(request, meeting, "Online meeting scheduled")
         return redirect("accounts:owner_meetings")
@@ -112,7 +124,7 @@ def owner_meeting_create(request):
 
 @login_required
 def owner_meeting_edit(request, meeting_id):
-    user_profile, company, allowed = owner_context(request)
+    user_profile, company, allowed = owner_context(request, module=OPERATIONS_MODULE, permission="update")
     if not allowed:
         return redirect("properties:dashboard")
     meeting = get_object_or_404(Meeting.objects.filter(company=company), id=meeting_id)
@@ -124,6 +136,7 @@ def owner_meeting_edit(request, meeting_id):
         meeting.status = Meeting.Status.ACTIVE if meeting.is_active else meeting.status
         meeting.save()
         meeting.employees.clear()
+        record_audit(actor=request.user, action="operations.meeting_updated", target=meeting, company=company)
         messages.success(request, "Online meeting updated.")
         _send_meeting_emails(request, meeting, "Online meeting updated")
         return redirect("accounts:owner_meetings")
@@ -132,6 +145,16 @@ def owner_meeting_edit(request, meeting_id):
         "accounts/owner_meeting_form.html",
         {"form": form, "meeting": meeting, "mode": "edit", "submit_label": "Update Meeting", "user_profile": user_profile},
     )
+
+
+@login_required
+def owner_meeting_detail(request, meeting_id):
+    user_profile, company, allowed = owner_context(request, module=OPERATIONS_MODULE)
+    if not allowed:
+        return redirect("properties:dashboard")
+    meeting = get_object_or_404(Meeting.objects.filter(company=company).select_related("created_by"), id=meeting_id)
+    deliveries = NotificationDelivery.objects.filter(company=company, category__startswith="meeting", subject__icontains=meeting.title)[:100]
+    return owner_render(request, "accounts/owner_meeting_detail.html", {"meeting": meeting, "deliveries": deliveries, "role_choices": Role.choices, "user_profile": user_profile})
 
 
 def _profile_email_targets(profiles):
@@ -183,8 +206,10 @@ def _send_meeting_emails(request, meeting, action_label):
                 description=meeting.description,
                 action_label=action_label,
             )
+            record_notification_delivery(company=meeting.company, sent_by=request.user, category="meeting", recipient=target["email"], subject=meeting.title, status=NotificationDelivery.Status.SENT)
             sent_count += 1
-        except Exception:
+        except Exception as exc:
+            record_notification_delivery(company=meeting.company, sent_by=request.user, category="meeting", recipient=target["email"], subject=meeting.title, status=NotificationDelivery.Status.FAILED, error_message=str(exc)[:500])
             failed_count += 1
     if sent_count:
         messages.success(request, f"Meeting email sent to {sent_count} employee(s).")
@@ -214,8 +239,10 @@ def _send_event_emails(request, event, action_label):
                 action_label=action_label,
                 audience_label=_event_audience_label(event),
             )
+            record_notification_delivery(company=event.company, sent_by=request.user, category="event", recipient=target["email"], subject=event.title, status=NotificationDelivery.Status.SENT)
             sent_count += 1
-        except Exception:
+        except Exception as exc:
+            record_notification_delivery(company=event.company, sent_by=request.user, category="event", recipient=target["email"], subject=event.title, status=NotificationDelivery.Status.FAILED, error_message=str(exc)[:500])
             failed_count += 1
     if sent_count:
         messages.success(request, f"Event email sent to {sent_count} employee(s).")
@@ -225,12 +252,15 @@ def _send_event_emails(request, event, action_label):
 
 @login_required
 def owner_events(request):
-    user_profile, company, allowed = owner_context(request)
+    user_profile, company, allowed = owner_context(request, module=OPERATIONS_MODULE)
     if not allowed:
         return redirect("properties:dashboard")
 
     form_kind = request.POST.get("form_kind")
     if request.method == "POST" and form_kind == "event_bulk":
+        if not can_perform_operations(user_profile, "update"):
+            messages.error(request, "You do not have permission to update events.")
+            return redirect("accounts:owner_events")
         selected = CompanyEvent.objects.filter(company=company, id__in=request.POST.getlist("event_ids"))
         action = request.POST.get("action")
         if not selected.exists():
@@ -240,11 +270,15 @@ def owner_events(request):
             for event in selected:
                 _send_event_emails(request, event, "Event activated")
             updated = selected.update(is_active=True)
+            for event in selected:
+                record_audit(actor=request.user, action="operations.event_activated", target=event, company=company)
             messages.success(request, f"Activated {updated} event(s).")
         elif action == "deactivate":
             for event in selected:
                 _send_event_emails(request, event, "Event deactivated")
             updated = selected.update(is_active=False)
+            for event in selected:
+                record_audit(actor=request.user, action="operations.event_deactivated", target=event, company=company)
             messages.success(request, f"Deactivated {updated} event(s).")
         elif action == "popup_on":
             for event in selected:
@@ -260,6 +294,8 @@ def owner_events(request):
             for event in selected:
                 _send_event_emails(request, event, "Event cancelled")
             count = selected.count()
+            for event in selected:
+                record_audit(actor=request.user, action="operations.event_deleted", target=event, company=company)
             selected.delete()
             messages.success(request, f"Deleted {count} event(s).")
         else:
@@ -317,7 +353,7 @@ def _event_visible_for_role(event, role):
 
 @login_required
 def owner_event_create(request):
-    user_profile, company, allowed = owner_context(request)
+    user_profile, company, allowed = owner_context(request, module=OPERATIONS_MODULE, permission="create")
     if not allowed:
         return redirect("properties:dashboard")
     form = CompanyEventForm(request.POST or None, request.FILES or None, prefix="event")
@@ -326,6 +362,7 @@ def owner_event_create(request):
         event.company = company
         event.created_by = request.user
         event.save()
+        record_audit(actor=request.user, action="operations.event_created", target=event, company=company)
         messages.success(request, "Event published.")
         _send_event_emails(request, event, "Event published")
         return redirect("accounts:owner_event_detail", event_id=event.id)
@@ -338,7 +375,7 @@ def owner_event_create(request):
 
 @login_required
 def owner_event_detail(request, event_id):
-    user_profile, company, allowed = owner_context(request)
+    user_profile, company, allowed = owner_context(request, module=OPERATIONS_MODULE)
     if not allowed:
         return redirect("properties:dashboard")
     event = get_object_or_404(
@@ -351,15 +388,18 @@ def owner_event_detail(request, event_id):
         if action == "toggle":
             event.is_active = not event.is_active
             event.save(update_fields=["is_active"])
+            record_audit(actor=request.user, action="operations.event_status_updated", target=event, company=company, details={"is_active": event.is_active})
             messages.success(request, "Event status updated.")
             _send_event_emails(request, event, "Event activated" if event.is_active else "Event deactivated")
         elif action == "popup":
             event.show_as_popup = not event.show_as_popup
             event.save(update_fields=["show_as_popup"])
+            record_audit(actor=request.user, action="operations.event_popup_updated", target=event, company=company, details={"show_as_popup": event.show_as_popup})
             messages.success(request, "Event popup setting updated.")
             _send_event_emails(request, event, "Event marked important" if event.show_as_popup else "Event popup removed")
         elif action == "delete":
             _send_event_emails(request, event, "Event cancelled")
+            record_audit(actor=request.user, action="operations.event_deleted", target=event, company=company)
             event.delete()
             messages.success(request, "Event deleted.")
             return redirect("accounts:owner_events")
@@ -373,13 +413,14 @@ def owner_event_detail(request, event_id):
 
 @login_required
 def owner_event_edit(request, event_id):
-    user_profile, company, allowed = owner_context(request)
+    user_profile, company, allowed = owner_context(request, module=OPERATIONS_MODULE, permission="update")
     if not allowed:
         return redirect("properties:dashboard")
     event = get_object_or_404(CompanyEvent.objects.filter(company=company), id=event_id)
     form = CompanyEventForm(request.POST or None, request.FILES or None, instance=event, prefix="event")
     if request.method == "POST" and form.is_valid():
         form.save()
+        record_audit(actor=request.user, action="operations.event_updated", target=event, company=company)
         messages.success(request, "Event updated.")
         _send_event_emails(request, event, "Event updated")
         return redirect("accounts:owner_event_detail", event_id=event.id)
@@ -398,4 +439,3 @@ def event_detail(request, event_id):
     if not event.is_global and role not in (event.roles or []):
         raise Http404("Event not found")
     return render(request, "accounts/event_detail.html", {"event": event, "user_profile": user_profile})
-

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Operations Dashboard - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head company-update-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+  <div>
+    <h1 class="app-page-title mb-0">Operations Dashboard</h1>
+    <p class="text-body mb-0">Central control for support, meetings, events, targets, locations, audits, and delivery status.</p>
+  </div>
+</div>
+<section class="profile-panel">
+  <div class="row g-3">
+    <div class="col-md-4"><div class="company-stat-card"><span>Open Support</span><strong>{{ support_open }}</strong></div></div>
+    <div class="col-md-4"><div class="company-stat-card"><span>Active Meetings</span><strong>{{ meetings_active }}</strong></div></div>
+    <div class="col-md-4"><div class="company-stat-card"><span>Active Events</span><strong>{{ events_active }}</strong></div></div>
+    <div class="col-md-4"><div class="company-stat-card"><span>Active Popups</span><strong>{{ popups_active }}</strong></div></div>
+    <div class="col-md-4"><div class="company-stat-card"><span>Active Targets</span><strong>{{ targets_active }}</strong></div></div>
+    <div class="col-md-4"><div class="company-stat-card"><span>Failed Deliveries</span><strong>{{ failed_deliveries }}</strong></div></div>
+  </div>
+</section>
+<section class="profile-panel mt-3">
+  <div class="profile-panel-head"><h2>Operations Shortcuts</h2></div>
+  <div class="company-page-actions">
+    <a class="btn btn-outline-primary" href="{% url 'accounts:owner_support' %}">Support Desk</a>
+    <a class="btn btn-outline-primary" href="{% url 'accounts:owner_meetings' %}">Meetings</a>
+    <a class="btn btn-outline-primary" href="{% url 'accounts:owner_events' %}">Events</a>
+    <a class="btn btn-outline-primary" href="{% url 'accounts:owner_targets' %}">Targets</a>
+    <a class="btn btn-outline-primary" href="{% url 'accounts:owner_office_locations' %}">Office Locations</a>
+    <a class="btn btn-outline-primary" href="{% url 'accounts:owner_audit_logs' %}">Audit Logs</a>
+    <a class="btn btn-outline-primary" href="{% url 'accounts:owner_notification_deliveries' %}">Deliveries</a>
+  </div>
+</section>
+{% endblock %}

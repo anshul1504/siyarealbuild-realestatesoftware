@@ -6,6 +6,8 @@ from django.shortcuts import get_object_or_404, redirect
 
 from ..forms import ReferralSettingForm, RoleTargetForm, SoftwarePopupForm
 from ..models import ReferralReward, ReferralSetting, Role, RoleTarget, SignupRequest, SignupRequestStatus, SoftwarePopup
+from ..operations import OPERATIONS_MODULE, can_perform_operations
+from ..services import record_audit
 from .owner_common import owner_context, owner_render
 @login_required
 def owner_referrals(request):
@@ -50,18 +52,78 @@ def owner_referrals(request):
 
 @login_required
 def owner_targets(request):
-    user_profile, company, allowed = owner_context(request)
+    user_profile, company, allowed = owner_context(request, module=OPERATIONS_MODULE)
     if not allowed:
         return redirect("properties:dashboard")
     form = RoleTargetForm(request.POST or None, company=company, prefix="target")
     if request.method == "POST" and form.is_valid():
+        if not can_perform_operations(user_profile, "create"):
+            messages.error(request, "You do not have permission to create targets.")
+            return redirect("accounts:owner_targets")
         target = form.save(commit=False)
         target.company = company
         target.assigned_by = request.user
         target.save()
+        record_audit(actor=request.user, action="operations.target_created", target=target, company=company)
         messages.success(request, "Target saved.")
         return redirect("accounts:owner_targets")
-    return owner_render(request, "accounts/owner_targets.html", {"form": form, "targets": RoleTarget.objects.filter(company=company), "user_profile": user_profile})
+    targets = RoleTarget.objects.filter(company=company).select_related("employee", "assigned_by")
+    status = request.GET.get("status", "").strip()
+    query = request.GET.get("q", "").strip()
+    if status:
+        targets = targets.filter(status=status)
+    if query:
+        targets = targets.filter(models.Q(title__icontains=query) | models.Q(metric__icontains=query) | models.Q(employee__email__icontains=query))
+    return owner_render(request, "accounts/owner_targets.html", {"form": form, "targets": targets, "status_choices": RoleTarget.Status.choices, "selected_status": status, "query": query, "user_profile": user_profile})
+
+
+@login_required
+def owner_target_detail(request, target_id):
+    user_profile, company, allowed = owner_context(request, module=OPERATIONS_MODULE)
+    if not allowed:
+        return redirect("properties:dashboard")
+    target = get_object_or_404(RoleTarget.objects.select_related("employee", "assigned_by"), company=company, id=target_id)
+    if request.method == "POST":
+        if not can_perform_operations(user_profile, "update"):
+            messages.error(request, "You do not have permission to update targets.")
+            return redirect("accounts:owner_target_detail", target_id=target.id)
+        target.current_value = int(request.POST.get("current_value") or 0)
+        target.status = request.POST.get("status") if request.POST.get("status") in dict(RoleTarget.Status.choices) else target.status
+        target.note = request.POST.get("note", "").strip()
+        target.is_active = target.status == RoleTarget.Status.ACTIVE
+        target.save(update_fields=["current_value", "status", "note", "is_active"])
+        record_audit(actor=request.user, action="operations.target_progress_updated", target=target, company=company, details={"current_value": target.current_value, "status": target.status})
+        messages.success(request, "Target progress updated.")
+        return redirect("accounts:owner_target_detail", target_id=target.id)
+    return owner_render(request, "accounts/owner_target_detail.html", {"target": target, "status_choices": RoleTarget.Status.choices, "user_profile": user_profile})
+
+
+@login_required
+def owner_target_edit(request, target_id):
+    user_profile, company, allowed = owner_context(request, module=OPERATIONS_MODULE, permission="update")
+    if not allowed:
+        return redirect("properties:dashboard")
+    target = get_object_or_404(RoleTarget, company=company, id=target_id)
+    form = RoleTargetForm(request.POST or None, instance=target, company=company, prefix="target")
+    if request.method == "POST" and form.is_valid():
+        target = form.save()
+        record_audit(actor=request.user, action="operations.target_updated", target=target, company=company)
+        messages.success(request, "Target updated.")
+        return redirect("accounts:owner_target_detail", target_id=target.id)
+    return owner_render(request, "accounts/owner_target_form.html", {"form": form, "target": target, "user_profile": user_profile})
+
+
+@login_required
+def owner_target_delete(request, target_id):
+    user_profile, company, allowed = owner_context(request, module=OPERATIONS_MODULE, permission="delete")
+    if not allowed:
+        return redirect("properties:dashboard")
+    target = get_object_or_404(RoleTarget, company=company, id=target_id)
+    if request.method == "POST":
+        record_audit(actor=request.user, action="operations.target_deleted", target=target, company=company)
+        target.delete()
+        messages.success(request, "Target deleted.")
+    return redirect("accounts:owner_targets")
 
 
 def _set_single_active_popup(company, popup):
@@ -71,10 +133,13 @@ def _set_single_active_popup(company, popup):
 
 @login_required
 def owner_popups(request):
-    user_profile, company, allowed = owner_context(request)
+    user_profile, company, allowed = owner_context(request, module=OPERATIONS_MODULE)
     if not allowed:
         return redirect("properties:dashboard")
     if request.method == "POST":
+        if not can_perform_operations(user_profile, "update"):
+            messages.error(request, "You do not have permission to update popups.")
+            return redirect("accounts:owner_popups")
         selected_ids = request.POST.getlist("popup_ids")
         action = request.POST.get("bulk_action", "").strip()
         selected_popups = SoftwarePopup.objects.filter(company=company, id__in=selected_ids)
@@ -89,12 +154,17 @@ def owner_popups(request):
             SoftwarePopup.objects.filter(company=company).exclude(id=popup.id).update(is_active=False)
             popup.is_active = True
             popup.save(update_fields=["is_active"])
+            record_audit(actor=request.user, action="operations.popup_activated", target=popup, company=company)
             messages.success(request, "Popup activated. Other popups were deactivated automatically.")
         elif action == "deactivate":
             updated = selected_popups.update(is_active=False)
+            for popup in selected_popups:
+                record_audit(actor=request.user, action="operations.popup_deactivated", target=popup, company=company)
             messages.success(request, f"{updated} popup(s) deactivated.")
         elif action == "delete":
             deleted_count = selected_popups.count()
+            for popup in selected_popups:
+                record_audit(actor=request.user, action="operations.popup_deleted", target=popup, company=company)
             selected_popups.delete()
             messages.success(request, f"{deleted_count} popup(s) deleted.")
         else:
@@ -136,7 +206,7 @@ def owner_popups(request):
 
 @login_required
 def owner_popup_create(request):
-    user_profile, company, allowed = owner_context(request)
+    user_profile, company, allowed = owner_context(request, module=OPERATIONS_MODULE, permission="create")
     if not allowed:
         return redirect("properties:dashboard")
     form = SoftwarePopupForm(request.POST or None, request.FILES or None, prefix="popup")
@@ -145,6 +215,7 @@ def owner_popup_create(request):
         popup.company = company
         popup.save()
         _set_single_active_popup(company, popup)
+        record_audit(actor=request.user, action="operations.popup_created", target=popup, company=company)
         messages.success(request, "Offer popup created.")
         return redirect("accounts:owner_popups")
     return owner_render(
@@ -156,7 +227,7 @@ def owner_popup_create(request):
 
 @login_required
 def owner_popup_detail(request, popup_id):
-    user_profile, company, allowed = owner_context(request)
+    user_profile, company, allowed = owner_context(request, module=OPERATIONS_MODULE)
     if not allowed:
         return redirect("properties:dashboard")
     popup = get_object_or_404(SoftwarePopup, id=popup_id, company=company)
@@ -169,7 +240,7 @@ def owner_popup_detail(request, popup_id):
 
 @login_required
 def owner_popup_edit(request, popup_id):
-    user_profile, company, allowed = owner_context(request)
+    user_profile, company, allowed = owner_context(request, module=OPERATIONS_MODULE, permission="update")
     if not allowed:
         return redirect("properties:dashboard")
     popup = get_object_or_404(SoftwarePopup, id=popup_id, company=company)
@@ -177,6 +248,7 @@ def owner_popup_edit(request, popup_id):
     if request.method == "POST" and form.is_valid():
         popup = form.save()
         _set_single_active_popup(company, popup)
+        record_audit(actor=request.user, action="operations.popup_updated", target=popup, company=company)
         messages.success(request, "Offer popup updated.")
         return redirect("accounts:owner_popups")
     return owner_render(

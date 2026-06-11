@@ -102,6 +102,7 @@
                         </form>
                     </td>
                     <td class="text-end">
+                        <a class="btn btn-sm btn-outline-primary" href="{% url 'accounts:owner_meeting_detail' meeting.id %}">Open</a>
                         <a class="btn btn-sm btn-primary" href="{% url 'accounts:owner_meeting_edit' meeting.id %}">Edit</a>
                     </td>
                 </tr>

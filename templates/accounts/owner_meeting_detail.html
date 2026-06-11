@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}{{ meeting.title }} - Meeting{% endblock %}
+{% block content %}
+<div class="app-page-head company-update-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+  <div><h1 class="app-page-title mb-0">{{ meeting.title }}</h1><p class="text-body mb-0">{{ meeting.description|default:"No agenda added" }}</p></div>
+  <div class="company-page-actions">
+    <a class="btn btn-primary" href="{% url 'accounts:owner_meeting_edit' meeting.id %}">Edit Meeting</a>
+    <a class="btn btn-outline-primary" href="{% url 'accounts:owner_meetings' %}">Meeting List</a>
+  </div>
+</div>
+<section class="profile-panel">
+  <div class="row g-3">
+    <div class="col-md-4"><strong>Status</strong><p>{{ meeting.get_status_display }}</p></div>
+    <div class="col-md-4"><strong>Starts</strong><p>{{ meeting.starts_at|date:"d M Y, h:i A" }}</p></div>
+    <div class="col-md-4"><strong>Ends</strong><p>{{ meeting.ends_at|date:"d M Y, h:i A"|default:"Not set" }}</p></div>
+    <div class="col-md-12"><strong>Meeting Link</strong><p><a href="{{ meeting.meeting_link }}" target="_blank" rel="noopener">{{ meeting.meeting_link }}</a></p></div>
+  </div>
+</section>
+<section class="profile-panel mt-3">
+  <div class="profile-panel-head"><h2>Notification Deliveries</h2></div>
+  <div class="table-responsive"><table class="table align-middle"><thead><tr><th>Recipient</th><th>Status</th><th>Error</th></tr></thead><tbody>
+    {% for delivery in deliveries %}<tr><td>{{ delivery.recipient }}</td><td>{{ delivery.get_status_display }}</td><td>{{ delivery.error_message|default:"-" }}</td></tr>
+    {% empty %}<tr><td colspan="3" class="text-center text-body py-4">No delivery records yet.</td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+{% endblock %}

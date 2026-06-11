@@ -469,6 +469,8 @@ class AuthenticationSupportRequest(models.Model):
     issue = models.TextField()
     page_url = models.CharField(max_length=300, blank=True)
     is_resolved = models.BooleanField(default=False)
+    owner_note = models.TextField(blank=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -677,16 +679,24 @@ class ReferralReward(models.Model):
 
 
 class RoleTarget(models.Model):
+    class Status(models.TextChoices):
+        ACTIVE = "active", "Active"
+        COMPLETED = "completed", "Completed"
+        PAUSED = "paused", "Paused"
+
     company = models.ForeignKey(CompanyProfile, on_delete=models.CASCADE, related_name="targets")
     assigned_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="assigned_targets")
     role = models.CharField(max_length=32, choices=Role.choices, blank=True)
     employee = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True, related_name="targets")
     title = models.CharField(max_length=160)
     target_value = models.PositiveIntegerField(default=0)
+    current_value = models.PositiveIntegerField(default=0)
     metric = models.CharField(max_length=80, default="Leads")
     starts_on = models.DateField()
     ends_on = models.DateField()
     is_active = models.BooleanField(default=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.ACTIVE)
+    note = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -694,6 +704,12 @@ class RoleTarget(models.Model):
 
     def __str__(self):
         return self.title
+
+    @property
+    def progress_percent(self):
+        if not self.target_value:
+            return 0
+        return min(100, int((self.current_value / self.target_value) * 100))
 
 
 class SoftwarePopup(models.Model):

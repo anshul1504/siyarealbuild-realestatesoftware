@@ -932,16 +932,19 @@ class ReferralSettingForm(forms.ModelForm):
 class RoleTargetForm(forms.ModelForm):
     class Meta:
         model = RoleTarget
-        fields = ["title", "role", "employee", "target_value", "metric", "starts_on", "ends_on", "is_active"]
+        fields = ["title", "role", "employee", "target_value", "current_value", "metric", "starts_on", "ends_on", "status", "is_active", "note"]
         widgets = {
             "title": forms.TextInput(attrs={"class": "form-control"}),
             "role": forms.Select(attrs={"class": "form-control"}),
             "employee": forms.Select(attrs={"class": "form-control"}),
             "target_value": forms.NumberInput(attrs={"class": "form-control", "min": 0}),
+            "current_value": forms.NumberInput(attrs={"class": "form-control", "min": 0}),
             "metric": forms.TextInput(attrs={"class": "form-control"}),
             "starts_on": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "ends_on": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+            "status": forms.Select(attrs={"class": "form-control"}),
             "is_active": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "note": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
         }
 
     def __init__(self, *args, company, **kwargs):
@@ -950,6 +953,14 @@ class RoleTargetForm(forms.ModelForm):
         self.fields["employee"].queryset = get_user_model().objects.filter(profile__company=company)
         self.fields["employee"].required = False
         self.fields["role"].required = False
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if not cleaned_data.get("role") and not cleaned_data.get("employee"):
+            raise forms.ValidationError("Select either a role or an employee for this target.")
+        if cleaned_data.get("starts_on") and cleaned_data.get("ends_on") and cleaned_data["ends_on"] < cleaned_data["starts_on"]:
+            raise forms.ValidationError("Target end date cannot be before start date.")
+        return cleaned_data
 
 
 class OfferImageInput(forms.ClearableFileInput):
