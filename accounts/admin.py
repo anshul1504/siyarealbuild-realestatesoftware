@@ -85,6 +85,8 @@ class CompanyProfileAdmin(admin.ModelAdmin):
         ("Branding", {"fields": ("logo", "name", "tagline", "description")}),
         ("Contact Details", {"fields": ("phone", "phone_2", "phone_3", "email", "email_2", "email_3", "website")}),
         ("Registration Details", {"fields": ("gst_number", "rera_number", "cin_number", "pan_number")}),
+        ("Banking", {"fields": ("bank_name", "bank_account_name", "bank_account_number", "bank_ifsc", "upi_id")}),
+        ("Schedule", {"fields": ("opening_time", "closing_time", "weekly_off_days", "holiday_notes")}),
         ("Address", {"fields": ("address", "city", "state", "pincode")}),
     )
 

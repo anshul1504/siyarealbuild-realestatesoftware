@@ -135,8 +135,8 @@
                             <li class="menu-item"><a class="menu-link {% if request.resolver_match.url_name == 'profile_edit' %}active{% endif %}" href="{% url 'accounts:profile_edit' %}">Update Profile</a></li>
                         </ul>
                     </li>
-                    <li class="menu-item menu-arrow {% if request.resolver_match.url_name == 'company_detail' or request.resolver_match.url_name == 'company_settings' %}open{% endif %}">
-                        <button class="menu-link sidebar-menu-toggle {% if request.resolver_match.url_name == 'company_detail' or request.resolver_match.url_name == 'company_settings' %}open active{% endif %}" type="button" aria-expanded="{% if request.resolver_match.url_name == 'company_detail' or request.resolver_match.url_name == 'company_settings' %}true{% else %}false{% endif %}">
+                    <li class="menu-item menu-arrow {% if request.resolver_match.url_name == 'company_detail' or request.resolver_match.url_name == 'company_settings' or request.resolver_match.url_name == 'company_history' %}open{% endif %}">
+                        <button class="menu-link sidebar-menu-toggle {% if request.resolver_match.url_name == 'company_detail' or request.resolver_match.url_name == 'company_settings' or request.resolver_match.url_name == 'company_history' %}open active{% endif %}" type="button" aria-expanded="{% if request.resolver_match.url_name == 'company_detail' or request.resolver_match.url_name == 'company_settings' or request.resolver_match.url_name == 'company_history' %}true{% else %}false{% endif %}">
                             <span class="ui-icon menu-svg" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/><path d="M9 9h.01M12 9h.01M15 9h.01"/></svg></span>
                             <span class="menu-label">Company</span>
                         </button>
@@ -144,6 +144,7 @@
                             <li class="menu-item"><a class="menu-link {% if request.resolver_match.url_name == 'company_detail' %}active{% endif %}" href="{% url 'accounts:company_detail' %}">Company Overview</a></li>
                             {% if dashboard_can_manage_access %}
                             <li class="menu-item"><a class="menu-link {% if request.resolver_match.url_name == 'company_settings' %}active{% endif %}" href="{% url 'accounts:company_settings' %}">Company Settings</a></li>
+                            <li class="menu-item"><a class="menu-link {% if request.resolver_match.url_name == 'company_history' %}active{% endif %}" href="{% url 'accounts:company_history' %}">Change History</a></li>
                             {% endif %}
                         </ul>
                     </li>

@@ -15,8 +15,9 @@ from django.views.decorators.http import require_http_methods
 
 from ..email_utils import send_email_updated_email, send_otp_email, send_signup_pending_review_email
 from ..forms import EmailLoginForm, InviteOTPVerifyForm, OTPVerifyForm, OwnerCompanyProfileForm, SignupRequestForm, UserProfileForm
-from ..models import AuthenticationSupportRequest, CompanyProfile, EmailOTP, EmployeeEmailChangeRequest, EmployeeInvite, Role, SignupRequest, SignupRequestStatus, UserProfile
+from ..models import AuditLog, AuthenticationSupportRequest, CompanyProfile, EmailOTP, EmployeeEmailChangeRequest, EmployeeInvite, OfficeLocation, Role, SignupRequest, SignupRequestStatus, UserProfile
 from ..security import auth_request_limited, client_ip, rate_limit_exceeded
+from ..services import record_audit
 from .onboarding import _next_employee_code
 
 
@@ -32,6 +33,10 @@ COMPANY_EXPORT_FIELDS = (
     ("UPI ID", "upi_id"), ("Opening Time", "opening_time"), ("Closing Time", "closing_time"),
     ("Weekly Off Days", "weekly_off_days"), ("Holiday Notes", "holiday_notes"), ("Address", "address"),
     ("City", "city"), ("State", "state"), ("Pincode", "pincode"), ("Last Updated", "updated_at"),
+)
+PUBLIC_COMPANY_EXPORT_FIELDS = tuple(
+    item for item in COMPANY_EXPORT_FIELDS
+    if item[1] not in {"gst_number", "rera_number", "cin_number", "pan_number", "bank_name", "bank_account_name", "bank_account_number", "bank_ifsc", "upi_id"}
 )
 
 def _set_resend_wait(request, session_key):
@@ -660,35 +665,59 @@ def company_settings(request):
     user_profile, company, is_owner = profile_context(request)
     if not is_owner:
         return redirect("accounts:company_detail")
-    if is_owner:
-        form = OwnerCompanyProfileForm(request.POST or None, request.FILES or None, instance=company, prefix="company")
-        if request.method == "POST":
-            if form.is_valid():
-                company = form.save()
-                if user_profile.company_id != company.id:
-                    user_profile.company = company
-                    user_profile.save(update_fields=["company", "updated_at"])
-                messages.success(request, "Company details updated.")
-                return redirect("accounts:company_settings")
-            messages.error(request, "Please check company details.")
-        return render(request, "accounts/company_settings.html", {"form": form, "company": company, "user_profile": user_profile, "is_owner": is_owner})
+    form = OwnerCompanyProfileForm(request.POST or None, request.FILES or None, instance=company, prefix="company")
+    if request.method == "POST":
+        if form.is_valid():
+            persisted = CompanyProfile.objects.filter(pk=company.pk).first() if company and company.pk else None
+            before = {
+                field: str(getattr(persisted, field, "") or "")
+                for field in form.changed_data
+                if field != "logo"
+            }
+            company = form.save()
+            changes = {
+                field: {"from": before.get(field, ""), "to": str(getattr(company, field, "") or "")}
+                for field in form.changed_data
+                if field != "logo" and before.get(field, "") != str(getattr(company, field, "") or "")
+            }
+            if "logo" in form.changed_data:
+                changes["logo"] = {"from": "Previous logo", "to": "Updated logo"}
+            if user_profile.company_id != company.id:
+                user_profile.company = company
+                user_profile.save(update_fields=["company", "updated_at"])
+            record_audit(actor=request.user, action="company.updated", target=company, company=company, details=changes)
+            messages.success(request, "Company details updated.")
+            return redirect("accounts:company_settings")
+        messages.error(request, "Please check company details.")
+    return render(request, "accounts/company_settings.html", {"form": form, "company": company, "user_profile": user_profile, "is_owner": is_owner})
 
 
 @login_required
 def company_detail(request):
     user_profile, company, is_owner = profile_context(request)
-    return render(request, "accounts/company_detail.html", {"company": company, "user_profile": user_profile, "is_owner": is_owner})
+    office_locations = OfficeLocation.objects.filter(company=company, is_active=True) if company else OfficeLocation.objects.none()
+    return render(request, "accounts/company_detail.html", {"company": company, "user_profile": user_profile, "is_owner": is_owner, "office_locations": office_locations})
+
+
+@login_required
+def company_history(request):
+    user_profile, company, is_owner = profile_context(request)
+    if not is_owner:
+        return redirect("accounts:company_detail")
+    logs = AuditLog.objects.filter(company=company, action="company.updated").select_related("actor")[:100]
+    return render(request, "accounts/company_history.html", {"logs": logs, "company": company, "user_profile": user_profile, "is_owner": is_owner})
 
 
 @login_required
 def company_export(request, export_format):
-    _, company, _ = profile_context(request)
+    _, company, is_owner = profile_context(request)
     if export_format not in {"csv", "xls"}:
         raise Http404("Unsupported export format.")
 
     filename = f"company-details.{export_format}"
     rows = []
-    for label, field_name in COMPANY_EXPORT_FIELDS:
+    fields = COMPANY_EXPORT_FIELDS if is_owner else PUBLIC_COMPANY_EXPORT_FIELDS
+    for label, field_name in fields:
         value = getattr(company, field_name, "") if company else ""
         if field_name == "updated_at" and value:
             value = timezone.localtime(value).strftime("%d %b %Y, %I:%M %p")

@@ -17,6 +17,7 @@
                 Excel
             </a>
             {% if is_owner %}
+                <a class="btn btn-outline-primary" href="{% url 'accounts:company_history' %}">History</a>
                 <a class="btn btn-primary" href="{% url 'accounts:company_settings' %}">
                     <span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></span>
                     Update
@@ -52,10 +53,12 @@
                 <div><span>Company Name</span><strong>{{ company.name|default:"Not added" }}</strong></div>
                 <div><span>Tagline</span><strong>{{ company.tagline|default:"Not added" }}</strong></div>
                 <div><span>Website</span><strong>{{ company.website|default:"Not added" }}</strong></div>
-                <div><span>GST</span><strong>{{ company.gst_number|default:"Not added" }}</strong></div>
-                <div><span>RERA</span><strong>{{ company.rera_number|default:"Not added" }}</strong></div>
-                <div><span>CIN</span><strong>{{ company.cin_number|default:"Not added" }}</strong></div>
-                <div><span>PAN</span><strong>{{ company.pan_number|default:"Not added" }}</strong></div>
+                {% if is_owner %}
+                    <div><span>GST</span><strong>{{ company.gst_number|default:"Not added" }}</strong></div>
+                    <div><span>RERA</span><strong>{{ company.rera_number|default:"Not added" }}</strong></div>
+                    <div><span>CIN</span><strong>{{ company.cin_number|default:"Not added" }}</strong></div>
+                    <div><span>PAN</span><strong>{{ company.pan_number|default:"Not added" }}</strong></div>
+                {% endif %}
             </div>
         </div>
 
@@ -71,6 +74,7 @@
             </div>
         </div>
 
+        {% if is_owner %}
         <div class="profile-overview-section">
             <h2>Banking</h2>
             <div class="profile-overview-grid">
@@ -81,6 +85,7 @@
                 <div><span>UPI ID</span><strong>{{ company.upi_id|default:"Not added" }}</strong></div>
             </div>
         </div>
+        {% endif %}
 
         <div class="profile-overview-section">
             <h2>Schedule</h2>
@@ -89,6 +94,17 @@
                 <div><span>Closing Time</span><strong>{{ company.closing_time|time:"g:i A"|default:"Not added" }}</strong></div>
                 <div><span>Weekly Off</span><strong>{{ company.weekly_off_days|default:"Not added" }}</strong></div>
                 <div class="profile-overview-wide"><span>Holiday Notes</span><strong>{{ company.holiday_notes|default:"Not added" }}</strong></div>
+            </div>
+        </div>
+
+        <div class="profile-overview-section">
+            <h2>Office Locations</h2>
+            <div class="profile-overview-grid">
+                {% for location in office_locations %}
+                    <div><span>{{ location.name }}</span><strong>{{ location.address|default:"Address not added" }}{% if location.city %}, {{ location.city }}{% endif %}{% if location.state %}, {{ location.state }}{% endif %}</strong></div>
+                {% empty %}
+                    <div class="profile-overview-wide"><span>Locations</span><strong>No active office locations added.</strong></div>
+                {% endfor %}
             </div>
         </div>
 

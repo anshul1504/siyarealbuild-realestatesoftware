@@ -10,8 +10,8 @@ from .admin import CompanyProfileAdmin
 from django.test import TestCase, override_settings
 from datetime import timedelta
 
-from .forms import AddEmployeeForm, SignupRequestForm
-from .models import AuthenticationSupportRequest, CompanyProfile, EmailOTP, EmployeeEmailChangeRequest, EmployeeInvite, EmployeeRoleChangeRequest, Role, SignupRequest, SignupRequestOwnerMessage, SignupRequestStatus, TeamEmailMessage, UserProfile
+from .forms import AddEmployeeForm, CompanyProfileForm, SignupRequestForm
+from .models import AuditLog, AuthenticationSupportRequest, CompanyProfile, EmailOTP, EmployeeEmailChangeRequest, EmployeeInvite, EmployeeRoleChangeRequest, OfficeLocation, Role, SignupRequest, SignupRequestOwnerMessage, SignupRequestStatus, TeamEmailMessage, UserProfile
 
 
 @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
@@ -383,7 +383,7 @@ class SignupApprovalEmailTests(TestCase):
         response = self.client.get(reverse("accounts:company_detail"))
 
         self.assertContains(response, "Siya Real Build Pvt. Ltd.")
-        self.assertContains(response, "GST123")
+        self.assertNotContains(response, "GST123")
         user.profile.refresh_from_db()
         self.assertEqual(user.profile.company, company)
 
@@ -391,6 +391,43 @@ class SignupApprovalEmailTests(TestCase):
         self.assertRedirects(response, reverse("accounts:company_detail"))
         company.refresh_from_db()
         self.assertEqual(company.name, "Siya Real Build Pvt. Ltd.")
+
+    def test_non_owner_company_view_and_export_hide_sensitive_details(self):
+        User = get_user_model()
+        user = User.objects.create_user(username="executive@example.com", email="executive@example.com")
+        company = CompanyProfile.objects.create(
+            name="Siya Real Build",
+            email="company@example.com",
+            gst_number="23ABCDE1234F1Z5",
+            pan_number="ABCDE1234F",
+            bank_account_number="123456789012",
+            bank_ifsc="HDFC0123456",
+        )
+        UserProfile.objects.create(user=user, role=Role.EXECUTIVE, company=company)
+        self.client.force_login(user)
+
+        detail = self.client.get(reverse("accounts:company_detail"))
+        export = self.client.get(reverse("accounts:company_export", args=["csv"]))
+
+        self.assertNotContains(detail, "123456789012")
+        self.assertNotContains(detail, "ABCDE1234F")
+        self.assertNotContains(export, "123456789012")
+        self.assertNotContains(export, "HDFC0123456")
+        self.assertContains(export, "Siya Real Build")
+
+    def test_company_overview_lists_active_office_locations(self):
+        User = get_user_model()
+        user = User.objects.create_user(username="manager@example.com", email="manager@example.com")
+        company = CompanyProfile.objects.create(name="Siya Real Build", email="company@example.com")
+        UserProfile.objects.create(user=user, role=Role.MANAGER, company=company)
+        OfficeLocation.objects.create(company=company, name="Head Office", city="Indore", is_active=True)
+        OfficeLocation.objects.create(company=company, name="Closed Office", city="Bhopal", is_active=False)
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("accounts:company_detail"))
+
+        self.assertContains(response, "Head Office")
+        self.assertNotContains(response, "Closed Office")
 
     def test_authenticated_user_can_export_company_details(self):
         User = get_user_model()
@@ -470,6 +507,41 @@ class SignupApprovalEmailTests(TestCase):
         self.assertEqual(company.opening_time.strftime("%H:%M"), "10:00")
         self.assertEqual(company.closing_time.strftime("%H:%M"), "19:00")
         self.assertEqual(company.weekly_off_days, "Sunday")
+        audit = AuditLog.objects.get(action="company.updated", company=company)
+        self.assertEqual(audit.actor, user)
+        self.assertIn("name", audit.details)
+
+        history = self.client.get(reverse("accounts:company_history"))
+        self.assertContains(history, "Company Change History")
+        self.assertContains(history, "company.updated")
+
+    def test_non_owner_cannot_view_company_history(self):
+        User = get_user_model()
+        user = User.objects.create_user(username="executive@example.com", email="executive@example.com")
+        company = CompanyProfile.objects.create(name="Siya Real Build", email="company@example.com")
+        UserProfile.objects.create(user=user, role=Role.EXECUTIVE, company=company)
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("accounts:company_history"))
+
+        self.assertRedirects(response, reverse("accounts:company_detail"))
+
+    def test_company_form_rejects_duplicate_contacts_and_invalid_schedule(self):
+        form = CompanyProfileForm(
+            data={
+                "name": "Siya Real Build",
+                "email": "same@example.com",
+                "email_2": "same@example.com",
+                "phone": "+91 9999999999",
+                "phone_2": "+91 9999999999",
+                "opening_time": "19:00",
+                "closing_time": "10:00",
+            }
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("closing_time", form.errors)
+        self.assertIn("__all__", form.errors)
 
     def test_user_can_update_full_profile_details(self):
         User = get_user_model()

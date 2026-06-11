@@ -451,7 +451,27 @@ class CompanyProfileForm(forms.ModelForm):
         logo = self.cleaned_data.get("logo")
         if logo and hasattr(logo, "size") and logo.size > 2 * 1024 * 1024:
             raise forms.ValidationError("Logo size must be 2 MB or less.")
+        if logo and hasattr(logo, "content_type") and logo.content_type not in {"image/jpeg", "image/png", "image/webp"}:
+            raise forms.ValidationError("Upload a PNG, JPG, or WebP logo.")
         return logo
+
+    def clean_rera_number(self):
+        value = (self.cleaned_data.get("rera_number") or "").upper().strip()
+        if value and not re.fullmatch(r"[A-Z0-9][A-Z0-9/\-]{4,63}", value):
+            raise forms.ValidationError("Enter a valid RERA registration number.")
+        return value
+
+    def clean(self):
+        cleaned = super().clean()
+        opening = cleaned.get("opening_time")
+        closing = cleaned.get("closing_time")
+        if opening and closing and closing <= opening:
+            self.add_error("closing_time", "Closing time must be after opening time.")
+        for fields, label in ((("email", "email_2", "email_3"), "email"), (("phone", "phone_2", "phone_3"), "phone number")):
+            values = [cleaned.get(field) for field in fields if cleaned.get(field)]
+            if len(values) != len(set(values)):
+                raise forms.ValidationError(f"Company {label}s must be unique.")
+        return cleaned
 
     def clean_phone(self):
         return self._clean_optional_phone("phone")
