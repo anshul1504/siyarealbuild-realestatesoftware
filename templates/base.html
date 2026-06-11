@@ -172,13 +172,14 @@
                             <li class="menu-item"><a class="menu-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'crm:dashboard' %}">CRM Dashboard</a></li>
                             <li class="menu-item"><a class="menu-link {% if request.resolver_match.url_name == 'lead_list' %}active{% endif %}" href="{% url 'crm:lead_list' %}">Lead Pipeline</a></li>
                             <li class="menu-item"><a class="menu-link {% if request.resolver_match.url_name == 'lead_kanban' %}active{% endif %}" href="{% url 'crm:lead_kanban' %}">Kanban Pipeline</a></li>
+                            {% if dashboard_role == "channel_partner" %}<li class="menu-item"><a class="menu-link {% if request.resolver_match.url_name == 'partner_leads' %}active{% endif %}" href="{% url 'crm:partner_leads' %}">Partner Leads</a></li>{% endif %}
                             {% if dashboard_can_manage_properties %}<li class="menu-item"><a class="menu-link {% if request.resolver_match.url_name == 'unassigned_leads' %}active{% endif %}" href="{% url 'crm:unassigned_leads' %}">Lead Queue</a></li>{% endif %}
                             <li class="menu-item"><a class="menu-link {% if request.resolver_match.url_name == 'lead_create' %}active{% endif %}" href="{% url 'crm:lead_create' %}">Add Lead</a></li>
                             <li class="menu-item"><a class="menu-link {% if request.resolver_match.url_name == 'followup_list' %}active{% endif %}" href="{% url 'crm:followup_list' %}">Follow-ups</a></li>
                             <li class="menu-item"><a class="menu-link {% if request.resolver_match.url_name == 'reports' %}active{% endif %}" href="{% url 'crm:reports' %}">Reports</a></li>
                             {% if dashboard_is_owner %}
-                            <li class="menu-item"><a class="menu-link {% if request.resolver_match.url_name == 'meta_source_list' or request.resolver_match.url_name == 'meta_source_create' %}active{% endif %}" href="{% url 'crm:meta_source_list' %}">Meta Sources</a></li>
-                            <li class="menu-item"><a class="menu-link {% if request.resolver_match.url_name == 'assignment_rule_list' or request.resolver_match.url_name == 'assignment_rule_create' %}active{% endif %}" href="{% url 'crm:assignment_rule_list' %}">Assignment Rules</a></li>
+                            <li class="menu-item"><a class="menu-link {% if request.resolver_match.url_name == 'meta_source_list' or request.resolver_match.url_name == 'meta_source_create' or request.resolver_match.url_name == 'meta_source_edit' or request.resolver_match.url_name == 'meta_health' %}active{% endif %}" href="{% url 'crm:meta_source_list' %}">Meta Sources</a></li>
+                            <li class="menu-item"><a class="menu-link {% if request.resolver_match.url_name == 'assignment_rule_list' or request.resolver_match.url_name == 'assignment_rule_create' or request.resolver_match.url_name == 'assignment_rule_edit' %}active{% endif %}" href="{% url 'crm:assignment_rule_list' %}">Assignment Rules</a></li>
                             {% endif %}
                         </ul>
                     </li>

@@ -6,7 +6,7 @@ Audit date: 2026-06-11
 
 The project has connected Django workflows for authentication, Company Owner approvals, team management, role access, company settings, referrals, property CRM, client sharing, visits, email notifications, operational owner tools, and dedicated CRM lead management.
 
-The highest-risk area is no longer missing pages. It is consistency across permissions, company scoping, state transitions, audit logs, automated tests, Meta integration reliability, and role-specific CRM boundaries as the feature surface grows.
+The highest-risk area is no longer missing CRM pages. It is production environment readiness: real Meta credentials/app approval, deployment monitoring, backups, and broad permission-matrix coverage across the older non-CRM modules.
 
 ## Cleanup Status
 
@@ -32,14 +32,15 @@ The highest-risk area is no longer missing pages. It is consistency across permi
 - Dedicated `crm` app is installed and routed under `/crm/`.
 - CRM sidebar navigation is available in the authenticated workspace.
 - Lead dashboard, list, kanban, create/edit/detail, assignment, status updates, notes, follow-ups, property matching, visit scheduling, reports, and export are implemented.
-- Meta source mapping, webhook ingestion foundation, and failed-event reprocessing are implemented.
+- Meta source mapping create/edit, owner Meta health, webhook ingestion foundation, and failed-event reprocessing are implemented.
 - Meta webhook verification token and optional app-secret signature validation are available through environment settings.
 - Duplicate detection covers Meta lead ID, normalized phone, and email.
 - CRM activities also write global audit records.
 - Owner-configurable assignment rules support default, source, city, property-category, round-robin, and workload-based lead routing.
 - Lead archive and restore workflow is available with reason capture and audit activity.
 - CRM assignment, follow-up, and Meta lead actions create notification delivery records.
-- TL and Executive visibility is restricted to leads they own through assignment or creation unless a higher-level team hierarchy is added later.
+- TL visibility includes own leads plus subordinate leads when `UserProfile.reporting_manager` matches the TL's employee code, email, username, or full name.
+- Channel Partner has a dedicated Partner Leads workspace for assigned/self-created opportunities.
 
 ## Role-Wise Issues
 
@@ -48,7 +49,7 @@ The highest-risk area is no longer missing pages. It is consistency across permi
 - Owner has broad operational control, so destructive actions and approval decisions must consistently create audit records.
 - Bulk signup approval cannot safely assign one role to different applicants; individual review is the correct approval path.
 - Owner configuration areas should continue to be checked for company scoping and duplicate sources of truth.
-- Owner can configure Meta lead sources, but production Meta OAuth/token health UI is still pending.
+- Owner can configure Meta lead sources and view Meta CRM health. Production Meta OAuth/live app approval remains external platform work.
 
 ### Manager
 
@@ -58,8 +59,8 @@ The highest-risk area is no longer missing pages. It is consistency across permi
 
 ### Team Lead
 
-- TL CRM visibility is currently restricted to assigned or self-created leads because there is no structured team hierarchy field yet.
-- A proper TL team tree is required before TL can safely see subordinate Executive leads.
+- TL CRM visibility includes assigned/self-created leads and subordinate leads through the existing reporting-manager profile field.
+- A future FK-based team tree can replace the current text-field match when the HR model is upgraded.
 - Escalation and reassignment workflows need consistent ownership checks.
 
 ### Executive
@@ -72,7 +73,7 @@ The highest-risk area is no longer missing pages. It is consistency across permi
 
 - Referral rewards correctly depend on final approved role, but referral reporting, coupon lifecycle, and duplicate/fraud controls need ongoing review.
 - Channel Partner property and lead visibility should be verified against explicit assignment rules.
-- Dedicated Channel Partner CRM workflow is still pending.
+- Dedicated Channel Partner CRM workspace is implemented for partner-owned CRM leads.
 
 ## Module Audit Sheet
 
@@ -88,7 +89,7 @@ The highest-risk area is no longer missing pages. It is consistency across permi
 | Owner operations | Audit logs, support queue, office locations, notification deliveries | Duplicate configuration sources should be watched as features grow | P2 | Queryset company-scope tests |
 | Marketing tools | Events, meetings, popups, targets, referrals | Delivery status and audience scoping should be tested | P2 | NotificationDelivery and role audience tests |
 | Property CRM | Dashboard, list, create/edit/detail, plot drilldown, visits, bulk actions, sharing, service-layer create/update/bulk lifecycle audit | Assigned-record scoping and export permissions are highest risk | P0 | View/create/update/delete/export permission tests |
-| Lead CRM | Dashboard, list, kanban, create/edit/detail, assignment rules including round-robin/workload, archive/restore, bulk actions, follow-ups, property matching, visit scheduling, Meta webhook foundation, failed-event reprocess, reports, export, notification records, audit activity | Meta OAuth, TL hierarchy, Channel Partner CRM, background jobs, and richer analytics remain | P0 | CRM role matrix, Meta webhook, duplicate, lifecycle, export, archive, and direct URL tests |
+| Lead CRM | Dashboard, list, kanban, create/edit/detail, assignment rules including round-robin/workload, archive/restore, bulk actions, follow-ups, property matching, visit scheduling, Meta health, Meta source edit, Meta webhook foundation, failed-event reprocess, reports, export, notification records, TL subordinate visibility, Channel Partner workspace, audit activity | External Meta app approval/OAuth, deployment monitoring, backups, and optional future analytics remain | P1 | CRM role matrix, Meta webhook, duplicate, lifecycle, export, archive, and direct URL tests |
 | Email system | Shared notification templates and delivery helper | Background retry/queue strategy is not production-grade yet | P2 | Failure-path tests and operational alerting plan |
 | Admin | Django admin available with project models | Admin destructive actions should be restricted in production | P2 | Staff permission review and deploy checklist |
 | Error handling | Custom error pages and handler views | Monitoring and exception reporting are not yet a full production stack | P2 | Sentry/log aggregation decision before go-live |
@@ -101,7 +102,7 @@ The highest-risk area is no longer missing pages. It is consistency across permi
 | Authorization | Role helpers and policies exist | Complete role-by-module tests for list/detail/create/update/delete/export/bulk/direct URL |
 | Company scoping | Many querysets are company-scoped | Audit every operational queryset and add tests where data crosses modules |
 | Assigned-record scoping | Property, visit, and CRM workflows have assignment concepts | Confirm TL/Executive/Channel Partner boundaries explicitly |
-| Meta webhook security | Verify-token and optional app-secret signature validation exist | Add full OAuth/token lifecycle and webhook health monitoring |
+| Meta webhook security | Verify-token, owner health screen, and optional app-secret signature validation exist | Add production Meta app approval, live token lifecycle, and external monitoring |
 | Audit logs | Core audit model exists and CRM activity writes global audit rows | Enforce logs for approvals, rejections, role changes, deletes, and sensitive config edits |
 | File uploads/media | Profile/company media support exists | Validate file type/size and production storage settings |
 | Secrets/config | `.env` patterns are ignored | Confirm production `DEBUG=False`, hosts, CSRF, email, Meta, and database env vars |
@@ -123,13 +124,13 @@ The highest-risk area is no longer missing pages. It is consistency across permi
 | Branches | `main` is the active local branch and tracks `origin/main`. | Remove any stale linked worktree branch only when no longer needed. |
 | Accounts module | Split into URL groups, view modules, services, policies, and shared audit helpers. | Add a complete permission matrix for role-specific direct URL access. |
 | Properties module | Property create/update/bulk status/delete goes through service-layer lifecycle/audit paths, and bulk action requires login. | Continue with assigned-record scoping, export controls, and property permission matrix. |
-| CRM module | Dedicated app with models, forms, views, selectors, policies, services, templates, admin, migration, and tests. | Complete production Meta OAuth, assignment automation, Channel Partner CRM, notifications, and advanced analytics. |
+| CRM module | Dedicated app with models, forms, views, selectors, policies, services, templates, admin, migration, Meta health, TL visibility, Partner workspace, assignment automation, notifications, and tests. | External Meta OAuth/app approval, production monitoring, backups, and optional advanced analytics. |
 | Core/config module | Minimal config, URLs, settings, error handlers. | Production settings review remains before deployment. |
 | Static assets | Demo/downloaded unused HTML assets removed. | Keep vendor font files unless CSS is replaced with proper font extensions. |
 
 ## Recommended Backlog
 
-1. Complete the CRM production phase: Meta OAuth/token health, TL hierarchy, Channel Partner CRM, background jobs, and richer reports.
+1. Complete production environment work: Meta Business app approval, live tokens, webhook URL registration, monitoring, backups, and deploy checks.
 2. Complete the property module permission matrix for view, create, update, delete, export, bulk actions, share email, visits, and direct URL access.
 3. Audit every property and CRM queryset for company scoping and assigned-record scoping.
 4. Build the broader role-by-module permission test matrix for Accounts, Owner operations, Properties, and CRM.

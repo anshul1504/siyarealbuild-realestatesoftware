@@ -114,6 +114,29 @@ class CrmLeadWorkflowTests(TestCase):
         self.assertRedirects(response, reverse("crm:assignment_rule_list"))
         self.assertTrue(LeadAssignmentRule.objects.filter(name="Meta default", default_assignee=self.manager).exists())
 
+    def test_owner_can_edit_assignment_rule(self):
+        rule = LeadAssignmentRule.objects.create(company=self.company, name="Old rule", mode=AssignmentMode.SOURCE, source=LeadSource.META, default_assignee=self.manager, priority=5)
+        self.client.force_login(self.owner)
+        response = self.client.post(
+            reverse("crm:assignment_rule_edit", args=[rule.id]),
+            data={
+                "name": "Updated rule",
+                "mode": AssignmentMode.CITY,
+                "source": "",
+                "city": "Indore",
+                "property_category": "",
+                "default_assignee": self.executive.id,
+                "default_role": "",
+                "priority": 2,
+                "is_active": "on",
+            },
+        )
+        rule.refresh_from_db()
+        self.assertRedirects(response, reverse("crm:assignment_rule_list"))
+        self.assertEqual(rule.name, "Updated rule")
+        self.assertEqual(rule.city, "Indore")
+        self.assertEqual(rule.default_assignee, self.executive)
+
     def test_manager_can_archive_and_restore_lead(self):
         lead = Lead.objects.create(company=self.company, client_name="Archive Buyer", phone="+91 9333333333", assigned_to=self.manager)
         self.client.force_login(self.manager)
@@ -149,6 +172,21 @@ class CrmLeadWorkflowTests(TestCase):
         visible_ids = {lead.id for lead in response.context["leads"]}
         self.assertIn(assigned.id, visible_ids)
         self.assertNotIn(Lead.objects.get(client_name="Manager Only").id, visible_ids)
+
+    def test_team_lead_sees_reporting_manager_team_leads(self):
+        self.tl.profile.employee_code = "TL-001"
+        self.tl.profile.save(update_fields=["employee_code"])
+        self.executive.profile.reporting_manager = "TL-001"
+        self.executive.profile.save(update_fields=["reporting_manager"])
+        team_lead = Lead.objects.create(company=self.company, client_name="Team Lead", assigned_to=self.executive)
+        other_lead = Lead.objects.create(company=self.company, client_name="Other Team", assigned_to=self.other)
+        self.client.force_login(self.tl)
+        response = self.client.get(reverse("crm:lead_list"))
+        visible_ids = {lead.id for lead in response.context["leads"]}
+        self.assertIn(team_lead.id, visible_ids)
+        self.assertNotIn(other_lead.id, visible_ids)
+        detail_response = self.client.get(reverse("crm:lead_detail", args=[team_lead.id]))
+        self.assertEqual(detail_response.status_code, 200)
 
     def test_status_update_creates_activity(self):
         lead = Lead.objects.create(company=self.company, client_name="Buyer", assigned_to=self.executive)
@@ -352,6 +390,55 @@ class CrmLeadWorkflowTests(TestCase):
         )
         self.assertEqual(event.status, "processed")
         self.assertEqual(lead.assigned_to, self.executive)
+
+    @override_settings(META_WEBHOOK_VERIFY_TOKEN="verify", META_PAGE_ACCESS_TOKEN="page-token", META_APP_SECRET="secret", META_GRAPH_VERSION="v21.0")
+    def test_owner_can_view_meta_health_and_edit_source(self):
+        source = MetaLeadSource.objects.create(company=self.company, page_id="page-old", form_id="form-old", default_assignee=self.manager)
+        MetaWebhookEvent.objects.create(company=self.company, event_id="failed-1", status=MetaWebhookEvent.Status.FAILED, error_message="No source")
+        self.client.force_login(self.owner)
+        health = self.client.get(reverse("crm:meta_health"))
+        self.assertEqual(health.status_code, 200)
+        self.assertContains(health, "Configured")
+        self.assertContains(health, "v21.0")
+        response = self.client.post(
+            reverse("crm:meta_source_edit", args=[source.id]),
+            data={
+                "page_id": "page-new",
+                "page_name": "Main Page",
+                "form_id": "form-new",
+                "form_name": "Buyer Form",
+                "default_assignee": self.executive.id,
+                "is_active": "on",
+                "field_mapping": '{"client_name": "full_name"}',
+            },
+        )
+        source.refresh_from_db()
+        self.assertRedirects(response, reverse("crm:meta_source_list"))
+        self.assertEqual(source.page_id, "page-new")
+        self.assertEqual(source.default_assignee, self.executive)
+
+    def test_manager_cannot_view_owner_meta_health(self):
+        self.client.force_login(self.manager)
+        response = self.client.get(reverse("crm:meta_health"))
+        self.assertRedirects(response, reverse("crm:dashboard"))
+
+    def test_channel_partner_has_dedicated_lead_view(self):
+        User = get_user_model()
+        partner = User.objects.create_user(username="partner@example.com", email="partner@example.com")
+        UserProfile.objects.create(user=partner, company=self.company, role=Role.CHANNEL_PARTNER)
+        assigned = Lead.objects.create(company=self.company, client_name="Partner Buyer", assigned_to=partner, source=LeadSource.REFERRAL)
+        Lead.objects.create(company=self.company, client_name="Hidden Buyer", assigned_to=self.executive)
+        LeadFollowUp.objects.create(lead=assigned, assigned_to=partner, due_at=timezone.now(), note="Partner call")
+        self.client.force_login(partner)
+        response = self.client.get(reverse("crm:partner_leads"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Partner Buyer")
+        self.assertNotContains(response, "Hidden Buyer")
+
+    def test_non_partner_is_redirected_from_partner_leads(self):
+        self.client.force_login(self.manager)
+        response = self.client.get(reverse("crm:partner_leads"))
+        self.assertRedirects(response, reverse("crm:dashboard"))
 
     @override_settings(META_WEBHOOK_VERIFY_TOKEN="verify-me")
     def test_meta_webhook_verification_and_ingest(self):

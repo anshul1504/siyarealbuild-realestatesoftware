@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Meta CRM Health - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">Meta CRM Health</h1>
+        <p class="text-body mb-0">Owner checklist for webhook readiness, token configuration, sources and failed events.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-light" href="{% url 'crm:meta_source_list' %}">Meta Sources</a>
+        <a class="btn btn-light" href="{% url 'crm:reports' %}">Reports</a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <section class="profile-panel h-100">
+            <div class="profile-panel-head"><div><h2>Configuration</h2><p>Server-side Meta integration settings.</p></div></div>
+            <div class="profile-detail-grid">
+                <div><span>Verify Token</span><strong>{% if verify_token_configured %}Configured{% else %}Missing{% endif %}</strong></div>
+                <div><span>Page Access Token</span><strong>{% if page_token_configured %}Configured{% else %}Missing{% endif %}</strong></div>
+                <div><span>App Secret</span><strong>{% if app_secret_configured %}Configured{% else %}Optional / Missing{% endif %}</strong></div>
+                <div><span>Graph Version</span><strong>{{ graph_version }}</strong></div>
+            </div>
+        </section>
+    </div>
+    <div class="col-lg-6">
+        <section class="profile-panel h-100">
+            <div class="profile-panel-head"><div><h2>Source Health</h2><p>Mapped forms and webhook processing status.</p></div></div>
+            <div class="profile-detail-grid">
+                <div><span>Active Sources</span><strong>{{ active_source_count }}</strong></div>
+                <div><span>Inactive Sources</span><strong>{{ inactive_source_count }}</strong></div>
+                <div><span>Failed Events</span><strong>{{ failed_event_count }}</strong></div>
+                <div><span>Last Sync</span><strong>{{ last_synced_at|date:"d M Y, h:i A"|default:"Not synced" }}</strong></div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<section class="profile-panel mt-4">
+    <div class="profile-panel-head"><div><h2>Failed Meta Events</h2><p>Retry after creating or correcting the matching Meta source.</p></div></div>
+    <div class="list-group list-group-flush">
+        {% for event in recent_failed_events %}
+        <div class="list-group-item px-0">
+            <strong>{{ event.event_id }}</strong>
+            <p class="mb-1">{{ event.error_message|default:"Processing failed." }}</p>
+            <small>{{ event.created_at|date:"d M Y, h:i A" }}</small>
+            <form method="post" action="{% url 'crm:meta_event_reprocess' event.id %}" class="mt-2">
+                {% csrf_token %}
+                <button class="btn btn-sm btn-outline-primary" type="submit">Reprocess</button>
+            </form>
+        </div>
+        {% empty %}<p class="text-body mb-0">No failed Meta events.</p>{% endfor %}
+    </div>
+</section>
+{% endblock %}

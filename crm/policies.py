@@ -1,3 +1,5 @@
+from django.contrib.auth import get_user_model
+
 from accounts.models import Role
 
 
@@ -31,10 +33,40 @@ def can_configure_meta(user):
     return user_role(user) == Role.COMPANY_OWNER
 
 
+def team_member_ids_for(user):
+    company = user_company(user)
+    profile = user_profile(user)
+    if user_role(user) != Role.TL or not company or not profile:
+        return []
+
+    identifiers = {
+        getattr(profile, "employee_code", ""),
+        getattr(user, "email", ""),
+        getattr(user, "username", ""),
+        user.get_full_name(),
+    }
+    identifiers = [identifier.strip() for identifier in identifiers if identifier and identifier.strip()]
+    if not identifiers:
+        return []
+
+    User = get_user_model()
+    return list(
+        User.objects.filter(
+            profile__company=company,
+            profile__reporting_manager__in=identifiers,
+            is_active=True,
+        ).values_list("id", flat=True)
+    )
+
+
 def can_view_lead(user, lead):
     role = user_role(user)
     if role in MANAGEMENT_ROLES and lead.company_id == getattr(user_company(user), "id", None):
         return True
+    if role == Role.TL and lead.company_id == getattr(user_company(user), "id", None):
+        team_ids = team_member_ids_for(user)
+        if lead.assigned_to_id in team_ids or lead.created_by_id in team_ids:
+            return True
     return lead.assigned_to_id == user.id or lead.created_by_id == user.id
 
 

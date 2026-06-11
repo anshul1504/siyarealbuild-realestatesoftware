@@ -14,6 +14,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
+from accounts.models import Role
+
 from .forms import (
     LeadAssignmentForm,
     LeadAssignmentRuleForm,
@@ -29,7 +31,7 @@ from .forms import (
     PropertyMatchForm,
 )
 from .models import Lead, LeadAssignmentRule, LeadFollowUp, LeadPriority, LeadSource, LeadStatus, MetaLeadSource, MetaWebhookEvent
-from .policies import can_assign_leads, can_configure_meta, can_edit_lead, can_view_lead, user_company
+from .policies import can_assign_leads, can_configure_meta, can_edit_lead, can_view_lead, user_company, user_role
 from .selectors import visible_leads_for
 from .services import (
     add_lead_note,
@@ -151,6 +153,22 @@ def lead_kanban(request):
         column_leads = leads.filter(status=value)
         columns.append({"value": value, "label": label, "leads": column_leads[:25], "count": column_leads.count()})
     return render(request, "crm/lead_kanban.html", {"columns": columns})
+
+
+@login_required
+def partner_leads(request):
+    if user_role(request.user) != Role.CHANNEL_PARTNER:
+        messages.error(request, "Only Channel Partners can access this CRM view.")
+        return redirect("crm:dashboard")
+    leads = visible_leads_for(request.user)
+    context = {
+        "leads": leads[:50],
+        "total_leads": leads.count(),
+        "converted": leads.filter(status__in=[LeadStatus.BOOKED, LeadStatus.CLOSED]).count(),
+        "followups_due": LeadFollowUp.objects.filter(lead__in=leads, status=LeadFollowUp.Status.OPEN, due_at__lte=timezone.now()).count(),
+        "recent_followups": LeadFollowUp.objects.filter(lead__in=leads).select_related("lead", "assigned_to")[:8],
+    }
+    return render(request, "crm/partner_leads.html", context)
 
 
 @login_required
@@ -414,6 +432,43 @@ def meta_source_create(request):
 
 
 @login_required
+def meta_source_edit(request, source_id):
+    if not can_configure_meta(request.user):
+        messages.error(request, "Only Company Owner can configure Meta lead sources.")
+        return redirect("crm:lead_list")
+    source = get_object_or_404(MetaLeadSource, id=source_id, company=user_company(request.user))
+    form = MetaLeadSourceForm(request.POST or None, user=request.user, instance=source)
+    if form.is_valid():
+        form.save()
+        messages.success(request, "Meta lead source updated.")
+        return redirect("crm:meta_source_list")
+    return render(request, "crm/meta_source_form.html", {"form": form, "source": source})
+
+
+@login_required
+def meta_health(request):
+    if not can_configure_meta(request.user):
+        messages.error(request, "Only Company Owner can view Meta CRM health.")
+        return redirect("crm:dashboard")
+    company = user_company(request.user)
+    sources = MetaLeadSource.objects.filter(company=company)
+    failed_events = MetaWebhookEvent.objects.filter(company=company, status=MetaWebhookEvent.Status.FAILED)
+    last_source = sources.exclude(last_synced_at__isnull=True).order_by("-last_synced_at").first()
+    context = {
+        "verify_token_configured": bool(getattr(settings, "META_WEBHOOK_VERIFY_TOKEN", "")),
+        "page_token_configured": bool(getattr(settings, "META_PAGE_ACCESS_TOKEN", "")),
+        "app_secret_configured": bool(getattr(settings, "META_APP_SECRET", "")),
+        "graph_version": getattr(settings, "META_GRAPH_VERSION", "v20.0"),
+        "active_source_count": sources.filter(is_active=True).count(),
+        "inactive_source_count": sources.filter(is_active=False).count(),
+        "failed_event_count": failed_events.count(),
+        "recent_failed_events": failed_events[:10],
+        "last_synced_at": getattr(last_source, "last_synced_at", None),
+    }
+    return render(request, "crm/meta_health.html", context)
+
+
+@login_required
 def assignment_rule_list(request):
     if not can_configure_meta(request.user):
         messages.error(request, "Only Company Owner can configure CRM assignment rules.")
@@ -435,6 +490,20 @@ def assignment_rule_create(request):
         messages.success(request, "CRM assignment rule saved.")
         return redirect("crm:assignment_rule_list")
     return render(request, "crm/assignment_rule_form.html", {"form": form})
+
+
+@login_required
+def assignment_rule_edit(request, rule_id):
+    if not can_configure_meta(request.user):
+        messages.error(request, "Only Company Owner can configure CRM assignment rules.")
+        return redirect("crm:dashboard")
+    rule = get_object_or_404(LeadAssignmentRule, id=rule_id, company=user_company(request.user))
+    form = LeadAssignmentRuleForm(request.POST or None, user=request.user, instance=rule)
+    if form.is_valid():
+        form.save()
+        messages.success(request, "CRM assignment rule updated.")
+        return redirect("crm:assignment_rule_list")
+    return render(request, "crm/assignment_rule_form.html", {"form": form, "rule": rule})
 
 
 @login_required
@@ -461,6 +530,9 @@ def crm_reports(request):
         .order_by("-total")[:10]
     )
     context = {
+        "total_leads": leads.count(),
+        "converted_count": leads.filter(status__in=[LeadStatus.BOOKED, LeadStatus.CLOSED]).count(),
+        "lost_count": leads.filter(status=LeadStatus.LOST).count(),
         "source_counts": [{"label": label, "count": leads.filter(source=value).count()} for value, label in LeadSource.choices],
         "status_counts": [{"label": label, "count": leads.filter(status=value).count()} for value, label in LeadStatus.choices],
         "priority_counts": [{"label": label, "count": leads.filter(priority=value).count()} for value, label in LeadPriority.choices],

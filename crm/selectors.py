@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from accounts.models import Role
 
 from .models import Lead
-from .policies import user_company, user_role
+from .policies import team_member_ids_for, user_company, user_role
 
 
 def visible_leads_for(user):
@@ -15,6 +15,9 @@ def visible_leads_for(user):
     role = user_role(user)
     if role in {Role.COMPANY_OWNER, Role.MANAGER}:
         return leads
+    if role == Role.TL:
+        team_ids = team_member_ids_for(user)
+        return leads.filter(Q(assigned_to=user) | Q(created_by=user) | Q(assigned_to_id__in=team_ids) | Q(created_by_id__in=team_ids))
     return leads.filter(Q(assigned_to=user) | Q(created_by=user))
 
 

@@ -9,11 +9,22 @@
     <div class="d-flex gap-2 flex-wrap">
         <a class="btn btn-light" href="{% url 'crm:dashboard' %}">CRM Dashboard</a>
         <a class="btn btn-light" href="{% url 'crm:assignment_rule_list' %}">Assignment Rules</a>
+        <a class="btn btn-light" href="{% url 'crm:meta_health' %}">Meta Health</a>
         <a class="btn btn-primary" href="{% url 'crm:lead_export' %}">Export Leads</a>
     </div>
 </div>
 
 <div class="row g-4">
+    <div class="col-xl-4">
+        <section class="profile-panel h-100">
+            <div class="profile-panel-head"><div><h2>Conversion</h2><p>Closed/booked versus total leads.</p></div></div>
+            <div class="profile-detail-grid">
+                <div><span>Total Leads</span><strong>{{ total_leads }}</strong></div>
+                <div><span>Converted</span><strong>{{ converted_count }}</strong></div>
+                <div><span>Lost</span><strong>{{ lost_count }}</strong></div>
+            </div>
+        </section>
+    </div>
     <div class="col-xl-4">
         <section class="profile-panel h-100">
             <div class="profile-panel-head"><div><h2>By Source</h2><p>Lead acquisition split.</p></div></div>
