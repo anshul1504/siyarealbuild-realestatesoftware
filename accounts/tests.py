@@ -12,8 +12,8 @@ from .admin import CompanyProfileAdmin
 from django.test import TestCase, override_settings
 from datetime import timedelta
 
-from .forms import AddEmployeeForm, CompanyProfileForm, SignupRequestForm
-from .models import AuditLog, AuthenticationSupportRequest, CompanyEvent, CompanyProfile, EmailOTP, EmployeeEmailChangeRequest, EmployeeInvite, EmployeeRoleChangeRequest, Meeting, NotificationDelivery, OfficeLocation, Role, RoleMatrixRule, RoleTarget, SignupRequest, SignupRequestOwnerMessage, SignupRequestStatus, TeamEmailMessage, UserProfile
+from .forms import AddEmployeeForm, CompanyProfileForm, SignupRequestForm, SoftwarePopupForm
+from .models import AuditLog, AuthenticationSupportRequest, CompanyEvent, CompanyProfile, EmailOTP, EmployeeEmailChangeRequest, EmployeeInvite, EmployeeRoleChangeRequest, Meeting, NotificationDelivery, OfficeLocation, ReferralReward, Role, RoleMatrixRule, RoleTarget, SignupRequest, SignupRequestOwnerMessage, SignupRequestStatus, SoftwarePopup, TeamEmailMessage, UserProfile
 
 
 @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
@@ -1866,3 +1866,120 @@ class SignupApprovalEmailTests(TestCase):
         self.assertIn("email_3", field_names)
         self.assertIn("gst_number", field_names)
         self.assertIn("rera_number", field_names)
+
+
+class MarketingOfferWorkflowTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.company = CompanyProfile.objects.create(name="Siya Real Build", email="company@example.com")
+        self.owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        UserProfile.objects.create(user=self.owner, role=Role.COMPANY_OWNER, company=self.company)
+        self.referrer = User.objects.create_user(username="referrer@example.com", email="referrer@example.com")
+        UserProfile.objects.create(user=self.referrer, role=Role.MANAGER, company=self.company)
+        self.referred = User.objects.create_user(username="referred@example.com", email="referred@example.com")
+        UserProfile.objects.create(user=self.referred, role=Role.CHANNEL_PARTNER, company=self.company)
+        self.signup = SignupRequest.objects.create(
+            name="Referred User",
+            phone="+91 9999999999",
+            email=self.referred.email,
+            requested_role=Role.CHANNEL_PARTNER,
+            approved_role=Role.CHANNEL_PARTNER,
+            status=SignupRequestStatus.APPROVED,
+            is_email_verified=True,
+            user=self.referred,
+        )
+
+    def test_marketing_dashboard_renders_for_owner(self):
+        self.client.force_login(self.owner)
+
+        response = self.client.get(reverse("accounts:owner_marketing_dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Marketing Dashboard")
+
+    def test_referral_reward_payout_action_and_export(self):
+        reward = ReferralReward.objects.create(
+            company=self.company,
+            signup_request=self.signup,
+            referrer=self.referrer,
+            referred_user=self.referred,
+            referral_code="REF-001",
+            referrer_reward_amount=500,
+            referred_reward_amount=250,
+        )
+        self.client.force_login(self.owner)
+
+        response = self.client.post(
+            reverse("accounts:owner_referrals"),
+            data={"reward_id": reward.id, "reward_action": ReferralReward.PayoutStatus.PAID, "payout_note": "Paid by UPI"},
+        )
+
+        self.assertRedirects(response, reverse("accounts:owner_referrals"))
+        reward.refresh_from_db()
+        self.assertEqual(reward.payout_status, ReferralReward.PayoutStatus.PAID)
+        self.assertIsNotNone(reward.paid_at)
+        self.assertTrue(AuditLog.objects.filter(action="marketing.reward_payout_updated").exists())
+
+        export_response = self.client.get(reverse("accounts:owner_referrals"), {"export": "csv"})
+        self.assertEqual(export_response.status_code, 200)
+        self.assertContains(export_response, "REF-001")
+
+    def test_popup_tracking_and_role_overlap_activation(self):
+        manager_popup = SoftwarePopup.objects.create(
+            company=self.company,
+            title="Manager Offer",
+            message="Offer",
+            roles=[Role.MANAGER],
+            is_active=True,
+        )
+        executive_popup = SoftwarePopup.objects.create(
+            company=self.company,
+            title="Executive Offer",
+            message="Offer",
+            roles=[Role.EXECUTIVE],
+            is_active=True,
+        )
+        replacement = SoftwarePopup.objects.create(
+            company=self.company,
+            title="New Manager Offer",
+            message="Offer",
+            roles=[Role.MANAGER],
+            is_active=False,
+        )
+        self.client.force_login(self.owner)
+
+        response = self.client.post(
+            reverse("accounts:owner_popups"),
+            data={"popup_ids": [str(replacement.id)], "bulk_action": "activate"},
+        )
+
+        self.assertRedirects(response, reverse("accounts:owner_popups"))
+        manager_popup.refresh_from_db()
+        executive_popup.refresh_from_db()
+        replacement.refresh_from_db()
+        self.assertFalse(manager_popup.is_active)
+        self.assertTrue(executive_popup.is_active)
+        self.assertTrue(replacement.is_active)
+
+        track_response = self.client.post(reverse("accounts:popup_track", args=[replacement.id, "click"]))
+        replacement.refresh_from_db()
+        self.assertEqual(track_response.status_code, 200)
+        self.assertEqual(replacement.clicks, 1)
+
+    def test_popup_form_requires_cta_label_and_url_together(self):
+        form = SoftwarePopupForm(
+            data={
+                "popup-title": "Offer",
+                "popup-message": "Message",
+                "popup-deal_label": "Deal",
+                "popup-cta_label": "Book now",
+                "popup-cta_url": "",
+                "popup-roles": [Role.MANAGER],
+                "popup-is_active": "on",
+            },
+            instance=SoftwarePopup(company=self.company, offer_image="popups/offers/existing.jpg"),
+            prefix="popup",
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("CTA label and CTA URL", str(form.errors))

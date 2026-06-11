@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Marketing Dashboard - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head company-update-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">Marketing Dashboard</h1>
+        <p class="text-body mb-0">Role-wise referral rewards, popup campaigns, CTA performance, and trend activity.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-outline-primary" href="{% url 'accounts:owner_referrals' %}">Referral Settings</a>
+        <a class="btn btn-primary" href="{% url 'accounts:owner_popups' %}">Offer Popups</a>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-3"><div class="profile-panel h-100"><span class="text-body small">Active Rewards</span><h2 class="mb-0">{{ referral_stats.active_rewards }}</h2></div></div>
+    <div class="col-md-3"><div class="profile-panel h-100"><span class="text-body small">Unpaid Payouts</span><h2 class="mb-0">{{ referral_stats.unpaid_payouts }}</h2></div></div>
+    <div class="col-md-3"><div class="profile-panel h-100"><span class="text-body small">Redeemed Coupons</span><h2 class="mb-0">{{ referral_stats.redeemed_coupons }}</h2></div></div>
+    <div class="col-md-3"><div class="profile-panel h-100"><span class="text-body small">Pending References</span><h2 class="mb-0">{{ referral_stats.pending_references }}</h2></div></div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-3"><div class="profile-panel h-100"><span class="text-body small">Active Popups</span><h2 class="mb-0">{{ popup_stats.active_popups }}/{{ popup_stats.total_popups }}</h2></div></div>
+    <div class="col-md-3"><div class="profile-panel h-100"><span class="text-body small">Impressions</span><h2 class="mb-0">{{ popup_stats.impressions }}</h2></div></div>
+    <div class="col-md-3"><div class="profile-panel h-100"><span class="text-body small">Clicks</span><h2 class="mb-0">{{ popup_stats.clicks }}</h2></div></div>
+    <div class="col-md-3"><div class="profile-panel h-100"><span class="text-body small">CTR</span><h2 class="mb-0">{{ popup_stats.ctr }}%</h2></div></div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <section class="profile-panel h-100">
+            <div class="profile-panel-head"><div><h2>Referral Trend</h2><p>Last 14 days approved referral rewards.</p></div></div>
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead><tr><th>Date</th><th>Rewards</th></tr></thead>
+                    <tbody>
+                        {% for row in reward_trend %}
+                        <tr><td>{{ row.day|date:"d M Y" }}</td><td>{{ row.total }}</td></tr>
+                        {% empty %}
+                        <tr><td colspan="2" class="text-center text-body py-4">No referral trend yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+    <div class="col-lg-6">
+        <section class="profile-panel h-100">
+            <div class="profile-panel-head"><div><h2>Popup Trend</h2><p>Last 14 days popup campaigns created.</p></div></div>
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead><tr><th>Date</th><th>Popups</th></tr></thead>
+                    <tbody>
+                        {% for row in popup_trend %}
+                        <tr><td>{{ row.day|date:"d M Y" }}</td><td>{{ row.total }}</td></tr>
+                        {% empty %}
+                        <tr><td colspan="2" class="text-center text-body py-4">No popup trend yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}

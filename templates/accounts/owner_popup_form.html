@@ -29,6 +29,16 @@
             {{ form.deal_label }}
             {% for error in form.deal_label.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
         </div>
+        <div>
+            <label class="form-label" for="{{ form.cta_label.id_for_label }}">CTA Label</label>
+            {{ form.cta_label }}
+            {% for error in form.cta_label.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+        </div>
+        <div>
+            <label class="form-label" for="{{ form.cta_url.id_for_label }}">CTA URL</label>
+            {{ form.cta_url }}
+            {% for error in form.cta_url.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+        </div>
         {% if popup and popup.offer_image %}
         <div class="offer-popup-preview">
             <img src="{{ popup.offer_image.url }}" alt="{{ popup.title }}">

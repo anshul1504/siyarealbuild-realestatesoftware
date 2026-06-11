@@ -266,7 +266,7 @@
 {% endif %}
 
 {% if dashboard_offer_popup %}
-<div class="offer-login-popup" data-offer-popup-id="offer-popup-{{ dashboard_offer_popup.id }}">
+<div class="offer-login-popup" data-offer-popup-id="offer-popup-{{ dashboard_offer_popup.id }}" data-track-impression="{% url 'accounts:popup_track' dashboard_offer_popup.id 'impression' %}" data-track-click="{% url 'accounts:popup_track' dashboard_offer_popup.id 'click' %}" data-track-close="{% url 'accounts:popup_track' dashboard_offer_popup.id 'close' %}">
     <div class="offer-login-popup-backdrop" data-offer-popup-close></div>
     <article class="offer-login-popup-card" role="dialog" aria-modal="true" aria-labelledby="offerPopupTitle{{ dashboard_offer_popup.id }}">
         <button class="offer-login-popup-close" type="button" aria-label="Close offer popup" data-offer-popup-close>&times;</button>
@@ -277,6 +277,9 @@
             {% if dashboard_offer_popup.deal_label %}<span>{{ dashboard_offer_popup.deal_label }}</span>{% endif %}
             <h2 id="offerPopupTitle{{ dashboard_offer_popup.id }}">{{ dashboard_offer_popup.title }}</h2>
             <p>{{ dashboard_offer_popup.message }}</p>
+            {% if dashboard_offer_popup.cta_label %}
+            <a class="btn btn-primary" href="{{ dashboard_offer_popup.cta_url }}" data-offer-popup-click>{{ dashboard_offer_popup.cta_label }}</a>
+            {% endif %}
         </div>
     </article>
 </div>
@@ -285,15 +288,37 @@
     var popup = document.querySelector("[data-offer-popup-id]");
     if (!popup) return;
     var key = popup.getAttribute("data-offer-popup-id");
+    var csrfToken = document.querySelector("[name=csrfmiddlewaretoken]");
+    function getCookie(name) {
+      var value = "; " + document.cookie;
+      var parts = value.split("; " + name + "=");
+      if (parts.length === 2) return parts.pop().split(";").shift();
+      return "";
+    }
+    function track(url) {
+      if (!url) return;
+      fetch(url, {
+        method: "POST",
+        headers: {"X-CSRFToken": csrfToken ? csrfToken.value : getCookie("csrftoken")},
+        credentials: "same-origin"
+      }).catch(function () {});
+    }
     if (window.localStorage && localStorage.getItem(key) === "closed") {
       popup.remove();
       return;
     }
     popup.classList.add("show");
+    track(popup.getAttribute("data-track-impression"));
     popup.querySelectorAll("[data-offer-popup-close]").forEach(function (button) {
       button.addEventListener("click", function () {
         if (window.localStorage) localStorage.setItem(key, "closed");
+        track(popup.getAttribute("data-track-close"));
         popup.classList.remove("show");
+      });
+    });
+    popup.querySelectorAll("[data-offer-popup-click]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        track(popup.getAttribute("data-track-click"));
       });
     });
   });

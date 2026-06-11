@@ -29,8 +29,23 @@
             <div>
                 <h2>{{ popup.title }}</h2>
                 <p>{{ popup.message }}</p>
+                {% if popup.cta_label %}
+                <a class="btn btn-primary" href="{{ popup.cta_url }}" target="_blank" rel="noopener">{{ popup.cta_label }}</a>
+                {% endif %}
             </div>
             <div class="offer-popup-detail-meta">
+                <div>
+                    <small>Impressions</small>
+                    <strong>{{ popup.impressions }}</strong>
+                </div>
+                <div>
+                    <small>Clicks</small>
+                    <strong>{{ popup.clicks }}</strong>
+                </div>
+                <div>
+                    <small>Closes</small>
+                    <strong>{{ popup.closes }}</strong>
+                </div>
                 <div>
                     <small>Starts</small>
                     <strong>{% if popup.starts_at %}{{ popup.starts_at|date:"d M Y, h:i A" }}{% else %}Immediate{% endif %}</strong>

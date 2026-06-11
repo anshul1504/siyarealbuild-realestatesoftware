@@ -1,4 +1,5 @@
 from .models import CompanyProfile, Role, UserProfile
+from .marketing import can_perform_marketing
 from .operations import can_perform_operations
 
 
@@ -32,6 +33,6 @@ def dashboard_access(request):
         "dashboard_can_manage_access": is_owner,
         "dashboard_can_manage_properties": is_owner or is_manager or is_tl,
         "dashboard_can_add_property": is_owner or is_manager,
-        "dashboard_can_manage_marketing": is_owner,
+        "dashboard_can_manage_marketing": is_owner or can_perform_marketing(user_profile, "view"),
         "dashboard_can_manage_operations": is_owner or can_perform_operations(user_profile, "view"),
     }

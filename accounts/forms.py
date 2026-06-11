@@ -992,11 +992,13 @@ class SoftwarePopupForm(forms.ModelForm):
 
     class Meta:
         model = SoftwarePopup
-        fields = ["title", "message", "deal_label", "offer_image", "starts_at", "ends_at", "roles", "is_active"]
+        fields = ["title", "message", "deal_label", "cta_label", "cta_url", "offer_image", "starts_at", "ends_at", "roles", "is_active"]
         widgets = {
             "title": forms.TextInput(attrs={"class": "form-control", "placeholder": "Festive offer, site visit offer, booking discount"}),
             "message": forms.Textarea(attrs={"class": "form-control", "rows": 4, "placeholder": "Short popup message shown below the offer image"}),
             "deal_label": forms.TextInput(attrs={"class": "form-control", "placeholder": "Limited Offer, New Launch, Hot Deal"}),
+            "cta_label": forms.TextInput(attrs={"class": "form-control", "placeholder": "Book a site visit"}),
+            "cta_url": forms.URLInput(attrs={"class": "form-control", "placeholder": "https://example.com/offers"}),
             "offer_image": OfferImageInput(attrs={"class": "form-control", "accept": "image/*"}),
             "starts_at": forms.DateTimeInput(attrs={"class": "form-control", "type": "datetime-local"}, format="%Y-%m-%dT%H:%M"),
             "ends_at": forms.DateTimeInput(attrs={"class": "form-control", "type": "datetime-local"}, format="%Y-%m-%dT%H:%M"),
@@ -1013,6 +1015,8 @@ class SoftwarePopupForm(forms.ModelForm):
             raise forms.ValidationError("Select at least one role for popup visibility.")
         if not cleaned_data.get("offer_image") and not getattr(self.instance, "offer_image", None):
             raise forms.ValidationError("Upload an offer image for this popup.")
+        if bool(cleaned_data.get("cta_label")) != bool(cleaned_data.get("cta_url")):
+            raise forms.ValidationError("CTA label and CTA URL must be filled together.")
         return cleaned_data
 
 

@@ -6,14 +6,24 @@
         <h1 class="app-page-title mb-0">Offer Popups</h1>
         <p class="text-body mb-0">Manage role-wise offer images shown after login on user dashboards.</p>
     </div>
-    <a class="btn btn-primary" href="{% url 'accounts:owner_popup_create' %}">Create Popup</a>
+    <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-outline-primary" href="{% url 'accounts:owner_marketing_dashboard' %}">Marketing Dashboard</a>
+        <a class="btn btn-primary" href="{% url 'accounts:owner_popup_create' %}">Create Popup</a>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-3"><div class="profile-panel h-100"><span class="text-body small">Popups</span><h2 class="mb-0">{{ popup_stats.active }}/{{ popup_stats.total }}</h2></div></div>
+    <div class="col-md-3"><div class="profile-panel h-100"><span class="text-body small">Impressions</span><h2 class="mb-0">{{ popup_stats.impressions }}</h2></div></div>
+    <div class="col-md-3"><div class="profile-panel h-100"><span class="text-body small">Clicks</span><h2 class="mb-0">{{ popup_stats.clicks }}</h2></div></div>
+    <div class="col-md-3"><div class="profile-panel h-100"><span class="text-body small">CTR</span><h2 class="mb-0">{{ popup_stats.ctr }}%</h2></div></div>
 </div>
 
 <section class="profile-panel offer-popup-list-panel">
     <div class="profile-panel-head">
         <div>
             <h2>Active Popup List</h2>
-            <p>Only one popup can stay active at a time. Activating a popup will deactivate the previous active popup.</p>
+            <p>One popup can stay active per overlapping role group. Activating a popup deactivates only overlapping role popups.</p>
         </div>
     </div>
     <form class="employee-directory-filter offer-popup-filter" method="get">
@@ -72,6 +82,7 @@
                 </div>
                 <h3><a href="{% url 'accounts:owner_popup_detail' popup.id %}">{{ popup.title }}</a></h3>
                 <p>{{ popup.message|truncatechars:150 }}</p>
+                {% if popup.cta_label %}<p class="text-body small mb-2">CTA: {{ popup.cta_label }} -> {{ popup.cta_url }}</p>{% endif %}
                 <div class="offer-popup-role-list">
                     {% for role in popup.roles %}
                         {% for value,label in role_choices %}
@@ -90,6 +101,10 @@
                 <div>
                     <small>Ends</small>
                     <strong>{% if popup.ends_at %}{{ popup.ends_at|date:"d M Y, h:i A" }}{% else %}No end date{% endif %}</strong>
+                </div>
+                <div>
+                    <small>Analytics</small>
+                    <strong>{{ popup.impressions }} views / {{ popup.clicks }} clicks / {{ popup.closes }} closes</strong>
                 </div>
                 <div>
                     <small>Created</small>

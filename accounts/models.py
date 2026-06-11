@@ -587,6 +587,12 @@ class ReferralReward(models.Model):
         ACTIVE = "active", "Active"
         CANCELLED = "cancelled", "Cancelled"
 
+    class PayoutStatus(models.TextChoices):
+        UNPAID = "unpaid", "Unpaid"
+        PAID = "paid", "Paid"
+        HOLD = "hold", "On hold"
+        CANCELLED = "cancelled", "Cancelled"
+
     company = models.ForeignKey(CompanyProfile, on_delete=models.CASCADE, related_name="referral_rewards")
     setting = models.ForeignKey(ReferralSetting, on_delete=models.SET_NULL, null=True, blank=True, related_name="rewards")
     signup_request = models.OneToOneField(SignupRequest, on_delete=models.CASCADE, related_name="referral_reward")
@@ -599,6 +605,11 @@ class ReferralReward(models.Model):
     referrer_coupon_code = models.CharField(max_length=40, blank=True)
     referred_coupon_code = models.CharField(max_length=40, blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.ACTIVE)
+    payout_status = models.CharField(max_length=20, choices=PayoutStatus.choices, default=PayoutStatus.UNPAID)
+    payout_note = models.TextField(blank=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+    referrer_coupon_redeemed_at = models.DateTimeField(null=True, blank=True)
+    referred_coupon_redeemed_at = models.DateTimeField(null=True, blank=True)
     activated_at = models.DateTimeField(default=timezone.now)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -717,11 +728,16 @@ class SoftwarePopup(models.Model):
     title = models.CharField(max_length=160)
     message = models.TextField()
     deal_label = models.CharField(max_length=80, blank=True)
+    cta_label = models.CharField(max_length=80, blank=True)
+    cta_url = models.URLField(blank=True)
     offer_image = models.ImageField(upload_to="popups/offers/", blank=True)
     starts_at = models.DateTimeField(null=True, blank=True)
     ends_at = models.DateTimeField(null=True, blank=True)
     roles = models.JSONField(default=list, blank=True)
     is_active = models.BooleanField(default=True)
+    impressions = models.PositiveIntegerField(default=0)
+    clicks = models.PositiveIntegerField(default=0)
+    closes = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
