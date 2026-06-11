@@ -1,1 +1,38 @@
-{% extends "base.html" %}{% block content %}<div class="container-fluid"><h4>Office Locations</h4><div class="row g-3"><div class="col-lg-5"><form method="post" class="card card-body">{% csrf_token %}{{ form.as_p }}<button class="btn btn-primary">Save Location</button></form></div><div class="col-lg-7"><div class="card card-body table-responsive"><table class="table"><thead><tr><th>Name</th><th>Address</th><th>Status</th><th>Actions</th></tr></thead><tbody>{% for location in locations %}<tr><td>{{ location.name }}</td><td>{{ location.address }}</td><td>{{ location.is_active|yesno:"Active,Inactive" }}</td><td><a href="?edit={{ location.id }}">Edit</a><form method="post" class="d-inline">{% csrf_token %}<input type="hidden" name="delete_id" value="{{ location.id }}"><button class="btn btn-sm btn-outline-danger">Delete</button></form></td></tr>{% empty %}<tr><td colspan="4">No locations.</td></tr>{% endfor %}</tbody></table></div></div></div></div>{% endblock %}
+{% extends "base.html" %}
+{% block title %}Office Locations - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head company-update-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+  <div>
+    <h1 class="app-page-title mb-0">Office Locations</h1>
+    <p class="text-body mb-0">Manage branches and selectable work locations used during employee onboarding.</p>
+  </div>
+  <a class="btn btn-outline-primary" href="{% url 'accounts:owner_operations_dashboard' %}">Operations Dashboard</a>
+</div>
+<section class="meeting-management-layout">
+  <div class="profile-panel meeting-form-panel">
+    <div class="profile-panel-head"><h2>{% if form.instance.id %}Update Location{% else %}Add Location{% endif %}</h2></div>
+    <form method="post" class="profile-form">
+      {% csrf_token %}
+      {% for field in form %}<div><label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}</div>{% endfor %}
+      <div><button class="btn btn-primary" type="submit">Save Location</button></div>
+    </form>
+  </div>
+  <div class="profile-panel meeting-list-panel">
+    <form class="employee-directory-filter" method="get">
+      <input class="form-control" type="search" name="q" value="{{ query }}" placeholder="Search name, city, address">
+      <button class="btn btn-primary" type="submit">Filter</button>
+      <a class="btn btn-outline-primary" href="{% url 'accounts:owner_office_locations' %}">Reset</a>
+    </form>
+    <div class="table-responsive"><table class="table align-middle"><thead><tr><th>Name</th><th>Address</th><th>Status</th><th class="text-end">Actions</th></tr></thead><tbody>
+      {% for location in locations %}
+      <tr>
+        <td><strong>{{ location.name }}</strong><small>{{ location.city }} {{ location.state }}</small></td>
+        <td>{{ location.address }}{% if location.pincode %}, {{ location.pincode }}{% endif %}</td>
+        <td><span class="badge {% if location.is_active %}bg-success{% else %}bg-secondary{% endif %}">{{ location.is_active|yesno:"Active,Inactive" }}</span></td>
+        <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="?edit={{ location.id }}">Edit</a><form method="post" class="d-inline" data-delete-confirm="Delete this office location?">{% csrf_token %}<input type="hidden" name="delete_id" value="{{ location.id }}"><button class="btn btn-sm btn-danger">Delete</button></form></td>
+      </tr>
+      {% empty %}<tr><td colspan="4" class="text-center text-body py-4">No office locations.</td></tr>{% endfor %}
+    </tbody></table></div>
+  </div>
+</section>
+{% endblock %}

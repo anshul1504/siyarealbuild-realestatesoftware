@@ -1,1 +1,39 @@
-{% extends "base.html" %}{% block content %}<div class="container-fluid"><h4>Notification Deliveries</h4><div class="card card-body table-responsive"><table class="table"><thead><tr><th>Time</th><th>Recipient</th><th>Category</th><th>Subject</th><th>Status</th><th>Error</th></tr></thead><tbody>{% for item in deliveries %}<tr><td>{{ item.created_at }}</td><td>{{ item.recipient }}</td><td>{{ item.category }}</td><td>{{ item.subject }}</td><td>{{ item.get_status_display }}</td><td>{{ item.error_message|truncatechars:100 }}</td></tr>{% empty %}<tr><td colspan="6">No delivery records.</td></tr>{% endfor %}</tbody></table></div></div>{% endblock %}
+{% extends "base.html" %}
+{% block title %}Delivery Reports - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head company-update-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+  <div>
+    <h1 class="app-page-title mb-0">Delivery Reports</h1>
+    <p class="text-body mb-0">Track sent and failed email notifications from team and operations workflows.</p>
+  </div>
+  <a class="btn btn-outline-primary" href="{% url 'accounts:owner_operations_dashboard' %}">Operations Dashboard</a>
+</div>
+<section class="profile-panel">
+  <form class="employee-directory-filter" method="get">
+    <input class="form-control" type="search" name="q" value="{{ query }}" placeholder="Search recipient, subject, category">
+    <select class="form-select" name="status">
+      <option value="">All status</option>
+      {% for value,label in status_choices %}<option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-primary" type="submit">Filter</button>
+    <a class="btn btn-outline-primary" href="{% url 'accounts:owner_notification_deliveries' %}">Reset</a>
+  </form>
+  <div class="table-responsive">
+    <table class="table align-middle">
+      <thead><tr><th>Time</th><th>Recipient</th><th>Category</th><th>Subject</th><th>Status</th><th>Error</th></tr></thead>
+      <tbody>
+        {% for item in deliveries %}
+        <tr>
+          <td>{{ item.created_at|date:"d M Y, h:i A" }}</td>
+          <td>{{ item.recipient }}</td>
+          <td><span class="badge bg-light text-dark">{{ item.category }}</span></td>
+          <td>{{ item.subject }}</td>
+          <td><span class="badge {% if item.status == 'failed' %}bg-danger{% else %}bg-success{% endif %}">{{ item.get_status_display }}</span></td>
+          <td>{{ item.error_message|truncatechars:100|default:"-" }}</td>
+        </tr>
+        {% empty %}<tr><td colspan="6" class="text-center text-body py-4">No delivery records.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

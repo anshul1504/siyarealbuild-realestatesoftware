@@ -1,1 +1,34 @@
-{% extends "base.html" %}{% block content %}<div class="container-fluid"><h4>Audit Logs</h4><div class="card card-body table-responsive"><table class="table"><thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Target</th><th>Details</th></tr></thead><tbody>{% for log in logs %}<tr><td>{{ log.created_at }}</td><td>{{ log.actor|default:"System" }}</td><td>{{ log.action }}</td><td>{{ log.target_label }}</td><td>{{ log.details }}</td></tr>{% empty %}<tr><td colspan="5">No audit entries.</td></tr>{% endfor %}</tbody></table></div></div>{% endblock %}
+{% extends "base.html" %}
+{% block title %}Audit Logs - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head company-update-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+  <div>
+    <h1 class="app-page-title mb-0">Audit Logs</h1>
+    <p class="text-body mb-0">Review important system, team, and operations changes.</p>
+  </div>
+  <a class="btn btn-outline-primary" href="{% url 'accounts:owner_operations_dashboard' %}">Operations Dashboard</a>
+</div>
+<section class="profile-panel">
+  <form class="employee-directory-filter" method="get">
+    <input class="form-control" type="search" name="q" value="{{ query }}" placeholder="Search action, target, type">
+    <button class="btn btn-primary" type="submit">Filter</button>
+    <a class="btn btn-outline-primary" href="{% url 'accounts:owner_audit_logs' %}">Reset</a>
+  </form>
+  <div class="table-responsive">
+    <table class="table align-middle">
+      <thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Target</th><th>Details</th></tr></thead>
+      <tbody>
+        {% for log in logs %}
+        <tr>
+          <td>{{ log.created_at|date:"d M Y, h:i A" }}</td>
+          <td>{{ log.actor|default:"System" }}</td>
+          <td><span class="badge bg-light text-dark">{{ log.action }}</span></td>
+          <td><strong>{{ log.target_label|default:"-" }}</strong><small>{{ log.target_type }}</small></td>
+          <td><code>{{ log.details }}</code></td>
+        </tr>
+        {% empty %}<tr><td colspan="5" class="text-center text-body py-4">No audit entries.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
