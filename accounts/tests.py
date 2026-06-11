@@ -13,7 +13,7 @@ from django.test import TestCase, override_settings
 from datetime import timedelta
 
 from .forms import AddEmployeeForm, CompanyProfileForm, SignupRequestForm, SoftwarePopupForm
-from .models import AuditLog, AuthenticationSupportRequest, CompanyEvent, CompanyProfile, EmailOTP, EmployeeEmailChangeRequest, EmployeeInvite, EmployeeRoleChangeRequest, Meeting, NotificationDelivery, OfficeLocation, ReferralReward, Role, RoleMatrixRule, RoleTarget, SignupRequest, SignupRequestOwnerMessage, SignupRequestStatus, SoftwarePopup, TeamEmailMessage, UserProfile
+from .models import AuditLog, AuthenticationSupportRequest, CompanyProfile, EmailOTP, EmployeeEmailChangeRequest, EmployeeInvite, EmployeeRoleChangeRequest, NotificationDelivery, OfficeLocation, ReferralReward, Role, RoleMatrixRule, RoleTarget, SignupRequest, SignupRequestOwnerMessage, SignupRequestStatus, SoftwarePopup, TeamEmailMessage, UserProfile
 
 
 @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")

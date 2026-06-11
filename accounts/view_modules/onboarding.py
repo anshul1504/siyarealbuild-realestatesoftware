@@ -15,7 +15,7 @@ from ..email_utils import send_otp_email, send_signup_pending_review_email
 from django.views.decorators.http import require_http_methods
 
 from ..forms import AddEmployeeForm, EmployeeInviteForm
-from ..models import DesignationCodeRule, EmailOTP, EmployeeInvite, ReferralReward, ReferralSetting, Role, SignupRequest, SignupRequestStatus, UserProfile
+from ..models import EmailOTP, EmployeeInvite, ReferralReward, ReferralSetting, Role, SignupRequest, SignupRequestStatus, UserProfile
 from ..employee_codes import next_employee_code
 from ..services import record_audit
 

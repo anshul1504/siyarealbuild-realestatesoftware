@@ -6,15 +6,16 @@ from django.db.models import Count
 from django.http import HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from django.utils import timezone
 
 from accounts.email_utils import send_property_share_email
 from accounts.models import Role
 
 from ..forms import ColonyPlotFormSet, PropertyForm, PropertyShareEmailForm
-from ..models import ColonyPlot, Property, PropertyStatusHistory, PropertyVisit
-from ..services import update_property
+from ..models import ColonyPlot, Property, PropertyVisit
+from ..services import bulk_delete_properties, bulk_update_property_status, create_property, update_property
 from .helpers import can_manage_properties_for, property_share_message, save_property_uploads, visible_properties_for
+
+
 @login_required
 def property_list(request):
     properties = visible_properties_for(request).select_related("owner").prefetch_related("photos")
@@ -58,6 +59,9 @@ def property_list(request):
             "can_manage": can_manage_properties_for(request),
         },
     )
+
+
+@login_required
 def property_bulk_action(request):
     if not can_manage_properties_for(request):
         messages.error(request, "You do not have access to bulk update properties.")
@@ -67,7 +71,6 @@ def property_bulk_action(request):
     property_ids = request.POST.getlist("property_ids")
     action = request.POST.get("bulk_action")
     selected = visible_properties_for(request).filter(id__in=property_ids)
-    count = selected.count()
     if not property_ids or not action:
         messages.error(request, "Select properties and choose an action.")
         return redirect("properties:list")
@@ -79,11 +82,11 @@ def property_bulk_action(request):
         "rented": Property.Status.RENTED,
     }
     if action in status_map:
-        selected.update(status=status_map[action], updated_at=timezone.now())
-        messages.success(request, f"{count} property record(s) updated.")
+        updated = bulk_update_property_status(queryset=selected, status=status_map[action], actor=request.user)
+        messages.success(request, f"{updated} property record(s) updated.")
     elif action == "delete":
-        selected.delete()
-        messages.success(request, f"{count} property record(s) deleted.")
+        deleted = bulk_delete_properties(queryset=selected, actor=request.user)
+        messages.success(request, f"{deleted} property record(s) deleted.")
     else:
         messages.error(request, "Invalid bulk action.")
     return redirect("properties:list")
@@ -98,10 +101,7 @@ def property_create(request):
     form = PropertyForm(request.POST or None, request.FILES or None, user=request.user)
     plot_formset = ColonyPlotFormSet(request.POST or None, prefix="plots")
     if request.method == "POST" and form.is_valid() and plot_formset.is_valid():
-        prop = form.save(commit=False)
-        prop.owner = request.user
-        prop.save()
-        PropertyStatusHistory.objects.create(property=prop, to_status=prop.status, changed_by=request.user, note="Property created")
+        prop = create_property(form=form, owner=request.user)
         save_property_uploads(prop, form, request)
         if prop.category == Property.Category.COLONY:
             plot_formset.instance = prop
