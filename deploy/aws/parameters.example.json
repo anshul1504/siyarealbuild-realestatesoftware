@@ -1,0 +1,10 @@
+[
+  {"ParameterKey": "DomainName", "ParameterValue": "crm.example.com"},
+  {"ParameterKey": "CertificateArn", "ParameterValue": "arn:aws:acm:REGION:ACCOUNT:certificate/ID"},
+  {"ParameterKey": "AlertEmail", "ParameterValue": "ops@example.com"},
+  {"ParameterKey": "DbPassword", "ParameterValue": "replace-with-a-strong-database-password"},
+  {"ParameterKey": "AppSecretKey", "ParameterValue": "replace-with-a-long-random-django-secret-key-at-least-50-characters"},
+  {"ParameterKey": "SmtpHost", "ParameterValue": "email-smtp.REGION.amazonaws.com"},
+  {"ParameterKey": "SmtpUser", "ParameterValue": "replace-with-smtp-user"},
+  {"ParameterKey": "SmtpPassword", "ParameterValue": "replace-with-smtp-password"}
+]

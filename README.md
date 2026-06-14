@@ -7,7 +7,7 @@ Django-based real estate operations platform for company onboarding, team manage
 - Property module is connected end to end: category-first add flow, colony pricing, plot inventory, plot finder, backend price calculation, media/documents, archive/restore, export, sharing, visits, quotations, bookings, coupon discounts, installments, payments, agreements, commission rules, and payout ledger.
 - CRM module is connected end to end for internal use: lead lifecycle, assignment rules, follow-ups, reports, exports, Meta webhook foundation, duplicate checks, and partner workspace.
 - Accounts/owner workflows include signup approval, invite onboarding, employee directory, company settings, role changes, referrals, meetings, events, popups, audit logs, and notifications.
-- Local clone readiness is good after migrations and seed data. Production readiness still requires real environment values, HTTPS settings, monitoring, CI/E2E, and external Meta app/token setup.
+- Repository-side product readiness is complete for the AWS deployment phase: Docker/Gunicorn, PostgreSQL driver, WhiteNoise static delivery, CI, health checks, strict production settings, and an AWS deployment runbook are included.
 - Security hardening now removes committed SMTP/password defaults and enforces fail-closed production settings when `SIYA_ENV=production`.
 
 ## Run locally
@@ -23,6 +23,16 @@ python manage.py runserver
 ```
 
 Open `http://127.0.0.1:8000/`.
+
+## AWS deployment
+
+Use [docs/AWS_DEPLOYMENT_RUNBOOK.md](docs/AWS_DEPLOYMENT_RUNBOOK.md) for the ECS Fargate, RDS PostgreSQL, EFS media, ALB/ACM, secrets, monitoring, migration, and launch-gate workflow.
+
+Build validation:
+
+```powershell
+docker build -t siya-real-build .
+```
 
 The project reads deployment-sensitive settings from `SIYA_*` environment variables. The example configuration uses Django's console email backend so OTPs appear in the development terminal. Never commit real SMTP credentials or production secrets.
 

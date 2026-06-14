@@ -1,0 +1,353 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Siya Real Build production infrastructure
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: siya-real-build
+  DomainName:
+    Type: String
+  CertificateArn:
+    Type: String
+  AlertEmail:
+    Type: String
+  DbName:
+    Type: String
+    Default: siya
+  DbUsername:
+    Type: String
+    Default: siya_admin
+  DbPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 16
+  AppSecretKey:
+    Type: String
+    NoEcho: true
+    MinLength: 50
+  SmtpHost:
+    Type: String
+  SmtpUser:
+    Type: String
+  SmtpPassword:
+    Type: String
+    NoEcho: true
+  ImageUri:
+    Type: String
+  DesiredCount:
+    Type: Number
+    Default: 2
+
+Resources:
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.20.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags: [{Key: Name, Value: !Sub "${ProjectName}-vpc"}]
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+  GatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref Vpc
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      CidrBlock: 10.20.1.0/24
+      MapPublicIpOnLaunch: true
+  PublicSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      CidrBlock: 10.20.2.0/24
+      MapPublicIpOnLaunch: true
+  PrivateSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      CidrBlock: 10.20.11.0/24
+  PrivateSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      CidrBlock: 10.20.12.0/24
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties: {VpcId: !Ref Vpc}
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: GatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+  PublicRouteA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: {SubnetId: !Ref PublicSubnetA, RouteTableId: !Ref PublicRouteTable}
+  PublicRouteB:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: {SubnetId: !Ref PublicSubnetB, RouteTableId: !Ref PublicRouteTable}
+
+  AppSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ECS application ingress
+      VpcId: !Ref Vpc
+  AlbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Public HTTPS ingress
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+  AppIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref AppSecurityGroup
+      IpProtocol: tcp
+      FromPort: 8000
+      ToPort: 8000
+      SourceSecurityGroupId: !Ref AlbSecurityGroup
+  DatabaseSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: RDS ingress from application
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref AppSecurityGroup
+  EfsSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: EFS ingress from application
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 2049
+          ToPort: 2049
+          SourceSecurityGroupId: !Ref AppSecurityGroup
+
+  DbSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Siya database private subnets
+      SubnetIds: [!Ref PrivateSubnetA, !Ref PrivateSubnetB]
+  Database:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      Engine: postgres
+      DBInstanceClass: db.t4g.micro
+      AllocatedStorage: 20
+      MaxAllocatedStorage: 100
+      StorageEncrypted: true
+      MultiAZ: false
+      BackupRetentionPeriod: 7
+      DeletionProtection: true
+      DBName: !Ref DbName
+      MasterUsername: !Ref DbUsername
+      MasterUserPassword: !Ref DbPassword
+      DBSubnetGroupName: !Ref DbSubnetGroup
+      VPCSecurityGroups: [!Ref DatabaseSecurityGroup]
+      PubliclyAccessible: false
+
+  MediaFileSystem:
+    Type: AWS::EFS::FileSystem
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Encrypted: true
+      BackupPolicy: {Status: ENABLED}
+  MediaMountA:
+    Type: AWS::EFS::MountTarget
+    Properties: {FileSystemId: !Ref MediaFileSystem, SubnetId: !Ref PrivateSubnetA, SecurityGroups: [!Ref EfsSecurityGroup]}
+  MediaMountB:
+    Type: AWS::EFS::MountTarget
+    Properties: {FileSystemId: !Ref MediaFileSystem, SubnetId: !Ref PrivateSubnetB, SecurityGroups: [!Ref EfsSecurityGroup]}
+  MediaAccessPoint:
+    Type: AWS::EFS::AccessPoint
+    Properties:
+      FileSystemId: !Ref MediaFileSystem
+      PosixUser: {Uid: "1000", Gid: "1000"}
+      RootDirectory:
+        Path: /media
+        CreationInfo: {OwnerUid: "1000", OwnerGid: "1000", Permissions: "0750"}
+
+  AppSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      SecretString: !Sub |
+        {"SIYA_SECRET_KEY":"${AppSecretKey}","SIYA_DATABASE_URL":"postgresql://${DbUsername}:${DbPassword}@${Database.Endpoint.Address}:5432/${DbName}","SIYA_EMAIL_HOST_USER":"${SmtpUser}","SIYA_EMAIL_PASSWORD":"${SmtpPassword}"}
+
+  Cluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterSettings: [{Name: containerInsights, Value: enabled}]
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 30
+  ExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement: [{Effect: Allow, Principal: {Service: ecs-tasks.amazonaws.com}, Action: "sts:AssumeRole"}]
+      ManagedPolicyArns: [arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy]
+      Policies:
+        - PolicyName: ReadAppSecret
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement: [{Effect: Allow, Action: "secretsmanager:GetSecretValue", Resource: !Ref AppSecret}]
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement: [{Effect: Allow, Principal: {Service: ecs-tasks.amazonaws.com}, Action: "sts:AssumeRole"}]
+
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    DependsOn: [MediaMountA, MediaMountB]
+    Properties:
+      Family: !Ref ProjectName
+      RequiresCompatibilities: [FARGATE]
+      NetworkMode: awsvpc
+      Cpu: "512"
+      Memory: "1024"
+      ExecutionRoleArn: !GetAtt ExecutionRole.Arn
+      TaskRoleArn: !GetAtt TaskRole.Arn
+      Volumes:
+        - Name: media
+          EFSVolumeConfiguration:
+            FilesystemId: !Ref MediaFileSystem
+            TransitEncryption: ENABLED
+            AuthorizationConfig: {AccessPointId: !Ref MediaAccessPoint, IAM: DISABLED}
+      ContainerDefinitions:
+        - Name: app
+          Image: !Ref ImageUri
+          Essential: true
+          PortMappings: [{ContainerPort: 8000}]
+          MountPoints: [{SourceVolume: media, ContainerPath: /app/media}]
+          Environment:
+            - {Name: SIYA_ENV, Value: production}
+            - {Name: SIYA_DEBUG, Value: "false"}
+            - {Name: SIYA_ALLOWED_HOSTS, Value: !Ref DomainName}
+            - {Name: SIYA_CSRF_TRUSTED_ORIGINS, Value: !Sub "https://${DomainName}"}
+            - {Name: SIYA_EMAIL_BACKEND, Value: django.core.mail.backends.smtp.EmailBackend}
+            - {Name: SIYA_EMAIL_HOST, Value: !Ref SmtpHost}
+            - {Name: SIYA_SECURE_SSL_REDIRECT, Value: "true"}
+            - {Name: SIYA_SESSION_COOKIE_SECURE, Value: "true"}
+            - {Name: SIYA_CSRF_COOKIE_SECURE, Value: "true"}
+            - {Name: SIYA_SECURE_HSTS_SECONDS, Value: "31536000"}
+          Secrets:
+            - {Name: SIYA_SECRET_KEY, ValueFrom: !Sub "${AppSecret}:SIYA_SECRET_KEY::"}
+            - {Name: SIYA_DATABASE_URL, ValueFrom: !Sub "${AppSecret}:SIYA_DATABASE_URL::"}
+            - {Name: SIYA_EMAIL_HOST_USER, ValueFrom: !Sub "${AppSecret}:SIYA_EMAIL_HOST_USER::"}
+            - {Name: SIYA_EMAIL_PASSWORD, ValueFrom: !Sub "${AppSecret}:SIYA_EMAIL_PASSWORD::"}
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: app
+          HealthCheck:
+            Command: [CMD-SHELL, "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/', timeout=5)\""]
+            Interval: 30
+            Timeout: 10
+            Retries: 3
+            StartPeriod: 60
+
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internet-facing
+      SecurityGroups: [!Ref AlbSecurityGroup]
+      Subnets: [!Ref PublicSubnetA, !Ref PublicSubnetB]
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      VpcId: !Ref Vpc
+      Port: 8000
+      Protocol: HTTP
+      TargetType: ip
+      HealthCheckPath: /health/
+      Matcher: {HttpCode: "200"}
+  HttpsListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 443
+      Protocol: HTTPS
+      Certificates: [{CertificateArn: !Ref CertificateArn}]
+      DefaultActions: [{Type: forward, TargetGroupArn: !Ref TargetGroup}]
+  Service:
+    Type: AWS::ECS::Service
+    DependsOn: HttpsListener
+    Properties:
+      Cluster: !Ref Cluster
+      TaskDefinition: !Ref TaskDefinition
+      DesiredCount: !Ref DesiredCount
+      LaunchType: FARGATE
+      HealthCheckGracePeriodSeconds: 120
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups: [!Ref AppSecurityGroup]
+          Subnets: [!Ref PublicSubnetA, !Ref PublicSubnetB]
+      LoadBalancers: [{ContainerName: app, ContainerPort: 8000, TargetGroupArn: !Ref TargetGroup}]
+
+  AlertTopic:
+    Type: AWS::SNS::Topic
+  AlertSubscription:
+    Type: AWS::SNS::Subscription
+    Properties: {Protocol: email, Endpoint: !Ref AlertEmail, TopicArn: !Ref AlertTopic}
+  Alb5xxAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions: [!Ref AlertTopic]
+      Namespace: AWS/ApplicationELB
+      MetricName: HTTPCode_Target_5XX_Count
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions: [{Name: LoadBalancer, Value: !GetAtt LoadBalancer.LoadBalancerFullName}]
+  CpuAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions: [!Ref AlertTopic]
+      Namespace: AWS/ECS
+      MetricName: CPUUtilization
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 80
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions: [{Name: ClusterName, Value: !Ref Cluster}, {Name: ServiceName, Value: !GetAtt Service.Name}]
+
+Outputs:
+  ClusterName: {Value: !Ref Cluster}
+  ServiceName: {Value: !GetAtt Service.Name}
+  TaskDefinitionArn: {Value: !Ref TaskDefinition}
+  LoadBalancerDnsName: {Value: !GetAtt LoadBalancer.DNSName}
+  EfsId: {Value: !Ref MediaFileSystem}
+  DatabaseEndpoint: {Value: !GetAtt Database.Endpoint.Address}

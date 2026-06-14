@@ -85,6 +85,7 @@ JAZZMIN_SETTINGS = {
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -182,6 +183,14 @@ STATIC_URL = "/static/"
 
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"
+        if IS_PRODUCTION
+        else "django.contrib.staticfiles.storage.StaticFilesStorage"
+    },
+}
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
@@ -225,12 +234,16 @@ if IS_PRODUCTION:
         raise RuntimeError("SIYA_SECRET_KEY must be a strong production secret.")
     if not ALLOWED_HOSTS or {"127.0.0.1", "localhost", "testserver"}.intersection(ALLOWED_HOSTS):
         raise RuntimeError("SIYA_ALLOWED_HOSTS must contain production hosts only when SIYA_ENV=production.")
+    if not CSRF_TRUSTED_ORIGINS or any(not origin.startswith("https://") for origin in CSRF_TRUSTED_ORIGINS):
+        raise RuntimeError("SIYA_CSRF_TRUSTED_ORIGINS must contain HTTPS production origins.")
     if not DATABASE_URL:
         raise RuntimeError("SIYA_DATABASE_URL must point to PostgreSQL when SIYA_ENV=production.")
     if EMAIL_BACKEND == "django.core.mail.backends.smtp.EmailBackend":
         EMAIL_HOST = env_required("SIYA_EMAIL_HOST")
         EMAIL_HOST_USER = env_required("SIYA_EMAIL_HOST_USER")
         EMAIL_HOST_PASSWORD = env_required("SIYA_EMAIL_PASSWORD")
+    elif EMAIL_BACKEND == "django.core.mail.backends.console.EmailBackend":
+        raise RuntimeError("Console email backend cannot be used when SIYA_ENV=production.")
     if META_INTEGRATION_ENABLED:
         META_WEBHOOK_VERIFY_TOKEN = env_required("SIYA_META_WEBHOOK_VERIFY_TOKEN")
         META_APP_SECRET = env_required("SIYA_META_APP_SECRET")

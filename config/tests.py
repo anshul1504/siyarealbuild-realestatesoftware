@@ -6,6 +6,7 @@ import zipfile
 
 from django.core.management import call_command
 from django.test import SimpleTestCase
+from django.urls import reverse
 
 
 class ProductionSettingsValidationTests(SimpleTestCase):
@@ -37,6 +38,7 @@ class ProductionSettingsValidationTests(SimpleTestCase):
             SIYA_DEBUG="false",
             SIYA_SECRET_KEY="production-secret-value-with-enough-length",
             SIYA_ALLOWED_HOSTS="app.example.com",
+            SIYA_CSRF_TRUSTED_ORIGINS="https://app.example.com",
             SIYA_SECURE_SSL_REDIRECT="true",
             SIYA_SESSION_COOKIE_SECURE="true",
             SIYA_CSRF_COOKIE_SECURE="true",
@@ -52,7 +54,12 @@ class ProductionSettingsValidationTests(SimpleTestCase):
             SIYA_DEBUG="false",
             SIYA_SECRET_KEY="production-secret-value-with-enough-length",
             SIYA_ALLOWED_HOSTS="app.example.com",
+            SIYA_CSRF_TRUSTED_ORIGINS="https://app.example.com",
             SIYA_DATABASE_URL="postgresql://user:password@localhost/siya",
+            SIYA_EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend",
+            SIYA_EMAIL_HOST="smtp.example.com",
+            SIYA_EMAIL_HOST_USER="smtp-user",
+            SIYA_EMAIL_PASSWORD="smtp-password",
             SIYA_SECURE_SSL_REDIRECT="true",
             SIYA_SESSION_COOKIE_SECURE="true",
             SIYA_CSRF_COOKIE_SECURE="true",
@@ -85,3 +92,12 @@ class BackupWorkspaceCommandTests(SimpleTestCase):
                 self.assertIn("manifest.json", names)
                 manifest = archive.read("manifest.json").decode("utf-8")
                 self.assertIn("restore_notes", manifest)
+
+
+class HealthEndpointTests(SimpleTestCase):
+    databases = {"default"}
+
+    def test_health_endpoint_checks_database(self):
+        response = self.client.get(reverse("health"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"status": "ok"})

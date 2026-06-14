@@ -12,6 +12,12 @@ The current candidate release passed repository-wide checks after two additional
 
 Verification: `python manage.py check` passed; migration drift check passed; all 153 requested tests passed; compileall and `git diff --check` passed. Ruff is not installed. `check --deploy` reports the six expected local-development warnings documented in the external backlog.
 
+## 2026-06-14 Product-Ready AWS Handoff Update
+
+Repository-side deployment readiness now includes Docker/Gunicorn, PostgreSQL runtime support, production-only WhiteNoise manifest static assets, a database-backed health endpoint, GitHub Actions CI, stricter production environment validation, and an AWS ECS/RDS/EFS/ALB deployment runbook.
+
+The next phase is infrastructure execution, not core product development. Live launch remains conditional on real AWS provisioning, production `check --deploy`, migrations, domain/HTTPS/email verification, persistent media verification, monitoring, and restore drills.
+
 ## 0. Core Completion Update - 2026-06-13
 
 Current core development status: **100% complete for internal beta CRM/property operations scope**.
