@@ -9,7 +9,7 @@
     <a href="{% if visit %}{% url 'properties:visit_detail' visit.id %}{% else %}{% url 'properties:detail' property_obj.id %}{% endif %}" class="btn btn-light">Back</a>
 </div>
 
-<form method="post" class="profile-panel">
+<form method="post" enctype="multipart/form-data" class="profile-panel">
     {% csrf_token %}
     {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
     <div class="profile-panel-head"><div><h2>Visit Information</h2><p>Schedule and maintain employee-wise site visit records.</p></div></div>
@@ -25,6 +25,10 @@
         <div class="col-md-4">
             <label class="form-label" for="{{ form.client_email.id_for_label }}">Client Email</label>
             {{ form.client_email }}{{ form.client_email.errors }}
+        </div>
+        <div class="col-md-4">
+            <label class="form-label" for="{{ form.image.id_for_label }}">Site Visit Image</label>
+            {{ form.image }}{{ form.image.errors }}
         </div>
         <div class="col-md-4">
             <label class="form-label" for="{{ form.visit_at.id_for_label }}">Visit Date & Time</label>

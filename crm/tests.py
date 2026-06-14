@@ -50,6 +50,14 @@ class CrmLeadWorkflowTests(TestCase):
         self.assertEqual(lead.activities.filter(activity_type=LeadActivity.ActivityType.CREATED).count(), 1)
         self.assertTrue(NotificationDelivery.objects.filter(category="crm_assignment", recipient=self.executive.email).exists())
 
+    def test_legacy_leads_new_alias_opens_create_form(self):
+        self.client.force_login(self.owner)
+
+        response = self.client.get("/crm/leads/new/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Lead")
+
     def test_assignment_rule_routes_new_manual_lead(self):
         LeadAssignmentRule.objects.create(
             company=self.company,

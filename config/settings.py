@@ -22,8 +22,17 @@ def env_list(name, default=""):
     return [item.strip() for item in os.environ.get(name, default).split(",") if item.strip()]
 
 
+def env_required(name):
+    value = os.environ.get(name, "").strip()
+    if not value:
+        raise RuntimeError(f"{name} must be configured when SIYA_ENV=production.")
+    return value
+
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+SIYA_ENV = os.environ.get("SIYA_ENV", "local").strip().lower()
+IS_PRODUCTION = SIYA_ENV == "production"
 
 
 # Quick-start development settings - unsuitable for production
@@ -41,6 +50,7 @@ META_WEBHOOK_VERIFY_TOKEN = os.environ.get("SIYA_META_WEBHOOK_VERIFY_TOKEN", "si
 META_GRAPH_API_VERSION = os.environ.get("SIYA_META_GRAPH_API_VERSION", "v20.0")
 META_PAGE_ACCESS_TOKEN = os.environ.get("SIYA_META_PAGE_ACCESS_TOKEN", "")
 META_APP_SECRET = os.environ.get("SIYA_META_APP_SECRET", "")
+META_INTEGRATION_ENABLED = env_bool("SIYA_META_INTEGRATION_ENABLED", False)
 
 
 # Application definition
@@ -107,12 +117,31 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+DATABASE_URL = os.environ.get("SIYA_DATABASE_URL", "").strip()
+if DATABASE_URL:
+    if DATABASE_URL.startswith("postgres://") or DATABASE_URL.startswith("postgresql://"):
+        from urllib.parse import urlparse
+
+        db_url = urlparse(DATABASE_URL)
+        DATABASES = {
+            "default": {
+                "ENGINE": "django.db.backends.postgresql",
+                "NAME": db_url.path.lstrip("/"),
+                "USER": db_url.username or "",
+                "PASSWORD": db_url.password or "",
+                "HOST": db_url.hostname or "",
+                "PORT": str(db_url.port or ""),
+            }
+        }
+    else:
+        raise RuntimeError("SIYA_DATABASE_URL currently supports postgres:// or postgresql:// URLs.")
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
     }
-}
 
 
 # Password validation
@@ -163,16 +192,16 @@ LOGOUT_REDIRECT_URL = "accounts:login"
 
 EMAIL_BACKEND = os.environ.get(
     "SIYA_EMAIL_BACKEND",
-    "django.core.mail.backends.smtp.EmailBackend",
+    "django.core.mail.backends.console.EmailBackend",
 )
-EMAIL_HOST = os.environ.get("SIYA_EMAIL_HOST", "mail.thewebfix.in")
+EMAIL_HOST = os.environ.get("SIYA_EMAIL_HOST", "")
 EMAIL_PORT = int(os.environ.get("SIYA_EMAIL_PORT", "465"))
 EMAIL_USE_SSL = os.environ.get("SIYA_EMAIL_USE_SSL", "true").lower() == "true"
-EMAIL_HOST_USER = os.environ.get("SIYA_EMAIL_HOST_USER", "noreply@thewebfix.in")
+EMAIL_HOST_USER = os.environ.get("SIYA_EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.environ.get("SIYA_EMAIL_PASSWORD", "")
 DEFAULT_FROM_EMAIL = os.environ.get(
     "SIYA_DEFAULT_FROM_EMAIL",
-    "Siya Real Build <noreply@thewebfix.in>",
+    "Siya Real Build <noreply@example.com>",
 )
 
 SECURE_SSL_REDIRECT = env_bool("SIYA_SECURE_SSL_REDIRECT", False)
@@ -187,6 +216,26 @@ SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
+
+if IS_PRODUCTION:
+    if DEBUG:
+        raise RuntimeError("SIYA_DEBUG must be false when SIYA_ENV=production.")
+    SECRET_KEY = env_required("SIYA_SECRET_KEY")
+    if SECRET_KEY == "django-insecure-local-development-only":
+        raise RuntimeError("SIYA_SECRET_KEY must be a strong production secret.")
+    if not ALLOWED_HOSTS or {"127.0.0.1", "localhost", "testserver"}.intersection(ALLOWED_HOSTS):
+        raise RuntimeError("SIYA_ALLOWED_HOSTS must contain production hosts only when SIYA_ENV=production.")
+    if not DATABASE_URL:
+        raise RuntimeError("SIYA_DATABASE_URL must point to PostgreSQL when SIYA_ENV=production.")
+    if EMAIL_BACKEND == "django.core.mail.backends.smtp.EmailBackend":
+        EMAIL_HOST = env_required("SIYA_EMAIL_HOST")
+        EMAIL_HOST_USER = env_required("SIYA_EMAIL_HOST_USER")
+        EMAIL_HOST_PASSWORD = env_required("SIYA_EMAIL_PASSWORD")
+    if META_INTEGRATION_ENABLED:
+        META_WEBHOOK_VERIFY_TOKEN = env_required("SIYA_META_WEBHOOK_VERIFY_TOKEN")
+        META_APP_SECRET = env_required("SIYA_META_APP_SECRET")
+    if not (SECURE_SSL_REDIRECT and SESSION_COOKIE_SECURE and CSRF_COOKIE_SECURE and SECURE_HSTS_SECONDS > 0):
+        raise RuntimeError("HTTPS settings must be enabled when SIYA_ENV=production.")
 
 AUTH_RATE_LIMIT_WINDOW_SECONDS = int(os.environ.get("SIYA_AUTH_RATE_LIMIT_WINDOW_SECONDS", "900"))
 AUTH_RATE_LIMIT_EMAIL_ATTEMPTS = int(os.environ.get("SIYA_AUTH_RATE_LIMIT_EMAIL_ATTEMPTS", "8"))

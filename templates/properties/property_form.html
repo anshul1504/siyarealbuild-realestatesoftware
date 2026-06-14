@@ -1,587 +1,578 @@
 {% extends "base.html" %}
-{% block title %}Add Property - Siya Real Build{% endblock %}
+{% block title %}{% if mode == "edit" %}Edit Property{% else %}Add Property{% endif %} - Siya Real Build{% endblock %}
 {% block content %}
 <div class="app-page-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
     <div>
         <h1 class="app-page-title mb-0">{% if mode == "edit" %}Edit Property{% else %}Add Property{% endif %}</h1>
-        <p class="text-body mb-0">Select a category to open the relevant property intake steps.</p>
+        <p class="text-body mb-0">Category select karo, phir sirf relevant property flow complete karo.</p>
     </div>
-    {% if mode == "edit" and property_obj %}
-    <a href="{% url 'properties:detail' property_obj.id %}" class="btn btn-outline-primary">Back to Detail</a>
-    {% else %}
     <div class="d-flex gap-2">
+        {% if mode == "edit" and property_obj %}
+        <a href="{% url 'properties:detail' property_obj.id %}" class="btn btn-outline-primary">Back to Detail</a>
+        {% else %}
         <a href="{% url 'properties:developer_create' %}" class="btn btn-light">Add Developer</a>
         <a href="{% url 'properties:list' %}" class="btn btn-outline-primary">Property List</a>
+        {% endif %}
     </div>
-    {% endif %}
 </div>
 
-<form method="post" enctype="multipart/form-data" class="property-wizard-pro" data-property-wizard>
+<form method="post" enctype="multipart/form-data" class="property-flow-form" data-property-form novalidate>
     {% csrf_token %}
-    {{ form.non_field_errors }}
+    {{ commission_formset.management_form }}
+    {% if form.errors or plot_formset.errors or plot_formset.non_form_errors or commission_formset.errors or commission_formset.non_form_errors %}
+    <div class="property-form-error-summary" data-form-error-summary>
+        <strong>Property could not be saved</strong>
+        <span>Please correct the highlighted or missing fields, then save again.</span>
+        {{ form.non_field_errors }}
+        {% for field in form %}{% for error in field.errors %}<div><b>{{ field.label }}:</b> {{ error }}</div>{% endfor %}{% endfor %}
+        {% for error in plot_formset.non_form_errors %}<div><b>Plot Inventory:</b> {{ error }}</div>{% endfor %}
+        {% for plot_form in plot_formset %}{% for field in plot_form %}{% for error in field.errors %}<div><b>Plot {{ forloop.parentloop.counter }} - {{ field.label }}:</b> {{ error }}</div>{% endfor %}{% endfor %}{% endfor %}
+        {% for error in commission_formset.non_form_errors %}<div><b>Commission:</b> {{ error }}</div>{% endfor %}
+        {% for commission_form in commission_formset %}{% for field in commission_form %}{% for error in field.errors %}<div><b>Commission {{ forloop.parentloop.counter }} - {{ field.label }}:</b> {{ error }}</div>{% endfor %}{% endfor %}{% endfor %}
+    </div>
+    {% endif %}
 
-    <section class="property-wizard-shell">
-        <div class="property-wizard-title">
-            <div>
-                <span>Property Intake</span>
-                <h2>{% if mode == "edit" %}Update Property Registration{% else %}New Property Registration{% endif %}</h2>
-            </div>
-            <p>Only relevant steps stay visible after category selection.</p>
+    <div class="property-flow-intro">
+        <div>
+            <span>Property Registration</span>
+            <strong>Complete one simple section at a time.</strong>
         </div>
+        <small>Only fields relevant to the selected property category are shown.</small>
+    </div>
+    <div class="property-step-shell">
+        <aside class="property-step-nav" data-step-nav></aside>
 
-        <div class="property-stepper" aria-label="Property form steps">
-            <button type="button" class="property-step-dot active" data-step-target="0"><span>1</span><strong>Category</strong><small>Type</small></button>
-            <button type="button" class="property-step-dot" data-step-target="1"><span>2</span><strong>Location</strong><small>Address</small></button>
-            <button type="button" class="property-step-dot" data-step-target="2"><span>3</span><strong>Pricing</strong><small>Area</small></button>
-            <button type="button" class="property-step-dot" data-step-target="3" data-built-step><span>4</span><strong>Built Details</strong><small>Unit</small></button>
-            <button type="button" class="property-step-dot" data-step-target="4" data-colony-step><span>4</span><strong>Plot Inventory</strong><small>Colony</small></button>
-            <button type="button" class="property-step-dot" data-step-target="5"><span>5</span><strong>Legal & Media</strong><small>Docs</small></button>
-            <button type="button" class="property-step-dot" data-step-target="6"><span>6</span><strong>Review</strong><small>Submit</small></button>
-        </div>
-        <div class="property-step-progress"><span data-step-progress-bar></span></div>
-        <div class="property-step-error" data-step-error hidden></div>
-
-        <div class="property-step-panel active" data-step="0">
-            <div class="property-step-head">
-                <h3>Category & Listing Type</h3>
-                <p>The selected category controls which sections are required for this listing.</p>
+        <div class="property-step-body">
+            <div class="property-step-context">
+                <div><span data-step-progress-text>Step 1</span><strong data-step-current-title>Category</strong></div>
+                <p data-step-help>Select the property category to show only relevant fields.</p>
             </div>
-            <div class="row g-3">
-                {% for field in form %}
-                    {% if field.name == "title" or field.name == "category" or field.name == "listing_for" or field.name == "status" or field.name == "developer" or field.name == "assigned_to" %}
-                    <div class="col-md-6">
-                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                        {{ field }}
-                        {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
-                    </div>
-                    {% endif %}
-                {% endfor %}
-            </div>
-        </div>
-
-        <div class="property-step-panel" data-step="1">
-            <div class="property-step-head">
-                <h3>Location & Map</h3>
-                <p>Add the address, locality, landmark, and Google Maps link.</p>
-            </div>
-            <div class="row g-3">
-                {% for field in form %}
-                    {% if field.name == "city" or field.name == "locality" or field.name == "address" or field.name == "landmark" or field.name == "map_link" %}
-                    <div class="col-md-6">
-                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                        {{ field }}
-                        {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
-                    </div>
-                    {% endif %}
-                {% endfor %}
-            </div>
-        </div>
-
-        <div class="property-step-panel" data-step="2">
-            <div class="property-step-head">
-                <h3>Pricing, Area & Dimensions</h3>
-                <p>Land listings use dimensions and road width. Built listings use carpet and built-up area.</p>
-            </div>
-            <div class="row g-3">
-                {% for field in form %}
-                    {% if field.name == "price" or field.name == "price_per_sqft" or field.name == "area_sqft" or field.name == "carpet_area_sqft" or field.name == "builtup_area_sqft" or field.name == "length_ft" or field.name == "width_ft" or field.name == "facing" or field.name == "road_width_ft" %}
-                    <div class="col-md-4" data-field="{{ field.name }}">
-                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                        {{ field }}
-                        {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
-                    </div>
-                    {% endif %}
-                {% endfor %}
-            </div>
-        </div>
-
-        <div class="property-step-panel" data-step="3" data-category-section="built">
-            <div class="property-step-head">
-                <h3>Built Property Details</h3>
-                <p>Capture unit details for flats, houses, row houses, villas, shops, offices, and warehouses.</p>
-            </div>
-            <div class="row g-3">
-                {% for field in form %}
-                    {% if field.name == "bedrooms" or field.name == "bathrooms" or field.name == "balconies" or field.name == "floor_number" or field.name == "total_floors" or field.name == "parking_count" or field.name == "furnishing" or field.name == "construction_status" or field.name == "possession_status" %}
-                    <div class="col-md-4" data-field="{{ field.name }}">
-                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                        {{ field }}
-                        {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
-                    </div>
-                    {% endif %}
-                {% endfor %}
-            </div>
-        </div>
-
-        <div class="property-step-panel" data-step="4" data-category-section="colony">
-            <div class="property-step-head">
-                <h3>Colony & Individual Plot Inventory</h3>
-                <p>Register total plots and define each plot with dimensions, facing, road width, price, and status.</p>
-            </div>
-            <div class="row g-3 mb-3">
-                {% for field in form %}
-                    {% if field.name == "colony_name" or field.name == "total_plots" or field.name == "available_plots" or field.name == "development_status" or field.name == "selected_amenities" or field.name == "amenities" or field.name == "custom_amenities" or field.name == "amenity_count" or field.name == "garden_count" or field.name == "corner_plot_count" or field.name == "garden_facing_plot_count" or field.name == "plc_rules" or field.name == "nearby_residential" or field.name == "nearby_commercial" or field.name == "nearby_connectivity" or field.name == "nearby_education" or field.name == "nearby_healthcare" or field.name == "nearby_landmarks" or field.name == "base_rate_per_sqft" or field.name == "residential_rate_per_sqft" or field.name == "commercial_rate_per_sqft" or field.name == "lig_rate_per_sqft" or field.name == "mig_rate_per_sqft" or field.name == "hig_rate_per_sqft" or field.name == "ews_rate_per_sqft" or field.name == "electricity_charge" or field.name == "maintenance_charge" or field.name == "development_charge" or field.name == "registry_charge" or field.name == "other_charge" or field.name == "corner_plc_rate" or field.name == "garden_facing_plc_rate" or field.name == "main_road_plc_rate" or field.name == "wide_road_plc_rate" %}
-                    <div class="{% if field.name == 'selected_amenities' or field.name == 'amenities' or field.name == 'custom_amenities' or field.name == 'plc_rules' or field.name == 'nearby_residential' or field.name == 'nearby_commercial' or field.name == 'nearby_connectivity' or field.name == 'nearby_education' or field.name == 'nearby_healthcare' or field.name == 'nearby_landmarks' %}col-md-6{% else %}col-md-4{% endif %}">
-                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                        {% if field.name == "selected_amenities" %}<div class="amenity-check-grid">{{ field }}</div>{% else %}{{ field }}{% endif %}
-                        {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
-                    </div>
-                    {% endif %}
-                {% endfor %}
-            </div>
-            {{ plot_formset.management_form }}
-            <div class="property-plot-toolbar">
-                <div>
-                    <strong>Plot Detail Rows</strong>
-                    <span>Rows are generated from Total plots. Fill every active row before moving forward.</span>
-                </div>
-                <button type="button" class="btn btn-outline-primary btn-sm" data-sync-plots>Generate Plot Rows</button>
-            </div>
-            <div class="table-responsive">
-                <table class="table align-middle property-plot-grid">
-                    <thead><tr><th>Plot No.</th><th>Category</th><th>Block</th><th>Area</th><th>Base Rate</th><th>PLC</th><th>Charges</th><th>Price</th><th>Status</th><th>Notes</th></tr></thead>
-                    <tbody>
-                    {% for plot_form in plot_formset %}
-                        <tr>
-                            {% for hidden in plot_form.hidden_fields %}{{ hidden }}{% endfor %}
-                            <td>{{ plot_form.plot_number }}</td>
-                            <td>{{ plot_form.plot_category }}</td>
-                            <td>{{ plot_form.block }}</td>
-                            <td>{{ plot_form.area_sqft }}</td>
-                            <td>{{ plot_form.base_rate }}</td>
-                            <td>{{ plot_form.plc_rate }}</td>
-                            <td>{{ plot_form.extra_charges }}</td>
-                            <td>{{ plot_form.price }}</td>
-                            <td>{{ plot_form.status }}</td>
-                            <td>{{ plot_form.notes }}</td>
-                        </tr>
+            <section class="property-step" data-step data-flow="all" data-step-title="Category">
+                <div class="section-title"><span>Step 1</span><h2>Select Property Category</h2></div>
+                <div class="category-pick">
+                    {% for value, label in form.category.field.choices %}
+                    <label class="category-card">
+                        <input type="radio" name="{{ form.category.html_name }}" value="{{ value }}" {% if form.category.value|stringformat:"s" == value|stringformat:"s" %}checked{% endif %}>
+                        <strong>{{ label }}</strong>
+                    </label>
                     {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        <template data-plot-empty-row>
-            <tr>
-                {% for hidden in plot_formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
-                <td>{{ plot_formset.empty_form.plot_number }}</td>
-                <td>{{ plot_formset.empty_form.plot_category }}</td>
-                <td>{{ plot_formset.empty_form.block }}</td>
-                <td>{{ plot_formset.empty_form.area_sqft }}</td>
-                <td>{{ plot_formset.empty_form.base_rate }}</td>
-                <td>{{ plot_formset.empty_form.plc_rate }}</td>
-                <td>{{ plot_formset.empty_form.extra_charges }}</td>
-                <td>{{ plot_formset.empty_form.price }}</td>
-                <td>{{ plot_formset.empty_form.status }}</td>
-                <td>{{ plot_formset.empty_form.notes }}</td>
-            </tr>
-        </template>
-        </div>
+                </div>
+                {% for error in form.category.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+            </section>
 
-        <div class="property-step-panel" data-step="5">
-            <div class="property-step-head">
-                <h3>Legal, Documents, Photos & Contact</h3>
-                <p>Attach RERA, T&CP, registry, legal documents, map/layout files, photos, and contact details.</p>
-            </div>
-            <div class="row g-3">
-                {% for field in form %}
-                    {% if field.name == "rera_number" or field.name == "tcp_approval_number" or field.name == "registry_status" or field.name == "khasra_number" or field.name == "legal_status" or field.name == "legal_notes" or field.name == "contact_name" or field.name == "contact_phone" or field.name == "internal_notes" or field.name == "photos" or field.name == "documents" or field.name == "document_type" %}
-                    <div class="col-md-6">
-                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                        {{ field }}
-                        {% if field.help_text %}<div class="text-body small mt-1">{{ field.help_text }}</div>{% endif %}
-                        {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+            <section class="property-step" data-step data-flow="all" data-step-title="Basic">
+                <div class="section-title basic-section-title">
+                    <span>Step 2</span>
+                    <div><h2>Basic Registration</h2><p>Define the listing identity, availability, and responsible team.</p></div>
+                </div>
+                <div class="basic-registration-grid">
+                    <div class="basic-form-group basic-listing-group">
+                        <div class="basic-group-head">
+                            <strong>Listing Details</strong>
+                            <span>Core information shown across property records.</span>
+                        </div>
+                        <div class="row g-3">
+                            {% for field in form %}
+                                {% if field.name == "title" or field.name == "listing_for" or field.name == "status" %}
+                                <div class="{% if field.name == 'title' %}col-lg-6{% else %}col-sm-6 col-lg-3{% endif %}">
+                                    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                    {{ field }}
+                                    {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                                </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
                     </div>
-                    {% endif %}
-                {% endfor %}
-            </div>
-        </div>
+                    <div class="basic-form-group">
+                        <div class="basic-group-head">
+                            <strong>Ownership & Responsibility</strong>
+                            <span>Connect the developer and assign the responsible team member.</span>
+                        </div>
+                        <div class="row g-3">
+                            {% for field in form %}
+                                {% if field.name == "developer" or field.name == "assigned_to" %}
+                                <div class="col-md-6">
+                                    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                    {{ field }}
+                                    {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                                </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="basic-form-group basic-colony-group" data-colony-only>
+                        <div class="basic-group-head">
+                            <strong>Colony / Project Identity</strong>
+                            <span>Add the public colony name and its specific phase or development name.</span>
+                        </div>
+                        <div class="row g-3">
+                            {% for field in form %}
+                                {% if field.name == "colony_name" or field.name == "development_name" %}
+                                <div class="col-md-6">
+                                    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                    {{ field }}
+                                    {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                                </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-        <div class="property-step-panel" data-step="6">
-            <div class="property-step-head">
-                <h3>Review & Submit</h3>
-                <p>Review the key details before saving the property record.</p>
-            </div>
-            <div class="property-review-grid">
-                <div><span>Category</span><strong data-review="category">-</strong></div>
-                <div><span>Listing</span><strong data-review="listing_for">-</strong></div>
-                <div><span>City</span><strong data-review="city">-</strong></div>
-                <div><span>Price</span><strong data-review="price">-</strong></div>
-                <div><span>Area</span><strong data-review="area_sqft">-</strong></div>
-                <div><span>Status</span><strong data-review="status">-</strong></div>
-            </div>
-        </div>
+            <section class="property-step" data-step data-flow="all" data-step-title="Location">
+                <div class="section-title"><span>Step 3</span><h2>Location & Map</h2></div>
+                <div class="row g-3">
+                    {% for field in form %}
+                        {% if field.name == "city" or field.name == "locality" or field.name == "address" or field.name == "landmark" or field.name == "map_link" %}
+                        <div class="{% if field.name == 'address' or field.name == 'map_link' %}col-md-6{% else %}col-md-3{% endif %}">
+                            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                            {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </section>
 
-        <div class="property-wizard-actions">
-            <button type="button" class="btn btn-light" data-wizard-back>Back</button>
-            <button type="button" class="btn btn-primary" data-wizard-next>Next</button>
-            <button type="submit" class="btn btn-primary" data-wizard-submit>{% if mode == "edit" %}Update Property{% else %}Save Property{% endif %}</button>
+            <section class="property-step" data-step data-flow="colony" data-step-title="Amenities">
+                <div class="section-title"><span>Step 4</span><h2>Colony Amenities</h2></div>
+                <div class="amenity-flow-note">
+                    <div><strong>Checklist</strong><span>Ready amenities tick karo.</span></div>
+                    <div><strong>Custom</strong><span>Jo list me nahi hai wo add karo.</span></div>
+                    <div><strong>Nearby</strong><span>Connectivity, school, hospital, market detail yahin capture karo.</span></div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label" for="{{ form.selected_amenities.id_for_label }}">{{ form.selected_amenities.label }}</label>
+                        <div class="amenity-check-grid">{{ form.selected_amenities }}</div>
+                        {% for error in form.selected_amenities.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="{{ form.custom_amenities.id_for_label }}">{{ form.custom_amenities.label }}</label>
+                        {{ form.custom_amenities }}
+                        {% for error in form.custom_amenities.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="{{ form.amenities.id_for_label }}">{{ form.amenities.label }}</label>
+                        {{ form.amenities }}
+                        {% for error in form.amenities.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                    </div>
+                    {% for field in form %}
+                        {% if field.name == "amenity_count" or field.name == "garden_count" or field.name == "corner_plot_count" or field.name == "garden_facing_plot_count" or field.name == "nearby_residential" or field.name == "nearby_commercial" or field.name == "nearby_connectivity" or field.name == "nearby_education" or field.name == "nearby_healthcare" or field.name == "nearby_landmarks" %}
+                        <div class="{% if 'nearby' in field.name %}col-md-6 col-xl-4{% else %}col-sm-6 col-lg-3{% endif %}">
+                            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                            {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="property-step" data-step data-flow="colony" data-step-title="Pricing">
+                <div class="section-title"><span>Step 5</span><h2>Category Pricing, Charges & Commission</h2></div>
+                <div class="row g-3">
+                    {% for field in form %}
+                        {% if field.name == "base_rate_per_sqft" or field.name == "residential_rate_per_sqft" or field.name == "commercial_rate_per_sqft" or field.name == "lig_rate_per_sqft" or field.name == "mig_rate_per_sqft" or field.name == "hig_rate_per_sqft" or field.name == "ews_rate_per_sqft" or field.name == "electricity_charge" or field.name == "maintenance_charge" or field.name == "development_charge" or field.name == "registry_charge" or field.name == "other_charge" or field.name == "corner_plc_rate" or field.name == "garden_facing_plc_rate" or field.name == "main_road_plc_rate" or field.name == "wide_road_plc_rate" %}
+                        <div class="col-md-3">
+                            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                            {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                    <div class="col-12">
+                        <div class="rate-preview" data-rate-preview></div>
+                    </div>
+                </div>
+
+                <div class="simple-subsection mt-4">
+                    <div class="commission-section-head">
+                        <div>
+                            <h3>Role-wise Commission</h3>
+                            <span>Har role ke liye commission rule aur optional condition set karo.</span>
+                        </div>
+                        <span class="commission-rule-count">{{ commission_formset|length }} rules</span>
+                    </div>
+                    <div class="commission-rule-list">
+                        {% for commission_form in commission_formset %}
+                        <div class="commission-rule-card">
+                            {% for hidden in commission_form.hidden_fields %}{{ hidden }}{% endfor %}
+                            <div class="commission-field commission-role">
+                                <label>Role</label>
+                                {{ commission_form.role }}
+                            </div>
+                            <div class="commission-field">
+                                <label>Type</label>
+                                {{ commission_form.calculation_type }}
+                            </div>
+                            <div class="commission-field">
+                                <label>Value</label>
+                                {{ commission_form.value }}
+                            </div>
+                            <div class="commission-field commission-note">
+                                <label>Condition / Note</label>
+                                {{ commission_form.note }}
+                            </div>
+                            <label class="commission-toggle">
+                                {{ commission_form.is_active }}
+                                <span class="commission-toggle-track"></span>
+                                <span>Active</span>
+                            </label>
+                            {% if commission_form.DELETE %}
+                            <label class="commission-delete">
+                                {{ commission_form.DELETE }}
+                                <span>Remove</span>
+                            </label>
+                            {% endif %}
+                            {% for error in commission_form.non_field_errors %}<div class="text-danger small commission-error">{{ error }}</div>{% endfor %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </section>
+
+            <section class="property-step" data-step data-flow="land,built" data-step-title="Pricing">
+                <div class="section-title"><span>Step 4</span><h2>Pricing & Area</h2></div>
+                <div class="row g-3">
+                    {% for field in form %}
+                        {% if field.name == "price" or field.name == "price_per_sqft" or field.name == "area_sqft" or field.name == "carpet_area_sqft" or field.name == "builtup_area_sqft" or field.name == "length_ft" or field.name == "width_ft" or field.name == "facing" or field.name == "road_width_ft" %}
+                        <div class="col-md-3" data-field="{{ field.name }}">
+                            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                            {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="property-step" data-step data-flow="built" data-step-title="Unit">
+                <div class="section-title"><span>Step 5</span><h2>Unit Details</h2></div>
+                <div class="row g-3">
+                    {% for field in form %}
+                        {% if field.name == "bedrooms" or field.name == "bathrooms" or field.name == "balconies" or field.name == "floor_number" or field.name == "total_floors" or field.name == "parking_count" or field.name == "furnishing" or field.name == "construction_status" or field.name == "possession_status" %}
+                        <div class="col-md-3">
+                            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                            {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="property-step" data-step data-flow="colony" data-step-title="Inventory">
+                <div class="section-title"><span>Step 6</span><h2>Plot Inventory Setup</h2></div>
+                <div class="row g-3">
+                    {% for field in form %}
+                        {% if field.name == "total_plots" or field.name == "available_plots" or field.name == "development_status" %}
+                        <div class="col-md-3">
+                            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                            {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                {{ plot_formset.management_form }}
+                <div class="property-plot-toolbar mt-4">
+                    <div><strong>Plot Inventory Register</strong><span>Category rates, charges, and PLC percentages calculate each plot price automatically.</span></div>
+                    <div class="property-plot-toolbar-actions"><span class="plot-row-count" data-plot-row-count>0 plots</span><button type="button" class="btn btn-outline-primary btn-sm" data-sync-plots>Generate Rows</button></div>
+                </div>
+                <div class="table-responsive property-plot-table-wrap">
+                    <table class="table align-middle property-plot-grid">
+                        <thead>
+                            <tr class="plot-group-head"><th colspan="3">Identity</th><th colspan="5">Dimensions</th><th colspan="4">PLC Features</th><th colspan="4">Pricing</th><th colspan="2">Availability</th></tr>
+                            <tr><th>No.</th><th>Category</th><th>Block</th><th>Area</th><th>Length</th><th>Width</th><th>Facing</th><th>Road</th><th>Corner</th><th>Garden</th><th>Main Road</th><th>Wide Road</th><th>Base</th><th>PLC %</th><th>Charges</th><th>Price</th><th>Status</th><th>Notes</th></tr>
+                        </thead>
+                        <tbody>
+                        {% for plot_form in plot_formset %}
+                            <tr>
+                                {% for hidden in plot_form.hidden_fields %}{{ hidden }}{% endfor %}
+                                <td>{{ plot_form.plot_number }}</td><td>{{ plot_form.plot_category }}</td><td>{{ plot_form.block }}</td><td>{{ plot_form.area_sqft }}</td>
+                                <td>{{ plot_form.length_ft }}</td><td>{{ plot_form.width_ft }}</td><td>{{ plot_form.facing }}</td><td>{{ plot_form.road_width_ft }}</td>
+                                <td class="plot-toggle-cell">{{ plot_form.is_corner }}</td><td class="plot-toggle-cell">{{ plot_form.is_garden_facing }}</td><td class="plot-toggle-cell">{{ plot_form.is_main_road }}</td><td class="plot-toggle-cell">{{ plot_form.is_wide_road }}</td>
+                                <td>{{ plot_form.base_rate }}</td><td>{{ plot_form.plc_rate }}</td><td>{{ plot_form.extra_charges }}</td><td>{{ plot_form.price }}</td><td>{{ plot_form.status }}</td><td>{{ plot_form.notes }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <template data-plot-empty-row>
+                    <tr>
+                        {% for hidden in plot_formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
+                        <td>{{ plot_formset.empty_form.plot_number }}</td><td>{{ plot_formset.empty_form.plot_category }}</td><td>{{ plot_formset.empty_form.block }}</td><td>{{ plot_formset.empty_form.area_sqft }}</td>
+                        <td>{{ plot_formset.empty_form.length_ft }}</td><td>{{ plot_formset.empty_form.width_ft }}</td><td>{{ plot_formset.empty_form.facing }}</td><td>{{ plot_formset.empty_form.road_width_ft }}</td>
+                        <td class="plot-toggle-cell">{{ plot_formset.empty_form.is_corner }}</td><td class="plot-toggle-cell">{{ plot_formset.empty_form.is_garden_facing }}</td><td class="plot-toggle-cell">{{ plot_formset.empty_form.is_main_road }}</td><td class="plot-toggle-cell">{{ plot_formset.empty_form.is_wide_road }}</td>
+                        <td>{{ plot_formset.empty_form.base_rate }}</td><td>{{ plot_formset.empty_form.plc_rate }}</td><td>{{ plot_formset.empty_form.extra_charges }}</td><td>{{ plot_formset.empty_form.price }}</td><td>{{ plot_formset.empty_form.status }}</td><td>{{ plot_formset.empty_form.notes }}</td>
+                    </tr>
+                </template>
+            </section>
+
+            <section class="property-step" data-step data-flow="all" data-step-title="Media">
+                <div class="section-title"><span>Media</span><h2>Photos & Walkthrough Videos</h2></div>
+                <div class="row g-3">
+                    {% for field in form %}
+                        {% if field.name == "photos" or field.name == "map_layouts" or field.name == "cover_photo_index" or field.name == "video_link" or field.name == "video_links" %}
+                        <div class="{% if field.name == 'video_links' %}col-md-12 video-links-column{% elif field.name == 'photos' or field.name == 'map_layouts' %}col-md-6 media-upload-column{% else %}col-md-6{% endif %}">
+                            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {% if field.name == "photos" or field.name == "map_layouts" %}
+                            <label class="media-upload-card" for="{{ field.id_for_label }}">
+                                <span class="media-upload-icon">{% if field.name == "map_layouts" %}MAP{% else %}IMG{% endif %}</span>
+                                <span>
+                                    <strong>{% if field.name == "map_layouts" %}Upload Map / Layout{% else %}Upload Multiple Photos{% endif %}</strong>
+                                    <small>{% if field.name == "map_layouts" %}PDF or image files{% else %}Select several images together{% endif %}</small>
+                                </span>
+                            </label>
+                            <div class="media-upload-input">{{ field }}</div>
+                            <div class="media-file-summary" data-file-summary="{{ field.id_for_label }}">No files selected</div>
+                            {% elif field.name == "video_links" %}
+                            <div class="video-link-builder" data-video-link-builder>
+                                <div class="video-link-rows" data-video-link-rows></div>
+                                <button type="button" class="btn btn-outline-primary btn-sm" data-add-video-link>Add Video Link</button>
+                                <div hidden>{{ field }}</div>
+                            </div>
+                            {% else %}
+                            {{ field }}
+                            {% endif %}
+                            {% if field.help_text %}<div class="text-body small mt-1">{{ field.help_text }}</div>{% endif %}
+                            {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="property-step" data-step data-flow="all" data-step-title="Legal">
+                <div class="section-title"><span>Final</span><h2>Legal & Contact</h2></div>
+                <div class="row g-3">
+                    {% for field in form %}
+                        {% if field.name == "rera_number" or field.name == "tcp_approval_number" or field.name == "registry_status" or field.name == "khasra_number" or field.name == "legal_status" or field.name == "legal_notes" or field.name == "contact_name" or field.name == "contact_phone" or field.name == "internal_notes" %}
+                        <div class="col-md-6">
+                            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.help_text %}<div class="text-body small mt-1">{{ field.help_text }}</div>{% endif %}
+                            {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                    <div class="col-12">
+                        <div class="legal-document-builder" data-document-builder>
+                            <div class="legal-document-head">
+                                <div><strong>Property Documents</strong><span>Upload each document separately with the correct document type.</span></div>
+                                <button type="button" class="btn btn-outline-primary btn-sm" data-add-document>Add Document</button>
+                            </div>
+                            <div class="legal-document-rows" data-document-rows></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <div class="property-step-actions">
+                <a href="{% if mode == 'edit' and property_obj %}{% url 'properties:detail' property_obj.id %}{% else %}{% url 'properties:list' %}{% endif %}" class="btn btn-light">Cancel</a>
+                <button type="button" class="btn btn-outline-primary" data-prev-step>Back</button>
+                <button type="button" class="btn btn-primary" data-next-step>Next</button>
+                <button type="submit" class="btn btn-primary" data-submit-step>{% if mode == "edit" %}Update Property{% else %}Save Property{% endif %}</button>
+            </div>
         </div>
-    </section>
+    </div>
 </form>
 
-<style>
-  .property-wizard-shell {
-    background: #fff;
-    border: 1px solid #eadcc1;
-    border-radius: 4px;
-    padding: 18px;
-  }
-  .property-wizard-title {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 14px;
-  }
-  .property-wizard-title span {
-    display: block;
-    color: #c2680f;
-    font-size: 11px;
-    font-weight: 800;
-    text-transform: uppercase;
-  }
-  .property-wizard-title h2 {
-    margin: 2px 0 0;
-    color: #26221d;
-    font-size: 18px;
-    font-weight: 800;
-  }
-  .property-wizard-title p {
-    margin: 0;
-    color: #776d60;
-    font-size: 12px;
-  }
-  .property-stepper {
-    display: flex;
-    gap: 8px;
-    overflow-x: auto;
-    padding: 0 0 10px;
-    margin: 0 0 16px;
-    border-bottom: 1px solid #f0e5d4;
-  }
-  .property-step-progress {
-    height: 3px;
-    background: #f3eadc;
-    margin: -7px 0 16px;
-  }
-  .property-step-progress span {
-    display: block;
-    height: 100%;
-    width: 0;
-    background: #f57f17;
-    transition: width .18s ease;
-  }
-  .property-step-dot {
-    flex: 0 0 132px;
-    border: 1px solid #eadcc1;
-    background: #fff;
-    border-radius: 4px;
-    color: #776d60;
-    display: grid;
-    grid-template-columns: 28px 1fr;
-    grid-template-rows: auto auto;
-    column-gap: 8px;
-    align-items: center;
-    text-align: left;
-    padding: 8px 10px;
-  }
-  .property-step-dot span {
-    grid-row: 1 / span 2;
-    width: 28px;
-    height: 28px;
-    border-radius: 4px;
-    display: grid;
-    place-items: center;
-    background: #fffaf2;
-    border: 1px solid #e3d5c0;
-    font-weight: 800;
-    font-size: 12px;
-  }
-  .property-step-dot strong {
-    color: #342f28;
-    font-size: 12px;
-    line-height: 1.2;
-  }
-  .property-step-dot small {
-    color: #8b8175;
-    font-size: 11px;
-    line-height: 1.2;
-  }
-  .property-step-dot.active {
-    border-color: #f57f17;
-    background: #fffaf2;
-  }
-  .property-step-dot:disabled {
-    opacity: .55;
-    cursor: not-allowed;
-  }
-  .property-step-dot.active span,
-  .property-step-dot.done span {
-    background: #f57f17;
-    border-color: #f57f17;
-    color: #fff;
-  }
-  .property-step-dot[hidden],
-  .property-step-panel[hidden] {
-    display: none !important;
-  }
-  .property-step-panel {
-    display: none;
-    min-height: 300px;
-  }
-  .property-step-error {
-    margin: 0 0 14px;
-    border: 1px solid #f2b8b5;
-    border-radius: 4px;
-    background: #fff4f3;
-    color: #9f1c16;
-    padding: 10px 12px;
-    font-size: 13px;
-    font-weight: 700;
-  }
-  .property-wizard-pro .field-error {
-    border-color: #d93025 !important;
-    box-shadow: 0 0 0 .12rem rgba(217, 48, 37, .12);
-  }
-  .property-step-panel.active {
-    display: block;
-  }
-  .property-step-head {
-    margin-bottom: 16px;
-  }
-  .property-step-head h3 {
-    margin: 0 0 4px;
-    color: #26221d;
-    font-size: 16px;
-    font-weight: 800;
-  }
-  .property-step-head p {
-    margin: 0;
-    color: #776d60;
-    font-size: 12px;
-  }
-  .property-wizard-pro .form-label {
-    color: #4e473f;
-    font-size: 12px;
-    font-weight: 700;
-  }
-  .property-wizard-pro .form-control,
-  .property-wizard-pro .form-select {
-    border-radius: 4px;
-    min-height: 42px;
-  }
-  .property-wizard-actions {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-    margin-top: 16px;
-    padding-top: 14px;
-    border-top: 1px solid #f0e5d4;
-  }
-  .property-wizard-actions .btn {
-    min-width: 108px;
-  }
-  .property-review-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
-  }
-  .property-review-grid div {
-    border: 1px solid #eadcc1;
-    border-radius: 4px;
-    padding: 12px;
-    background: #fff;
-  }
-  .property-review-grid span {
-    display: block;
-    color: #776d60;
-    font-size: 11px;
-    margin-bottom: 4px;
-  }
-  .property-review-grid strong {
-    color: #26221d;
-    font-size: 13px;
-  }
-  .property-plot-grid input,
-  .property-plot-grid select {
-    min-width: 108px;
-  }
-  .amenity-check-grid ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 6px;
-  }
-  .amenity-check-grid label {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    color: #4e473f;
-    font-size: 12px;
-  }
-  .property-plot-toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    border: 1px solid #eadcc1;
-    background: #fffaf2;
-    padding: 10px 12px;
-    margin-bottom: 12px;
-  }
-  .property-plot-toolbar strong,
-  .property-plot-toolbar span {
-    display: block;
-  }
-  .property-plot-toolbar strong {
-    color: #26221d;
-    font-size: 13px;
-  }
-  .property-plot-toolbar span {
-    color: #776d60;
-    font-size: 12px;
-  }
-  .property-plot-grid tr[hidden] {
-    display: none !important;
-  }
-  @media (max-width: 767px) {
-    .property-wizard-title {
-      display: block;
-    }
-    .property-wizard-title p {
-      margin-top: 4px;
-    }
-    .property-review-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-</style>
 
 <script>
   document.addEventListener("DOMContentLoaded", () => {
-    const form = document.querySelector("[data-property-wizard]");
+    const form = document.querySelector("[data-property-form]");
     if (!form) return;
-    const category = form.querySelector("[data-property-category]");
-    const panels = [...form.querySelectorAll("[data-step]")];
-    const dots = [...form.querySelectorAll("[data-step-target]")];
-    const back = form.querySelector("[data-wizard-back]");
-    const next = form.querySelector("[data-wizard-next]");
-    const submit = form.querySelector("[data-wizard-submit]");
-    const stepError = form.querySelector("[data-step-error]");
-    const progressBar = form.querySelector("[data-step-progress-bar]");
-    const totalPlotsInput = form.querySelector("[name='total_plots']");
-    const syncPlotsButton = form.querySelector("[data-sync-plots]");
-    const plotTableBody = form.querySelector(".property-plot-grid tbody");
-    const plotEmptyRow = form.querySelector("[data-plot-empty-row]");
+    const categoryInputs = [...form.querySelectorAll("input[name='category']")];
+    const hiddenCategory = form.querySelector("select[data-property-category]");
+    if (hiddenCategory) hiddenCategory.hidden = true;
+    const nav = form.querySelector("[data-step-nav]");
+    const allSteps = [...form.querySelectorAll("[data-step]")];
     const builtCategories = new Set(["flat", "residential_house", "commercial_shop", "row_house", "villa", "farm_house", "office", "warehouse"]);
     const landCategories = new Set(["plot", "resale_plot", "agricultural_land"]);
-    let currentIndex = 0;
-    let maxUnlockedIndex = 0;
+    let activeIndex = 0;
 
-    const getVisibleSteps = () => {
-      const value = category?.value || "";
-      return [0, 1, 2, builtCategories.has(value) ? 3 : null, value === "colony" ? 4 : null, 5, 6].filter((step) => step !== null);
-    };
-
-    const syncCategoryFields = () => {
-      const value = category?.value || "";
-      const isLand = landCategories.has(value) || value === "colony";
-      const isBuilt = builtCategories.has(value);
-      form.querySelectorAll("[data-field='carpet_area_sqft'], [data-field='builtup_area_sqft']").forEach((node) => node.style.display = isBuilt ? "" : "none");
-      form.querySelectorAll("[data-field='length_ft'], [data-field='width_ft'], [data-field='road_width_ft']").forEach((node) => node.style.display = isLand ? "" : "none");
-    };
-
-    const updateReview = () => {
-      form.querySelectorAll("[data-review]").forEach((target) => {
-        const name = target.dataset.review;
-        const input = form.querySelector(`[name="${name}"]`);
-        if (!input) return;
-        const value = input.options ? input.options[input.selectedIndex]?.text : input.value;
-        target.textContent = value || "-";
+    const currentCategory = () => categoryInputs.find((input) => input.checked)?.value || hiddenCategory?.value || "plot";
+    const flowFor = (category) => category === "colony" ? "colony" : (builtCategories.has(category) ? "built" : "land");
+    const visibleSteps = () => {
+      const flow = flowFor(currentCategory());
+      return allSteps.filter((step) => {
+        const flows = (step.dataset.flow || "").split(",");
+        return flows.includes("all") || flows.includes(flow);
       });
     };
 
-    const field = (name) => form.querySelector(`[name="${name}"]`);
-    const fieldValue = (name) => (field(name)?.value || "").trim();
-    const showStepError = (message) => {
-      if (!stepError) return;
-      stepError.textContent = message;
-      stepError.hidden = false;
+    form.querySelectorAll(".media-upload-column input[type='file']").forEach((input) => {
+      const summary = form.querySelector(`[data-file-summary='${input.id}']`);
+      input.addEventListener("change", () => {
+        if (!summary) return;
+        const names = [...input.files].map((file) => file.name);
+        summary.textContent = names.length ? `${names.length} file${names.length === 1 ? "" : "s"} selected: ${names.join(", ")}` : "No files selected";
+      });
+    });
+
+    const videoBuilder = form.querySelector("[data-video-link-builder]");
+    const videoLinksField = videoBuilder?.querySelector("textarea");
+    const videoLinkRows = videoBuilder?.querySelector("[data-video-link-rows]");
+    const syncVideoLinks = () => {
+      if (!videoLinksField || !videoLinkRows) return;
+      videoLinksField.value = [...videoLinkRows.querySelectorAll("input")]
+        .map((input) => input.value.trim())
+        .filter(Boolean)
+        .join("\n");
     };
-    const clearStepError = () => {
-      if (!stepError) return;
-      stepError.textContent = "";
-      stepError.hidden = true;
-      form.querySelectorAll(".field-error").forEach((input) => input.classList.remove("field-error"));
+    const addVideoLinkRow = (value = "") => {
+      if (!videoLinkRows) return;
+      const row = document.createElement("div");
+      row.className = "video-link-row";
+      row.innerHTML = `<input type="url" class="form-control" placeholder="YouTube or Drive video link"><button type="button" class="btn btn-light btn-sm video-link-remove">Remove</button>`;
+      row.querySelector("input").value = value;
+      row.querySelector("input").addEventListener("input", syncVideoLinks);
+      row.querySelector("button").addEventListener("click", () => {
+        row.remove();
+        if (!videoLinkRows.children.length) addVideoLinkRow();
+        syncVideoLinks();
+      });
+      videoLinkRows.appendChild(row);
     };
-    const markInvalid = (names) => {
-      names.forEach((name) => field(name)?.classList.add("field-error"));
-      field(names[0])?.focus();
+    if (videoLinksField) {
+      const existingLinks = videoLinksField.value.split(/\r?\n/).map((value) => value.trim()).filter(Boolean);
+      (existingLinks.length ? existingLinks : [""]).forEach(addVideoLinkRow);
+      videoBuilder.querySelector("[data-add-video-link]")?.addEventListener("click", () => addVideoLinkRow());
+      form.addEventListener("submit", syncVideoLinks);
+    }
+
+    const documentRows = form.querySelector("[data-document-rows]");
+    const documentTypeOptions = `{% for value, label in form.document_type.field.choices %}<option value="{{ value|escapejs }}">{{ label|escapejs }}</option>{% endfor %}`;
+    const addDocumentRow = () => {
+      if (!documentRows) return;
+      const row = document.createElement("div");
+      row.className = "legal-document-row";
+      row.innerHTML = `<select class="form-control" name="document_types" aria-label="Document type">${documentTypeOptions}</select><input class="form-control" type="file" name="document_files" accept=".pdf,image/*"><button type="button" class="btn btn-light btn-sm">Remove</button>`;
+      row.querySelector("button").addEventListener("click", () => {
+        row.remove();
+        if (!documentRows.children.length) addDocumentRow();
+      });
+      documentRows.appendChild(row);
     };
-    const validateCurrentStep = () => {
-      clearStepError();
-      const visibleSteps = getVisibleSteps();
-      const activeStep = visibleSteps[currentIndex];
-      const categoryValue = category?.value || "";
-      const missing = [];
-      if (activeStep === 0) {
-        ["title", "category", "listing_for", "status"].forEach((name) => {
-          if (!fieldValue(name)) missing.push(name);
+    if (documentRows) {
+      addDocumentRow();
+      form.querySelector("[data-add-document]")?.addEventListener("click", addDocumentRow);
+      form.addEventListener("submit", () => {
+        documentRows.querySelectorAll(".legal-document-row").forEach((row) => {
+          if (!row.querySelector("input[type='file']")?.files.length) row.querySelector("select").disabled = true;
         });
-      }
-      if (activeStep === 1) {
-        ["city", "address"].forEach((name) => {
-          if (!fieldValue(name)) missing.push(name);
-        });
-      }
-      if (activeStep === 2) {
-        ["price", "area_sqft"].forEach((name) => {
-          if (!fieldValue(name) || Number(fieldValue(name)) <= 0) missing.push(name);
-        });
-        if ((landCategories.has(categoryValue) || categoryValue === "colony") && (!fieldValue("length_ft") || !fieldValue("width_ft"))) {
-          missing.push("length_ft", "width_ft");
-        }
-        if (builtCategories.has(categoryValue) && (!fieldValue("carpet_area_sqft") && !fieldValue("builtup_area_sqft"))) {
-          missing.push("carpet_area_sqft", "builtup_area_sqft");
-        }
-      }
-      if (activeStep === 3) {
-        if (!fieldValue("bedrooms") || Number(fieldValue("bedrooms")) <= 0) missing.push("bedrooms");
-        if (!fieldValue("bathrooms") || Number(fieldValue("bathrooms")) <= 0) missing.push("bathrooms");
-      }
-      if (activeStep === 4) {
-        ["colony_name", "total_plots"].forEach((name) => {
-          if (!fieldValue(name) || (name === "total_plots" && Number(fieldValue(name)) <= 0)) missing.push(name);
-        });
-        const requestedPlots = Number(fieldValue("total_plots")) || 0;
-        syncPlotRows();
-        for (let index = 0; index < requestedPlots; index += 1) {
-          ["plot_number", "area_sqft", "price"].forEach((name) => {
-            const input = form.querySelector(`[name="plots-${index}-${name}"]`);
-            if (!input || !String(input.value || "").trim() || (["area_sqft", "price"].includes(name) && Number(input.value) <= 0)) {
-              input?.classList.add("field-error");
-              missing.push(`plots-${index}-${name}`);
-            }
-          });
-        }
-      }
-      if (missing.length) {
-        markInvalid([...new Set(missing)]);
-        showStepError("Complete the required fields in this step before continuing.");
-        return false;
-      }
-      return true;
+      });
+    }
+
+    const renderRatePreview = () => {
+      const preview = form.querySelector("[data-rate-preview]");
+      if (!preview) return;
+      const chargeNames = ["electricity_charge", "maintenance_charge", "development_charge", "registry_charge", "other_charge"];
+      const charges = chargeNames.reduce((sum, name) => sum + Number(form.querySelector(`[name='${name}']`)?.value || 0), 0);
+      const rates = [
+        ["Residential", "residential_rate_per_sqft"],
+        ["Commercial", "commercial_rate_per_sqft"],
+        ["LIG", "lig_rate_per_sqft"],
+        ["MIG", "mig_rate_per_sqft"],
+        ["HIG", "hig_rate_per_sqft"],
+        ["EWS", "ews_rate_per_sqft"],
+      ];
+      preview.innerHTML = rates.map(([label, name]) => {
+        const base = Number(form.querySelector(`[name='${name}']`)?.value || 0);
+        return `<div class="rate-preview-item"><span>${label}</span><strong>${(base + charges).toFixed(2)} / sqft</strong></div>`;
+      }).join("");
     };
+
+    const colonyChargePerSqft = () => ["electricity_charge", "maintenance_charge", "development_charge", "registry_charge", "other_charge"]
+      .reduce((sum, name) => sum + Number(form.querySelector(`[name='${name}']`)?.value || 0), 0);
+
+    const categoryRate = (category) => {
+      const map = {
+        residential: "residential_rate_per_sqft",
+        commercial: "commercial_rate_per_sqft",
+        lig: "lig_rate_per_sqft",
+        mig: "mig_rate_per_sqft",
+        hig: "hig_rate_per_sqft",
+        ews: "ews_rate_per_sqft",
+      };
+      const fieldName = map[category] || "base_rate_per_sqft";
+      return Number(form.querySelector(`[name='${fieldName}']`)?.value || form.querySelector("[name='base_rate_per_sqft']")?.value || 0);
+    };
+
+    const syncPlotPrice = (row) => {
+      if (!row) return;
+      const get = (suffix) => row.querySelector(`[name$='-${suffix}']`);
+      const area = Number(get("area_sqft")?.value || 0);
+      const category = get("plot_category")?.value || "";
+      const baseInput = get("base_rate");
+      const plcInput = get("plc_rate");
+      const chargesInput = get("extra_charges");
+      const priceInput = get("price");
+      const isCorner = get("is_corner")?.checked;
+      const isGarden = get("is_garden_facing")?.checked;
+      const isMainRoad = get("is_main_road")?.checked;
+      const isWideRoad = get("is_wide_road")?.checked;
+      const baseRate = categoryRate(category);
+      const plcRate = (isCorner ? Number(form.querySelector("[name='corner_plc_rate']")?.value || 0) : 0)
+        + (isGarden ? Number(form.querySelector("[name='garden_facing_plc_rate']")?.value || 0) : 0)
+        + (isMainRoad ? Number(form.querySelector("[name='main_road_plc_rate']")?.value || 0) : 0)
+        + (isWideRoad ? Number(form.querySelector("[name='wide_road_plc_rate']")?.value || 0) : 0);
+      const charges = area * colonyChargePerSqft();
+      if (baseInput) baseInput.value = baseRate.toFixed(2);
+      if (plcInput) plcInput.value = plcRate.toFixed(2);
+      if (chargesInput) chargesInput.value = charges.toFixed(2);
+      const baseAmount = area * baseRate;
+      if (priceInput) priceInput.value = (baseAmount + (baseAmount * plcRate / 100) + charges).toFixed(2);
+    };
+
+    const syncAllPlotPrices = () => form.querySelectorAll(".property-plot-grid tbody tr").forEach(syncPlotPrice);
+
+    const render = () => {
+      const steps = visibleSteps();
+      if (activeIndex >= steps.length) activeIndex = steps.length - 1;
+      if (activeIndex < 0) activeIndex = 0;
+      allSteps.forEach((step) => step.hidden = !steps.includes(step) || step !== steps[activeIndex]);
+      form.querySelectorAll("[data-colony-only]").forEach((node) => node.hidden = currentCategory() !== "colony");
+      nav.innerHTML = steps.map((step, index) => `<button type="button" class="step-pill ${index === activeIndex ? "is-active" : ""}" data-jump-step="${index}">${index + 1}. ${step.dataset.stepTitle}</button>`).join("");
+      form.querySelector("[data-prev-step]").hidden = activeIndex === 0;
+      form.querySelector("[data-next-step]").hidden = activeIndex === steps.length - 1;
+      form.querySelector("[data-submit-step]").hidden = activeIndex !== steps.length - 1;
+      const activeStep = steps[activeIndex];
+      const title = activeStep?.dataset.stepTitle || "Property Details";
+      const helpByStep = {
+        Category: "Select the property category to show only relevant fields.",
+        Basic: "Add the listing name, status, developer, and responsible team member.",
+        Location: "Enter the address and map information clients and teams will use.",
+        Amenities: "Select ready amenities and add nearby infrastructure details.",
+        Pricing: "Set rates, charges, PLC percentages, and commission rules.",
+        Inventory: "Generate plot rows and complete plot-wise inventory details.",
+        Unit: "Enter built-property configuration and possession details.",
+        Media: "Upload property photos, layouts, and walkthrough video links.",
+        Legal: "Add legal information, contacts, notes, and separate documents.",
+      };
+      const progressText = form.querySelector("[data-step-progress-text]");
+      const currentTitle = form.querySelector("[data-step-current-title]");
+      const stepHelp = form.querySelector("[data-step-help]");
+      if (progressText) progressText.textContent = `Step ${activeIndex + 1} of ${steps.length}`;
+      if (currentTitle) currentTitle.textContent = title;
+      if (stepHelp) stepHelp.textContent = helpByStep[title] || "Complete the fields in this section.";
+      renderRatePreview();
+      syncAllPlotPrices();
+    };
+
     const syncPlotRows = () => {
       const initialForms = Number(form.querySelector("[name='plots-INITIAL_FORMS']")?.value || 0);
-      const requested = Math.max(initialForms, Number(totalPlotsInput?.value || 0));
+      const requested = Math.max(initialForms, Number(form.querySelector("[name='total_plots']")?.value || 0));
       const totalForms = form.querySelector("[name='plots-TOTAL_FORMS']");
+      const plotTableBody = form.querySelector(".property-plot-grid tbody");
+      const plotEmptyRow = form.querySelector("[data-plot-empty-row]");
       if (!plotTableBody || !plotEmptyRow || !totalForms) return;
       let currentRows = plotTableBody.querySelectorAll("tr").length;
       while (currentRows < requested) {
-        const html = plotEmptyRow.innerHTML.replaceAll("__prefix__", String(currentRows));
-        plotTableBody.insertAdjacentHTML("beforeend", html);
+        plotTableBody.insertAdjacentHTML("beforeend", plotEmptyRow.innerHTML.replaceAll("__prefix__", String(currentRows)));
         currentRows += 1;
       }
       while (currentRows > requested) {
@@ -589,79 +580,40 @@
         currentRows -= 1;
       }
       totalForms.value = String(requested);
+      const rowCount = form.querySelector("[data-plot-row-count]");
+      if (rowCount) rowCount.textContent = `${requested} plot${requested === 1 ? "" : "s"}`;
+      syncAllPlotPrices();
     };
 
-    const renderStep = () => {
-      const visibleSteps = getVisibleSteps();
-      if (currentIndex >= visibleSteps.length) currentIndex = visibleSteps.length - 1;
-      const activeStep = visibleSteps[currentIndex];
-      panels.forEach((panel) => {
-        const step = Number(panel.dataset.step);
-        panel.hidden = !visibleSteps.includes(step);
-        panel.classList.toggle("active", step === activeStep);
-      });
-      dots.forEach((dot) => {
-        const step = Number(dot.dataset.stepTarget);
-        const visible = visibleSteps.includes(step);
-        const stepIndex = visibleSteps.indexOf(step);
-        dot.hidden = !visible;
-        dot.classList.toggle("active", step === activeStep);
-        dot.classList.toggle("done", visible && stepIndex < currentIndex);
-        dot.disabled = visible && stepIndex > maxUnlockedIndex;
-      });
-      back.style.visibility = currentIndex === 0 ? "hidden" : "visible";
-      next.hidden = currentIndex === visibleSteps.length - 1;
-      submit.hidden = currentIndex !== visibleSteps.length - 1;
-      syncCategoryFields();
-      syncPlotRows();
-      updateReview();
-      if (progressBar) {
-        progressBar.style.width = `${((currentIndex + 1) / visibleSteps.length) * 100}%`;
-      }
-    };
-
-    dots.forEach((dot) => {
-      dot.addEventListener("click", () => {
-        const visibleSteps = getVisibleSteps();
-        const index = visibleSteps.indexOf(Number(dot.dataset.stepTarget));
-        if (index >= 0 && index <= maxUnlockedIndex) {
-          currentIndex = index;
-          renderStep();
-        }
-      });
+    categoryInputs.forEach((input) => input.addEventListener("change", () => {
+      if (hiddenCategory) hiddenCategory.value = input.value;
+      activeIndex = 1;
+      render();
+    }));
+    form.querySelector("[data-next-step]")?.addEventListener("click", () => { activeIndex += 1; render(); window.scrollTo({ top: form.offsetTop - 12, behavior: "smooth" }); });
+    form.querySelector("[data-prev-step]")?.addEventListener("click", () => { activeIndex -= 1; render(); window.scrollTo({ top: form.offsetTop - 12, behavior: "smooth" }); });
+    nav.addEventListener("click", (event) => {
+      const target = event.target.closest("[data-jump-step]");
+      if (!target) return;
+      activeIndex = Number(target.dataset.jumpStep || 0);
+      render();
     });
-    next.addEventListener("click", () => {
-      if (!validateCurrentStep()) return;
-      currentIndex += 1;
-      maxUnlockedIndex = Math.max(maxUnlockedIndex, currentIndex);
-      renderStep();
+    form.querySelector("[data-sync-plots]")?.addEventListener("click", syncPlotRows);
+    form.querySelector("[name='total_plots']")?.addEventListener("input", syncPlotRows);
+    form.addEventListener("input", (event) => {
+      renderRatePreview();
+      const plotRow = event.target.closest(".property-plot-grid tbody tr");
+      syncPlotPrice(plotRow);
+      if (!plotRow) syncAllPlotPrices();
     });
-    back.addEventListener("click", () => {
-      currentIndex = Math.max(0, currentIndex - 1);
-      renderStep();
+    form.addEventListener("change", (event) => {
+      renderRatePreview();
+      const plotRow = event.target.closest(".property-plot-grid tbody tr");
+      syncPlotPrice(plotRow);
+      if (!plotRow) syncAllPlotPrices();
     });
-    category?.addEventListener("change", () => {
-      currentIndex = 0;
-      maxUnlockedIndex = 0;
-      clearStepError();
-      renderStep();
-    });
-    totalPlotsInput?.addEventListener("input", syncPlotRows);
-    syncPlotsButton?.addEventListener("click", syncPlotRows);
-    form.addEventListener("input", () => {
-      clearStepError();
-      updateReview();
-    });
-    form.addEventListener("change", () => {
-      clearStepError();
-      updateReview();
-    });
-    form.addEventListener("submit", (event) => {
-      if (!validateCurrentStep()) {
-        event.preventDefault();
-      }
-    });
-    renderStep();
+    render();
+    syncPlotRows();
   });
 </script>
 {% endblock %}

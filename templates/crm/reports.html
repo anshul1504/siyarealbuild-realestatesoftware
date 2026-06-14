@@ -1,10 +1,11 @@
 {% extends "base.html" %}
 {% block title %}CRM Reports - Siya Real Build{% endblock %}
 {% block content %}
-<div class="app-page-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+<section class="real-dashboard-hero">
     <div>
-        <h1 class="app-page-title mb-0">CRM Reports</h1>
-        <p class="text-body mb-0">Source, status, priority, overdue and Meta sync insights.</p>
+        <span class="dashboard-eyebrow">Sales Intelligence</span>
+        <h1>CRM Performance Reports</h1>
+        <p>Review acquisition, ownership, conversion, loss, follow-up, and integration health.</p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
         <a class="btn btn-light" href="{% url 'crm:dashboard' %}">CRM Dashboard</a>
@@ -16,11 +17,18 @@
         <a class="btn btn-primary" href="{% url 'crm:lead_export' %}">Export Leads</a>
         {% endif %}
     </div>
-</div>
+</section>
+
+<section class="dashboard-kpi-grid">
+    <article class="dashboard-kpi-card"><span>Total Leads</span><strong>{{ total_leads }}</strong><small>Visible CRM records</small></article>
+    <article class="dashboard-kpi-card"><span>Converted</span><strong>{{ converted_count }}</strong><small>{{ conversion_percent }}% conversion rate</small></article>
+    <article class="dashboard-kpi-card"><span>Lost</span><strong>{{ lost_count }}</strong><small>{{ lost_percent }}% loss rate</small></article>
+    <article class="dashboard-kpi-card"><span>Meta Failures</span><strong>{{ failed_meta_count|default:0 }}</strong><small>Integration events needing review</small></article>
+</section>
 
 <div class="row g-4">
     <div class="col-xl-4">
-        <section class="profile-panel h-100">
+        <section class="dashboard-panel h-100">
             <div class="profile-panel-head"><div><h2>Conversion</h2><p>Closed/booked versus total leads.</p></div></div>
             <div class="profile-detail-grid">
                 <div><span>Total Leads</span><strong>{{ total_leads }}</strong></div>
@@ -30,19 +38,19 @@
         </section>
     </div>
     <div class="col-xl-4">
-        <section class="profile-panel h-100">
+        <section class="dashboard-panel h-100">
             <div class="profile-panel-head"><div><h2>By Source</h2><p>Lead acquisition split.</p></div></div>
             {% for item in source_counts %}<div class="d-flex justify-content-between py-2 border-bottom"><span>{{ item.label }}</span><strong>{{ item.count }}</strong></div>{% endfor %}
         </section>
     </div>
     <div class="col-xl-4">
-        <section class="profile-panel h-100">
+        <section class="dashboard-panel h-100">
             <div class="profile-panel-head"><div><h2>By Status</h2><p>Pipeline health.</p></div></div>
             {% for item in status_counts %}<div class="d-flex justify-content-between py-2 border-bottom"><span>{{ item.label }}</span><strong>{{ item.count }}</strong></div>{% endfor %}
         </section>
     </div>
     <div class="col-xl-4">
-        <section class="profile-panel h-100">
+        <section class="dashboard-panel h-100">
             <div class="profile-panel-head"><div><h2>By Priority</h2><p>Urgency split.</p></div></div>
             {% for item in priority_counts %}<div class="d-flex justify-content-between py-2 border-bottom"><span>{{ item.label }}</span><strong>{{ item.count }}</strong></div>{% endfor %}
         </section>

@@ -14,6 +14,7 @@ urlpatterns = [
     path("reports/", views.crm_reports, name="reports"),
     path("export/", views.lead_export, name="lead_export"),
     path("new/", views.lead_create, name="lead_create"),
+    path("leads/new/", views.lead_create, name="lead_create_alias"),
     path("assignment-rules/", views.assignment_rule_list, name="assignment_rule_list"),
     path("assignment-rules/new/", views.assignment_rule_create, name="assignment_rule_create"),
     path("assignment-rules/<int:rule_id>/edit/", views.assignment_rule_edit, name="assignment_rule_edit"),

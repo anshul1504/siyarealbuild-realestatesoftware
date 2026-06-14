@@ -1,6 +1,7 @@
 from .models import CompanyProfile, Role, UserProfile
 from .marketing import can_perform_marketing
 from .operations import can_perform_operations
+from properties.policies import can_create_property, can_export_properties, can_manage_properties, can_restore_property
 
 
 def dashboard_access(request):
@@ -31,8 +32,10 @@ def dashboard_access(request):
         "dashboard_can_manage_team": is_owner or is_manager,
         "dashboard_can_view_profiles": is_owner or is_manager or is_tl,
         "dashboard_can_manage_access": is_owner,
-        "dashboard_can_manage_properties": is_owner or is_manager or is_tl,
-        "dashboard_can_add_property": is_owner or is_manager,
+        "dashboard_can_manage_properties": can_manage_properties(request.user),
+        "dashboard_can_add_property": can_create_property(request.user),
+        "dashboard_can_export_properties": can_export_properties(request.user),
+        "dashboard_can_restore_properties": can_restore_property(request.user),
         "dashboard_can_manage_marketing": is_owner or can_perform_marketing(user_profile, "view"),
         "dashboard_can_manage_operations": is_owner or can_perform_operations(user_profile, "view"),
     }

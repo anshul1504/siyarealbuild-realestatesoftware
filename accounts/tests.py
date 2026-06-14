@@ -898,6 +898,22 @@ class SignupApprovalEmailTests(TestCase):
         self.assertContains(response, "Open Support")
         self.assertContains(response, "Active Targets")
 
+    def test_owner_core_checklist_renders_all_image_items(self):
+        User = get_user_model()
+        company = CompanyProfile.objects.create(name="Siya Real Build")
+        owner = User.objects.create_user(username="owner@example.com", email="owner@example.com")
+        UserProfile.objects.create(user=owner, role=Role.COMPANY_OWNER, company=company)
+        self.client.force_login(owner)
+
+        response = self.client.get(reverse("accounts:owner_core_checklist"))
+
+        self.assertContains(response, "Core Checklist")
+        self.assertContains(response, "Pending</span><strong>0")
+        self.assertContains(response, "Company detail add/edit")
+        self.assertContains(response, "Coupon during booking")
+        self.assertContains(response, "Role matrix manage")
+        self.assertContains(response, "Change employee email")
+
     def test_support_status_update_records_note_and_audit(self):
         User = get_user_model()
         company = CompanyProfile.objects.create(name="Siya Real Build")

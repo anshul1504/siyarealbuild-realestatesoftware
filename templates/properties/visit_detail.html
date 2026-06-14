@@ -19,17 +19,26 @@
         <div><span>Client Phone</span><strong>{{ visit.client_phone|default:"-" }}</strong></div>
         <div><span>Client Email</span><strong>{{ visit.client_email|default:"-" }}</strong></div>
         <div><span>Visit Date</span><strong>{{ visit.visit_at|date:"d M Y, h:i A" }}</strong></div>
-        <div><span>Assigned Employee</span><strong>{{ visit.assigned_employee.get_full_name|default:visit.assigned_employee.email|default:"-" }}</strong></div>
-        <div><span>Scheduled By</span><strong>{{ visit.scheduled_by.get_full_name|default:visit.scheduled_by.email|default:"-" }}</strong></div>
+        <div><span>Assigned Employee</span><strong>{% if visit.assigned_employee %}{{ visit.assigned_employee.get_full_name|default:visit.assigned_employee.email }}{% else %}-{% endif %}</strong></div>
+        <div><span>Scheduled By</span><strong>{% if visit.scheduled_by %}{{ visit.scheduled_by.get_full_name|default:visit.scheduled_by.email }}{% else %}-{% endif %}</strong></div>
         <div><span>Specific Plot</span><strong>{% if visit.plot %}<a href="{% url 'properties:plot_detail' property_obj.id visit.plot.id %}">{{ visit.plot.plot_number }}</a>{% else %}-{% endif %}</strong></div>
         <div><span>Status</span><strong>{{ visit.get_status_display }}</strong></div>
         <div><span>Outcome</span><strong>{{ visit.get_outcome_display }}</strong></div>
+        <div>
+            <span>Site Photo</span>
+            <strong>{% if visit.image %}<a href="{{ visit.image.url }}" target="_blank" rel="noopener">View Image</a>{% else %}-{% endif %}</strong>
+        </div>
         <div><span>Follow-up</span><strong>{% if visit.follow_up_at %}{{ visit.follow_up_at|date:"d M Y, h:i A" }}{% else %}-{% endif %}</strong></div>
         <div><span>Follow-up Completed</span><strong>{{ visit.follow_up_completed_at|date:"d M Y, h:i A"|default:"-" }}</strong></div>
         <div><span>Converted At</span><strong>{{ visit.converted_at|date:"d M Y, h:i A"|default:"-" }}</strong></div>
         <div class="profile-overview-wide"><span>Conversion Note</span><strong>{{ visit.conversion_note|default:"-" }}</strong></div>
         <div class="profile-overview-wide"><span>Notes</span><strong>{{ visit.notes|default:"-" }}</strong></div>
     </div>
+    {% if visit.image %}
+    <div class="mt-3">
+        <img src="{{ visit.image.url }}" alt="Site visit image for {{ visit.client_name }}" class="img-fluid rounded border" style="max-height: 360px;">
+    </div>
+    {% endif %}
 </section>
 
 {% if can_manage %}

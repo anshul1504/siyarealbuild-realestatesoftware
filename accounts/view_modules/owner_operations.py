@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import models
 from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse
 from django.utils import timezone
 
 from ..forms import OfficeLocationForm, RoleMatrixRuleForm
@@ -35,6 +36,36 @@ def owner_operations_dashboard(request):
         "user_profile": user_profile,
     }
     return owner_render(request, "accounts/owner_operations_dashboard.html", context)
+
+
+@login_required
+def owner_core_checklist(request):
+    user_profile, company, allowed = owner_context(request, module=OPERATIONS_MODULE)
+    if not allowed:
+        return redirect("properties:dashboard")
+    checklist = [
+        ("Company detail add/edit", "Company master and settings are available for controlled add/edit.", reverse("accounts:company_detail")),
+        ("Profile setting for owner", "Owner profile and email verification flow are active.", reverse("accounts:profile")),
+        ("Employee code serial", "Serial rules and assigned code tracking are managed from owner operations.", reverse("accounts:owner_serial_rules")),
+        ("Bulk invite / invite employee", "Invite list, bulk action, approval, resend, edit and add-employee flows are live.", reverse("accounts:employee_invite_list")),
+        ("Referral reward", "Referral payout and coupon reward settings are owner controlled.", reverse("accounts:owner_referrals")),
+        ("Coupon during booking", "Plot booking captures coupon code and coupon discount in deal value.", reverse("properties:list")),
+        ("Create team meeting", "Owner can create, edit and track team meetings.", reverse("accounts:owner_meeting_create")),
+        ("Post event", "Owner can post, edit and publish company events.", reverse("accounts:owner_event_create")),
+        ("Add property / edit property", "Property create, edit, media, plots and document review workflow is active.", reverse("properties:create")),
+        ("Manage commission", "Property commission rules and booking payout ledger are available.", reverse("properties:list")),
+        ("See activity of each employee", "Audit logs and employee profile history expose staff activity.", reverse("accounts:owner_audit_logs")),
+        ("Set target", "Role target creation, detail, edit and status tracking are live.", reverse("accounts:owner_targets")),
+        ("Set popup / offer image", "Marketing popup and offer image management is available.", reverse("accounts:owner_popups")),
+        ("Quotation to booking conversion", "Owner MIS reports generated quotation-to-booking conversion.", reverse("properties:owner_mis_report")),
+        ("Role matrix manage", "Role-wise module permissions can be configured.", reverse("accounts:owner_role_matrix")),
+        ("Change employee email", "Owner can initiate employee email changes on behalf of staff.", reverse("accounts:owner_email_changes")),
+    ]
+    return owner_render(
+        request,
+        "accounts/owner_core_checklist.html",
+        {"checklist": checklist, "completed_count": len(checklist), "user_profile": user_profile, "company": company},
+    )
 
 
 @login_required

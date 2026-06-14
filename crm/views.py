@@ -55,7 +55,7 @@ from .services import (
 def valid_meta_signature(request):
     app_secret = getattr(settings, "META_APP_SECRET", "")
     if not app_secret:
-        return True
+        return not getattr(settings, "META_INTEGRATION_ENABLED", False)
     signature = request.headers.get("X-Hub-Signature-256", "")
     if not signature.startswith("sha256="):
         return False
@@ -85,6 +85,7 @@ def crm_dashboard(request):
         "status_counts": status_counts,
         "can_configure_meta": can_configure_meta(request.user),
     }
+    context["conversion_percent"] = round((context["converted"] / context["total_leads"]) * 100) if context["total_leads"] else 0
     return render(request, "crm/dashboard.html", context)
 
 
@@ -544,6 +545,8 @@ def crm_reports(request):
         "can_configure_meta": can_manage_meta,
         "can_export": can_assign_leads(request.user),
     }
+    context["conversion_percent"] = round((context["converted_count"] / context["total_leads"]) * 100) if context["total_leads"] else 0
+    context["lost_percent"] = round((context["lost_count"] / context["total_leads"]) * 100) if context["total_leads"] else 0
     return render(request, "crm/reports.html", context)
 
 

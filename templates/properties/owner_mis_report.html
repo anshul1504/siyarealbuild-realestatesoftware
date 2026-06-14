@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Owner MIS Report - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+        <h1 class="app-page-title mb-0">Owner MIS Report</h1>
+        <p class="text-body mb-0">Sales, collections, inventory, legal, documents, and CRM performance in one report.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-light" href="{% url 'properties:dashboard' %}">Dashboard</a>
+        <a class="btn btn-outline-primary" href="{% url 'properties:owner_mis_report' %}?start={{ start }}&end={{ end }}&export=csv">Export CSV</a>
+        <form method="post" class="d-inline">
+            {% csrf_token %}
+            <button class="btn btn-primary" type="submit">Save Snapshot</button>
+        </form>
+    </div>
+</div>
+
+<form class="profile-panel mb-3" method="get">
+    <div class="row g-3 align-items-end">
+        <div class="col-md-4">
+            <label class="form-label">Start Date</label>
+            <input class="form-control" type="date" name="start" value="{{ start }}">
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">End Date</label>
+            <input class="form-control" type="date" name="end" value="{{ end }}">
+        </div>
+        <div class="col-md-4">
+            <button class="btn btn-primary w-100" type="submit">Apply Filter</button>
+        </div>
+    </div>
+</form>
+
+<section class="dashboard-kpi-grid mb-3">
+    <article class="dashboard-kpi-card"><span>Bookings This Period</span><strong>{{ period_booking_count }}</strong><small>Rs {{ period_booking_value|floatformat:0 }} deal value</small></article>
+    <article class="dashboard-kpi-card"><span>Collections This Period</span><strong>Rs {{ period_payment_total|floatformat:0 }}</strong><small>{{ period_payment_count }} payment receipt(s)</small></article>
+    <article class="dashboard-kpi-card"><span>Total Outstanding</span><strong>Rs {{ total_balance|floatformat:0 }}</strong><small>Paid Rs {{ total_paid|floatformat:0 }}</small></article>
+    <article class="dashboard-kpi-card"><span>Commission Payable</span><strong>Rs {{ commission_payable|floatformat:0 }}</strong><small>Paid Rs {{ commission_paid|floatformat:0 }}</small></article>
+</section>
+
+<div class="row g-4">
+    <div class="col-xl-4">
+        <section class="profile-panel h-100">
+            <div class="profile-panel-head"><div><h2>Inventory</h2><p>Property and plot stock.</p></div></div>
+            <div class="profile-detail-grid">
+                <div><span>Total Properties</span><strong>{{ property_total }}</strong></div>
+                <div><span>Active</span><strong>{{ active_properties }}</strong></div>
+                <div><span>Closed</span><strong>{{ sold_or_rented }}</strong></div>
+                <div><span>Plots</span><strong>{{ total_plots }}</strong></div>
+                <div><span>Available Plots</span><strong>{{ available_plots }}</strong></div>
+                <div><span>Booked / Sold</span><strong>{{ booked_plots }} / {{ sold_plots }}</strong></div>
+            </div>
+        </section>
+    </div>
+    <div class="col-xl-4">
+        <section class="profile-panel h-100">
+            <div class="profile-panel-head"><div><h2>Transactions</h2><p>Bookings and payment ledger.</p></div></div>
+            <div class="profile-detail-grid">
+                <div><span>Total Deal Value</span><strong>Rs {{ total_deal_value|floatformat:0 }}</strong></div>
+                <div><span>Total Paid</span><strong>Rs {{ total_paid|floatformat:0 }}</strong></div>
+                <div><span>Total Balance</span><strong>Rs {{ total_balance|floatformat:0 }}</strong></div>
+                <div><span>Period Payments</span><strong>Rs {{ period_payment_total|floatformat:0 }}</strong></div>
+                <div><span>Commission Unpaid</span><strong>Rs {{ commission_unpaid|floatformat:0 }}</strong></div>
+                <div><span>Overdue Installments</span><strong>{{ overdue_installment_count }}</strong></div>
+            </div>
+        </section>
+    </div>
+    <div class="col-xl-4">
+        <section class="profile-panel h-100">
+            <div class="profile-panel-head"><div><h2>Legal Readiness</h2><p>Documents and agreements.</p></div></div>
+            <div class="profile-detail-grid">
+                <div><span>Pending Agreements</span><strong>{{ pending_agreements }}</strong></div>
+                <div><span>Registered Agreements</span><strong>{{ registered_agreements }}</strong></div>
+                <div><span>Pending Documents</span><strong>{{ pending_documents }}</strong></div>
+                <div><span>Verified Documents</span><strong>{{ verified_documents }}</strong></div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<div class="row g-4 mt-1">
+    <div class="col-xl-3"><section class="profile-panel h-100"><h2 class="h6">Property Status</h2>{% for row in property_status_rows %}<div class="d-flex justify-content-between py-2 border-bottom"><span>{{ row.label }}</span><strong>{{ row.count }}</strong></div>{% endfor %}</section></div>
+    <div class="col-xl-3"><section class="profile-panel h-100"><h2 class="h6">Booking Status</h2>{% for row in booking_status_rows %}<div class="d-flex justify-content-between py-2 border-bottom"><span>{{ row.label }}</span><strong>{{ row.count }}</strong></div>{% endfor %}</section></div>
+    <div class="col-xl-3"><section class="profile-panel h-100"><h2 class="h6">Agreement Status</h2>{% for row in agreement_status_rows %}<div class="d-flex justify-content-between py-2 border-bottom"><span>{{ row.label }}</span><strong>{{ row.count }}</strong></div>{% endfor %}</section></div>
+    <div class="col-xl-3"><section class="profile-panel h-100"><h2 class="h6">Commission Status</h2>{% for row in commission_status_rows %}<div class="d-flex justify-content-between py-2 border-bottom"><span>{{ row.label }}</span><strong>{{ row.count }}</strong></div>{% endfor %}</section></div>
+</div>
+
+<div class="row g-4 mt-1">
+    <div class="col-xl-4"><section class="profile-panel h-100"><h2 class="h6">Document Status</h2>{% for row in document_status_rows %}<div class="d-flex justify-content-between py-2 border-bottom"><span>{{ row.label }}</span><strong>{{ row.count }}</strong></div>{% endfor %}</section></div>
+    <div class="col-xl-8"><section class="profile-panel h-100"><h2 class="h6">CRM</h2><div class="profile-detail-grid"><div><span>Total Leads</span><strong>{{ lead_total }}</strong></div><div><span>Converted</span><strong>{{ lead_converted }}</strong></div><div><span>Overdue Follow-ups</span><strong>{{ lead_overdue_followups }}</strong></div></div></section></div>
+</div>
+
+<div class="row g-4 mt-1">
+    <div class="col-xl-7">
+        <section class="profile-panel h-100">
+            <div class="profile-panel-head"><div><h2>Overdue Installments</h2><p>Collection actions pending today.</p></div></div>
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead><tr><th>Client</th><th>Plot</th><th>Installment</th><th>Due</th><th>Balance</th></tr></thead>
+                    <tbody>
+                    {% for installment in overdue_installments %}
+                    <tr>
+                        <td>{{ installment.booking.client_name }}</td>
+                        <td>{{ installment.booking.plot.plot_number }}</td>
+                        <td>{{ installment.title }}</td>
+                        <td>{{ installment.due_date }}</td>
+                        <td>Rs {{ installment.balance_amount }}</td>
+                    </tr>
+                    {% empty %}<tr><td colspan="5" class="text-center text-body py-3">No overdue installments.</td></tr>{% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+    <div class="col-xl-5">
+        <section class="profile-panel h-100">
+            <div class="profile-panel-head"><div><h2>Saved Snapshots</h2><p>Frozen MIS reports for audit history.</p></div></div>
+            <div class="list-group list-group-flush">
+                {% for snapshot in recent_snapshots %}
+                <div class="list-group-item px-0">
+                    <strong>{{ snapshot.title }}</strong>
+                    <p class="mb-1">{{ snapshot.period_start|default:"-" }} to {{ snapshot.period_end|default:"-" }}</p>
+                    <small>{{ snapshot.created_at|date:"d M Y, h:i A" }}</small>
+                </div>
+                {% empty %}<p class="text-body mb-0">No snapshots saved yet.</p>{% endfor %}
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}

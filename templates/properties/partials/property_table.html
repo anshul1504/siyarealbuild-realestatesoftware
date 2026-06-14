@@ -1,4 +1,4 @@
-<div class="table-responsive">
+<div class="table-responsive property-inventory-table">
     <table class="table table-hover align-middle mb-0">
         <thead>
             <tr>
@@ -18,44 +18,61 @@
             {% for property in properties %}
             <tr>
                 {% if can_manage %}<td><input type="checkbox" class="form-check-input" name="property_ids" value="{{ property.id }}"></td>{% endif %}
-                <td>
+                <td class="property-cell-title">
                     <a class="fw-bold text-dark text-decoration-none" href="{% url 'properties:detail' property.id %}">{{ property.title }}</a>
-                    <small class="text-body">{{ property.get_listing_for_display }} / {{ property.owner.get_full_name|default:property.owner.email }}</small>
+                    <span>{{ property.get_listing_for_display }} / {{ property.owner.get_full_name|default:property.owner.email }}</span>
                 </td>
-                <td>{{ property.get_category_display }}</td>
+                <td><span class="property-meta-pill">{{ property.get_category_display }}</span></td>
                 <td>
-                    {{ property.city }}{% if property.locality %}, {{ property.locality }}{% endif %}<br>
-                    <small class="text-body">{{ property.landmark|default:property.address }}</small>
+                    <div class="property-inventory-primary"><strong>{{ property.city }}{% if property.locality %}, {{ property.locality }}{% endif %}</strong><span>{{ property.landmark|default:property.address }}</span></div>
                 </td>
                 <td>
+                    <div class="property-inventory-primary">
                     {% if property.category == "colony" %}
-                        {{ property.total_plots }} plots / {{ property.available_plots }} available
+                        <strong>{{ property.total_plots }} plots</strong><span>{{ property.available_plots }} available</span>
                     {% elif property.category == "flat" or property.category == "residential_house" or property.category == "row_house" or property.category == "villa" %}
-                        {{ property.bedrooms }} bed / {{ property.bathrooms }} bath
+                        <strong>{{ property.bedrooms }} bed / {{ property.bathrooms }} bath</strong><span>{{ property.area_sqft }} sqft</span>
                     {% else %}
-                        {{ property.area_sqft }} sqft
+                        <strong>{{ property.area_sqft }} sqft</strong><span>{{ property.facing|default:"Facing not set" }}{% if property.road_width_ft %} / {{ property.road_width_ft }} ft road{% endif %}</span>
                     {% endif %}
-                    <br><small class="text-body">{{ property.facing|default:"-" }}{% if property.road_width_ft %} / {{ property.road_width_ft }} ft road{% endif %}</small>
+                    </div>
                 </td>
                 <td>
-                    <span>{{ property.get_legal_status_display|default:"Not marked" }}</span><br>
-                    <small class="text-body">RERA: {{ property.rera_number|default:"-" }} / T&CP: {{ property.tcp_approval_number|default:"-" }}</small>
+                    <div class="property-inventory-primary"><strong>{{ property.get_legal_status_display|default:"Not marked" }}</strong><span>RERA: {{ property.rera_number|default:"-" }} / T&CP: {{ property.tcp_approval_number|default:"-" }}</span></div>
                 </td>
                 <td>
-                    {{ property.photos.count }} photo(s)<br>
-                    <small class="text-body">{{ property.documents.count }} doc(s)</small>
+                    <div class="property-inventory-metrics"><span><strong>{{ property.photos.count }}</strong> Photos</span><span><strong>{{ property.documents.count }}</strong> Docs</span></div>
                 </td>
-                <td>Rs. {{ property.price }}</td>
+                <td><div class="property-inventory-price"><strong>Rs. {{ property.price }}</strong>{% if property.price_per_sqft %}<span>Rs. {{ property.price_per_sqft }} / sqft</span>{% endif %}</div></td>
                 <td><span class="badge rounded-pill property-status {{ property.status }}">{{ property.get_status_display }}</span></td>
-                <td class="text-end">
+                <td class="text-end"><div class="property-inventory-actions">
                     <a class="btn btn-sm btn-outline-primary" href="{% url 'properties:detail' property.id %}">View</a>
                     {% if can_manage or can_manage_properties %}
+                    {% if showing_archived and can_restore %}
+                    <form method="post" action="{% url 'properties:restore' property.id %}" class="d-inline">
+                        {% csrf_token %}
+                        <button class="btn btn-sm btn-primary" type="submit">Restore</button>
+                    </form>
+                    {% else %}
                     <a class="btn btn-sm btn-light" href="{% url 'properties:edit' property.id %}">Edit</a>
                     {% endif %}
-                </td>
+                    {% if showing_archived and can_delete %}
+                    <form method="post" action="{% url 'properties:delete' property.id %}" class="d-inline" data-confirm-delete="Permanently delete {{ property.title }}?">
+                        {% csrf_token %}
+                        <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+                    </form>
+                    {% endif %}
+                    {% endif %}
+                </div></td>
             </tr>
             {% empty %}
-            <tr><td colspan="{% if can_manage %}10{% else %}9{% endif %}" class="text-center text-body py-5">No properties yet. Add your first listing.</td></tr>
+            <tr><td colspan="{% if can_manage %}10{% else %}9{% endif %}">
+                <div class="property-empty-state">
+                    <strong>No properties found</strong>
+                    <span>Add your first property listing to start managing inventory.</span>
+                    {% if can_manage %}<a class="btn btn-primary btn-sm" href="{% url 'properties:create' %}">Add Property</a>{% endif %}
+                </div>
+            </td></tr>
             {% endfor %}
         </tbody>
     </table>

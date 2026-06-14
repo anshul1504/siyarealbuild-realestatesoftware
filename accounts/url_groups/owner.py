@@ -5,6 +5,7 @@ from accounts.view_modules import events_meetings, owner_configuration, owner_em
 
 urlpatterns = [
     path("owner/operations/", owner_operations.owner_operations_dashboard, name="owner_operations_dashboard"),
+    path("owner/core-checklist/", owner_operations.owner_core_checklist, name="owner_core_checklist"),
     path("owner/codes/", owner_reviews.owner_codes, name="owner_codes"),
     path("owner/codes/assigned/", owner_reviews.owner_assigned_codes, name="owner_assigned_codes"),
     path("owner/codes/rules/", owner_reviews.owner_serial_rules, name="owner_serial_rules"),

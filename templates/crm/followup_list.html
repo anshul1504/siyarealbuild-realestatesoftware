@@ -10,16 +10,16 @@
 </div>
 
 <section class="profile-panel mb-3">
-    <form method="get" class="row g-3 align-items-end">
-        <div class="col-md-4">
+    <form method="get" class="app-filter-form app-filter-form-compact">
+        <div class="app-filter-field">
             <label class="form-label" for="followupStatus">Status</label>
             <select id="followupStatus" class="form-control" name="status">
                 <option value="">All</option>
                 {% for value,label in status_choices %}<option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
             </select>
         </div>
-        <div class="col-md-3 d-flex gap-2">
-            <button class="btn btn-primary w-100">Filter</button>
+        <div class="app-filter-actions">
+            <button class="btn btn-primary">Filter</button>
             <a class="btn btn-light" href="{% url 'crm:followup_list' %}">Clear</a>
         </div>
     </form>

@@ -6,38 +6,48 @@
         <h1 class="app-page-title mb-0">Properties</h1>
         <p class="text-body mb-0">Category-wise inventory with legal, media, and plot-level information.</p>
     </div>
-    {% if can_manage %}<a class="btn btn-primary" href="{% url 'properties:create' %}">Add Property</a>{% endif %}
+    <div class="d-flex flex-wrap gap-2">
+        {% if can_restore %}
+            {% if showing_archived %}
+            <a class="btn btn-light" href="{% url 'properties:list' %}">Active Properties</a>
+            {% else %}
+            <a class="btn btn-light" href="{% url 'properties:list' %}?archived=1">Archived</a>
+            {% endif %}
+        {% endif %}
+        {% if can_export %}<a class="btn btn-outline-primary" href="{% url 'properties:export' %}?{{ query_string }}">Export CSV</a>{% endif %}
+        {% if can_manage %}<a class="btn btn-primary" href="{% url 'properties:create' %}">Add Property</a>{% endif %}
+    </div>
 </div>
 
 <section class="profile-panel mb-3">
-    <form method="get" class="row g-3 align-items-end">
-        <div class="col-md-4">
+    <form method="get" class="app-filter-form">
+        <div class="app-filter-field app-filter-field-wide">
             <label class="form-label" for="propertySearch">Search</label>
             <input id="propertySearch" class="form-control" type="search" name="q" value="{{ query }}" placeholder="Title, location, RERA, T&CP">
         </div>
-        <div class="col-md-2">
+        <div class="app-filter-field">
             <label class="form-label" for="propertyCategory">Category</label>
             <select id="propertyCategory" class="form-control" name="category">
                 <option value="">All</option>
                 {% for value,label in category_choices %}<option value="{{ value }}" {% if selected_category == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
             </select>
         </div>
-        <div class="col-md-2">
+        <div class="app-filter-field">
             <label class="form-label" for="propertyStatus">Status</label>
             <select id="propertyStatus" class="form-control" name="status">
                 <option value="">All</option>
                 {% for value,label in status_choices %}<option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
             </select>
         </div>
-        <div class="col-md-2">
+        <div class="app-filter-field">
             <label class="form-label" for="propertyFor">For</label>
             <select id="propertyFor" class="form-control" name="listing_for">
                 <option value="">All</option>
                 {% for value,label in listing_choices %}<option value="{{ value }}" {% if selected_listing_for == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
             </select>
         </div>
-        <div class="col-md-2 d-flex gap-2">
-            <button class="btn btn-primary w-100">Filter</button>
+        <div class="app-filter-actions">
+            <button class="btn btn-primary">Filter</button>
             <a class="btn btn-light" href="{% url 'properties:list' %}">Clear</a>
         </div>
     </form>
@@ -49,24 +59,25 @@
             <h2>Property Inventory</h2>
             <p>Manage active and closed listings across colonies, plots, flats, houses, shops, and commercial inventory.</p>
         </div>
+        <span class="property-inventory-count">{{ page_obj.paginator.count }} propert{{ page_obj.paginator.count|pluralize:"y,ies" }}</span>
     </div>
     {% if can_manage %}
     <form method="post" action="{% url 'properties:bulk_action' %}" class="mb-0" data-property-bulk-form>
         {% csrf_token %}
-        <div class="d-flex flex-wrap gap-2 align-items-end mb-3">
-            <div>
-                <label class="form-label" for="bulkAction">Bulk Action</label>
-                <select id="bulkAction" name="bulk_action" class="form-control">
+        <div class="property-inventory-toolbar">
+            <div class="property-selection-summary"><strong data-selected-property-count>0 selected</strong><span>Select properties below to update them together.</span></div>
+            <div class="property-bulk-controls">
+                <select id="bulkAction" name="bulk_action" class="form-control" aria-label="Bulk action">
                     <option value="">Choose action</option>
                     <option value="available">Mark Available</option>
                     <option value="hold">Mark Hold</option>
                     <option value="negotiation">Mark Negotiation</option>
                     <option value="sold">Mark Sold</option>
                     <option value="rented">Mark Rented</option>
-                    <option value="delete">Delete Selected</option>
+                    <option value="archive">Archive Selected</option>
                 </select>
+                <button class="btn btn-primary" type="submit" disabled data-bulk-apply>Apply Action</button>
             </div>
-            <button class="btn btn-primary" type="submit">Apply</button>
         </div>
         {% include "properties/partials/property_table.html" %}
     </form>
@@ -79,11 +90,24 @@
 document.addEventListener("DOMContentLoaded", function () {
     const selectAll = document.querySelector("[data-select-all-properties]");
     if (!selectAll) return;
+    const boxes = [...document.querySelectorAll('input[name="property_ids"]')];
+    const count = document.querySelector("[data-selected-property-count]");
+    const apply = document.querySelector("[data-bulk-apply]");
+    const syncSelection = () => {
+        const selected = boxes.filter((box) => box.checked).length;
+        if (count) count.textContent = `${selected} selected`;
+        if (apply) apply.disabled = selected === 0;
+        selectAll.checked = boxes.length > 0 && selected === boxes.length;
+        selectAll.indeterminate = selected > 0 && selected < boxes.length;
+    };
     selectAll.addEventListener("change", function () {
-        document.querySelectorAll('input[name="property_ids"]').forEach((box) => {
+        boxes.forEach((box) => {
             box.checked = selectAll.checked;
         });
+        syncSelection();
     });
+    boxes.forEach((box) => box.addEventListener("change", syncSelection));
+    syncSelection();
 });
 </script>
 {% endblock %}

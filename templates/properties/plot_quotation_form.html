@@ -1,27 +1,70 @@
 {% extends "base.html" %}
 {% block title %}Plot Quotation - {{ plot.plot_number }}{% endblock %}
 {% block content %}
-<div class="app-page-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
-    <div>
-        <h1 class="app-page-title mb-0">Plot Quotation</h1>
-        <p class="text-body mb-0">{{ property_obj.title }} / Plot {{ plot.plot_number }}</p>
-    </div>
-    <a class="btn btn-light" href="{% url 'properties:plot_detail' property_obj.id plot.id %}">Plot Detail</a>
-</div>
-<form method="post" class="profile-panel">
+<div class="quotation-page">
+  <section class="quotation-hero">
+    <div><span>QUOTATION WORKSPACE</span><h1>{% if mode == "edit" %}Edit{% else %}Create{% endif %} Plot Quotation</h1><p>{{ property_obj.title }} · Plot {{ plot.plot_number }} · {{ plot.area_sqft }} sqft</p></div>
+    <div class="quotation-hero-summary"><span>Inventory Price</span><strong>Rs. {{ plot.price }}</strong><small>{{ plot.get_status_display }}</small></div>
+  </section>
+
+  <form method="post" class="quotation-form" data-invoice-form>
     {% csrf_token %}
-    <div class="row g-3">
-        {% for field in form %}
-        <div class="col-md-{% if field.name == 'terms' %}12{% else %}4{% endif %}">
-            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-            {{ field }}
-            {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
-        </div>
-        {% endfor %}
+    {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+
+    <section class="profile-panel">
+      <div class="profile-panel-head"><div><h2>Client Details</h2><p>Quotation recipient and contact information.</p></div></div>
+      <div class="quotation-grid">
+        {% include "properties/includes/quotation_field.html" with field=form.client_name %}
+        {% include "properties/includes/quotation_field.html" with field=form.client_phone %}
+        {% include "properties/includes/quotation_field.html" with field=form.client_email %}
+      </div>
+    </section>
+
+    <section class="profile-panel">
+      <div class="profile-panel-head"><div><h2>Plot Snapshot</h2><p>Values are pre-filled from inventory and can be customized for this quotation.</p></div></div>
+      <div class="quotation-inventory-strip"><div><span>Plot</span><strong>{{ plot.plot_number }}</strong></div><div><span>Category</span><strong>{{ plot.get_plot_category_display }}</strong></div><div><span>Base Rate</span><strong>Rs. {{ plot.base_rate }}/sqft</strong></div><div><span>PLC</span><strong>{{ plot.plc_rate }}%</strong></div></div>
+      <div class="quotation-grid quotation-grid-four">
+        {% include "properties/includes/quotation_field.html" with field=form.plot_area_sqft %}
+        {% include "properties/includes/quotation_field.html" with field=form.plot_length_ft %}
+        {% include "properties/includes/quotation_field.html" with field=form.plot_width_ft %}
+        {% include "properties/includes/quotation_field.html" with field=form.plot_facing %}
+      </div>
+    </section>
+
+    <section class="profile-panel">
+      <div class="profile-panel-head"><div><h2>Pricing Breakdown</h2><p>Review each amount before sending the quotation.</p></div><div class="quotation-live-total"><span>Grand Total</span><strong data-live-total>Rs. 0.00</strong></div></div>
+      <div class="quotation-grid quotation-grid-four">
+        {% include "properties/includes/quotation_field.html" with field=form.base_amount %}
+        {% include "properties/includes/quotation_field.html" with field=form.plc_amount %}
+        {% include "properties/includes/quotation_field.html" with field=form.charges_amount %}
+        {% include "properties/includes/quotation_field.html" with field=form.discount_amount %}
+      </div>
+    </section>
+
+    <section class="profile-panel">
+      <div class="profile-panel-head"><div><h2>Validity & Terms</h2><p>Control quotation status, expiry, and client-facing terms.</p></div></div>
+      <div class="quotation-grid">
+        {% include "properties/includes/quotation_field.html" with field=form.valid_until %}
+        {% include "properties/includes/quotation_field.html" with field=form.status %}
+        <div class="quotation-field quotation-field-wide">{% include "properties/includes/quotation_field.html" with field=form.terms %}</div>
+      </div>
+    </section>
+
+    <div class="quotation-actions">
+      <a class="btn btn-light" href="{% url 'properties:plot_detail' property_obj.id plot.id %}">Cancel</a>
+      <button class="btn btn-primary" type="submit">{% if mode == "edit" %}Update{% else %}Save{% endif %} Quotation</button>
     </div>
-    <div class="d-flex justify-content-end gap-2 mt-4">
-        <a class="btn btn-light" href="{% url 'properties:plot_detail' property_obj.id plot.id %}">Cancel</a>
-        <button class="btn btn-primary" type="submit">Save Quotation</button>
-    </div>
-</form>
+  </form>
+</div>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const renderTotal = () => {
+    const value = id => Number(document.getElementById(id)?.value || 0);
+    const total = Math.max(value("id_base_amount") + value("id_plc_amount") + value("id_charges_amount") - value("id_discount_amount"), 0);
+    document.querySelector("[data-live-total]").textContent = `Rs. ${total.toFixed(2)}`;
+  };
+  document.querySelector(".quotation-form")?.addEventListener("input", renderTotal);
+  renderTotal();
+});
+</script>
 {% endblock %}

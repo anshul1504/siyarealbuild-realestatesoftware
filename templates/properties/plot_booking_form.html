@@ -1,27 +1,47 @@
 {% extends "base.html" %}
 {% block title %}Book Plot - {{ plot.plot_number }}{% endblock %}
 {% block content %}
-<div class="app-page-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
-    <div>
-        <h1 class="app-page-title mb-0">Book Plot</h1>
-        <p class="text-body mb-0">{{ property_obj.title }} / Plot {{ plot.plot_number }}</p>
-    </div>
-    <a class="btn btn-light" href="{% url 'properties:plot_detail' property_obj.id plot.id %}">Plot Detail</a>
-</div>
-<form method="post" class="profile-panel">
+<div class="booking-form-page">
+  <section class="booking-form-hero"><div><span>BOOKING WORKSPACE</span><h1>{% if mode == "edit" %}Edit Booking{% elif dashboard_is_owner %}Book Plot{% else %}Request Plot Booking{% endif %}</h1><p>{{ property_obj.title }} · Plot {{ plot.plot_number }} · {{ plot.area_sqft }} sqft</p></div><div><span>Inventory Price</span><strong>Rs. {{ plot.price }}</strong><small>{{ plot.get_status_display }}</small></div></section>
+  <form method="post" enctype="multipart/form-data" class="booking-workflow-form">
     {% csrf_token %}
-    <div class="row g-3">
-        {% for field in form %}
-        <div class="col-md-{% if field.name == 'note' %}12{% else %}4{% endif %}">
-            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-            {{ field }}
-            {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
-        </div>
-        {% endfor %}
-    </div>
-    <div class="d-flex justify-content-end gap-2 mt-4">
-        <a class="btn btn-light" href="{% url 'properties:plot_detail' property_obj.id plot.id %}">Cancel</a>
-        <button class="btn btn-primary" type="submit">Save Booking</button>
-    </div>
-</form>
+    {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+    <section class="profile-panel"><div class="profile-panel-head"><div><h2>Client & KYC Details</h2><p>Buyer identity and contact details required for booking verification.</p></div></div><div class="booking-field-grid">
+      {% include "properties/includes/booking_field.html" with field=form.client_name %}
+      {% include "properties/includes/booking_field.html" with field=form.client_phone %}
+      {% include "properties/includes/booking_field.html" with field=form.client_email %}
+      {% include "properties/includes/booking_field.html" with field=form.government_id_type %}
+      {% include "properties/includes/booking_field.html" with field=form.government_id_number %}
+      {% include "properties/includes/booking_field.html" with field=form.government_id_document %}
+      <div class="booking-field-wide">{% include "properties/includes/booking_field.html" with field=form.client_address %}</div>
+    </div></section>
+    <section class="profile-panel"><div class="profile-panel-head"><div><h2>Plot Snapshot</h2><p>Selected inventory details for this booking.</p></div></div><div class="booking-summary-strip"><div><span>Plot</span><strong>{{ plot.plot_number }}</strong></div><div><span>Category</span><strong>{{ plot.get_plot_category_display }}</strong></div><div><span>Base Rate</span><strong>Rs. {{ plot.base_rate }}/sqft</strong></div><div><span>PLC</span><strong>{{ plot.plc_rate }}%</strong></div></div><div class="booking-field-grid booking-grid-four">
+      {% include "properties/includes/booking_field.html" with field=form.quotation %}
+      {% include "properties/includes/booking_field.html" with field=form.plot_area_sqft %}
+      {% include "properties/includes/booking_field.html" with field=form.plot_length_ft %}
+      {% include "properties/includes/booking_field.html" with field=form.plot_width_ft %}
+      {% include "properties/includes/booking_field.html" with field=form.plot_facing %}
+    </div></section>
+    <section class="profile-panel"><div class="profile-panel-head"><div><h2>Booking Payment & Proof</h2><p>Record how the token or booking amount was received.</p></div></div><div class="booking-field-grid">
+      {% include "properties/includes/booking_field.html" with field=form.booking_date %}
+      {% include "properties/includes/booking_field.html" with field=form.booking_amount %}
+      {% if form.paid_amount_received %}{% include "properties/includes/booking_field.html" with field=form.paid_amount_received %}{% endif %}
+      {% include "properties/includes/booking_field.html" with field=form.payment_mode %}
+      {% include "properties/includes/booking_field.html" with field=form.payment_reference %}
+      {% include "properties/includes/booking_field.html" with field=form.payment_proof %}
+    </div></section>
+    <section class="profile-panel"><div class="profile-panel-head"><div><h2>Pricing, Discounts & Approval</h2><p>Review deal value and document every discount.</p></div></div><div class="booking-field-grid booking-grid-four">
+      {% include "properties/includes/booking_field.html" with field=form.agreed_rate %}
+      {% include "properties/includes/booking_field.html" with field=form.plc_amount %}
+      {% include "properties/includes/booking_field.html" with field=form.charges_amount %}
+      {% include "properties/includes/booking_field.html" with field=form.discount_amount %}
+      {% include "properties/includes/booking_field.html" with field=form.discount_reason %}
+      {% include "properties/includes/booking_field.html" with field=form.coupon_code %}
+      {% include "properties/includes/booking_field.html" with field=form.coupon_discount_amount %}
+      {% if form.status %}{% include "properties/includes/booking_field.html" with field=form.status %}{% endif %}
+      <div class="booking-field-wide">{% include "properties/includes/booking_field.html" with field=form.note %}</div>
+    </div></section>
+    <div class="booking-form-actions"><a class="btn btn-light" href="{% url 'properties:plot_detail' property_obj.id plot.id %}">Cancel</a><button class="btn btn-primary" type="submit">{% if mode == "edit" %}Update Booking{% elif dashboard_is_owner %}Save Booking{% else %}Send Booking Request{% endif %}</button></div>
+  </form>
+</div>
 {% endblock %}

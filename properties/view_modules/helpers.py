@@ -1,21 +1,71 @@
 from django.urls import reverse
 
 from ..models import Property, PropertyDocument, PropertyPhoto
-from ..policies import can_manage_properties
+from ..policies import can_archive_property, can_create_property, can_delete_property, can_export_properties, can_manage_properties, can_restore_property, can_share_property, can_update_property
 from ..selectors import visible_properties
 
 
-def visible_properties_for(request):
-    return visible_properties(request.user)
+def visible_properties_for(request, *, include_archived=False):
+    return visible_properties(request.user, include_archived=include_archived)
 
 
 def can_manage_properties_for(request):
     return can_manage_properties(request.user)
 
 
+def can_create_property_for(request):
+    return can_create_property(request.user)
+
+
+def can_update_property_for(request, property_obj=None):
+    return can_update_property(request.user, property_obj)
+
+
+def can_archive_property_for(request, property_obj=None):
+    return can_archive_property(request.user, property_obj)
+
+
+def can_restore_property_for(request, property_obj=None):
+    return can_restore_property(request.user, property_obj)
+
+
+def can_delete_property_for(request, property_obj=None):
+    return can_delete_property(request.user, property_obj)
+
+
+def can_export_properties_for(request):
+    return can_export_properties(request.user)
+
+
+def can_share_property_for(request, property_obj=None):
+    return can_share_property(request.user, property_obj)
+
+
 def save_property_uploads(prop, form, request):
+    cover_photo_index = form.cleaned_data.get("cover_photo_index") or 1
     for index, image in enumerate(request.FILES.getlist("photos")):
-        PropertyPhoto.objects.create(property=prop, image=image, is_primary=index == 0)
+        is_primary = index + 1 == cover_photo_index
+        if is_primary:
+            prop.photos.update(is_primary=False)
+        PropertyPhoto.objects.create(property=prop, image=image, is_primary=is_primary or (index == 0 and not prop.photos.filter(is_primary=True).exists()))
+    for map_layout in request.FILES.getlist("map_layouts"):
+        PropertyDocument.objects.create(
+            property=prop,
+            document_type=PropertyDocument.DocumentType.MAP,
+            title=getattr(map_layout, "name", ""),
+            file=map_layout,
+        )
+    document_types = request.POST.getlist("document_types")
+    for index, document in enumerate(request.FILES.getlist("document_files")):
+        document_type = document_types[index] if index < len(document_types) else PropertyDocument.DocumentType.OTHER
+        if document_type not in PropertyDocument.DocumentType.values:
+            document_type = PropertyDocument.DocumentType.OTHER
+        PropertyDocument.objects.create(
+            property=prop,
+            document_type=document_type,
+            title=getattr(document, "name", ""),
+            file=document,
+        )
     document_type = form.cleaned_data.get("document_type") or PropertyDocument.DocumentType.OTHER
     for document in request.FILES.getlist("documents"):
         PropertyDocument.objects.create(
@@ -61,6 +111,8 @@ def property_share_message(property_obj, request=None):
         lines.append(f"Nearby residential: {property_obj.nearby_residential}")
     if property_obj.map_link:
         lines.append(f"Map: {property_obj.map_link}")
+    if property_obj.video_link:
+        lines.append(f"Walkthrough video: {property_obj.video_link}")
     if request:
         lines.append(f"Detail link: {request.build_absolute_uri(reverse('properties:detail', args=[property_obj.id]))}")
     if property_obj.contact_name or property_obj.contact_phone:

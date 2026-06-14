@@ -4,11 +4,13 @@
 <section class="real-dashboard-hero">
     <div>
         <span class="dashboard-eyebrow">{{ dashboard_role_label|default:"Team member" }} Workspace</span>
-        <h1>Real Estate Command Center</h1>
-        <p>Track inventory, visits, follow-ups, role actions, and approvals from one clean dashboard.</p>
+        <h1>Real Estate Operations Dashboard</h1>
+        <p>Track inventory, leads, bookings, collections, visits, documents, and commissions from one workspace.</p>
     </div>
     <div class="dashboard-hero-actions">
         <a class="btn btn-light" href="{% url 'properties:list' %}">Inventory</a>
+        <a class="btn btn-light" href="{% url 'crm:lead_list' %}">Leads</a>
+        <a class="btn btn-light" href="{% url 'properties:plot_finder' %}">Plot Finder</a>
         {% if dashboard_can_add_property %}
         <a class="btn btn-primary" href="{% url 'properties:create' %}">Add Property</a>
         {% endif %}
@@ -27,15 +29,22 @@
         <small>Avg Rs {{ avg_price|floatformat:0 }}</small>
     </article>
     <article class="dashboard-kpi-card">
-        <span>Client Leads</span>
+        <span>CRM Leads</span>
         <strong>{{ lead_total }}</strong>
-        <small>{{ upcoming_visits }} upcoming visits</small>
+        <small>{{ lead_converted }} converted · {{ overdue_lead_followups }} overdue follow-ups</small>
     </article>
     <article class="dashboard-kpi-card">
-        <span>Closures</span>
-        <strong>{{ conversion_count }}</strong>
-        <small>{{ conversion_percent }}% inventory closed</small>
+        <span>Bookings</span>
+        <strong>{{ booking_total }}</strong>
+        <small>Rs {{ booking_balance|floatformat:0 }} balance due</small>
     </article>
+</section>
+
+<section class="dashboard-kpi-grid">
+    <article class="dashboard-kpi-card"><span>Plot Stock</span><strong>{{ available_plots }} / {{ plot_total }}</strong><small>Available / tracked colony plots</small></article>
+    <article class="dashboard-kpi-card"><span>Collections</span><strong>Rs {{ booking_paid|floatformat:0 }}</strong><small>Against Rs {{ booking_deal_value|floatformat:0 }} deal value</small></article>
+    <article class="dashboard-kpi-card"><span>Site Visits</span><strong>{{ upcoming_visits }}</strong><small>{{ completed_visits }} completed · {{ followups_due }} follow-up</small></article>
+    <article class="dashboard-kpi-card"><span>Lead Conversion</span><strong>{{ lead_conversion_percent }}%</strong><small>{{ upcoming_lead_followups }} upcoming lead follow-ups</small></article>
 </section>
 
 <section class="dashboard-main-grid">
@@ -76,6 +85,34 @@
                     <small>{{ item.percent }}% of tracked visits</small>
                 </div>
             </div>
+            {% endfor %}
+        </div>
+    </article>
+</section>
+
+<section class="dashboard-main-grid">
+    <article class="dashboard-panel dashboard-panel-large">
+        <div class="dashboard-panel-head">
+            <div><span>CRM</span><h2>Lead Pipeline</h2></div>
+            <a href="{% url 'crm:lead_list' %}">Open pipeline</a>
+        </div>
+        <div class="dashboard-status-chart">
+            {% for item in lead_chart %}
+            <div class="dashboard-bar-row">
+                <div class="dashboard-bar-meta"><span>{{ item.label }}</span><strong>{{ item.count }}</strong></div>
+                <div class="dashboard-bar-track"><span style="width: {{ item.percent }}%"></span></div>
+            </div>
+            {% empty %}<p class="dashboard-empty">No visible leads yet.</p>{% endfor %}
+        </div>
+    </article>
+    <article class="dashboard-panel">
+        <div class="dashboard-panel-head">
+            <div><span>Sales Workflow</span><h2>Booking Pipeline</h2></div>
+            <a href="{% url 'properties:plot_finder' %}?workflow=quotation_booking">Open</a>
+        </div>
+        <div class="dashboard-listing-bars">
+            {% for item in booking_chart %}
+            <div><span>{{ item.label }}</span><strong>{{ item.count }}</strong><i style="width: {{ item.percent }}%"></i></div>
             {% endfor %}
         </div>
     </article>
@@ -129,13 +166,76 @@
                 <h2>Plot Availability</h2>
             </div>
         </div>
+        <div class="dashboard-listing-bars">
+            {% for item in plot_chart %}
+            <div><span>{{ item.label }}</span><strong>{{ item.count }}</strong><i style="width: {{ item.percent }}%"></i></div>
+            {% endfor %}
+        </div>
         <div class="dashboard-plot-stock">
             <strong>{{ available_plots }}</strong>
             <span>available plots</span>
-            <p>{{ total_plots }} total plots recorded across colony projects.</p>
+            <p>{{ plot_total }} individual plots tracked across colony projects.</p>
         </div>
     </article>
 </section>
+
+{% if dashboard_is_owner or dashboard_is_manager %}
+<section class="dashboard-main-grid dashboard-main-grid-secondary">
+    <article class="dashboard-panel">
+        <div class="dashboard-panel-head"><div><span>Collections</span><h2>Payment Position</h2></div><a href="{% url 'properties:owner_mis_report' %}">Owner MIS</a></div>
+        <div class="dashboard-owner-queue">
+            <a href="{% url 'properties:owner_mis_report' %}"><span>Total Deal Value</span><strong>Rs {{ booking_deal_value|floatformat:0 }}</strong></a>
+            <a href="{% url 'properties:owner_mis_report' %}"><span>Balance Due</span><strong>Rs {{ booking_balance|floatformat:0 }}</strong></a>
+            <a href="{% url 'properties:owner_mis_report' %}"><span>Overdue Installments</span><strong>{{ overdue_installment_count }}</strong></a>
+        </div>
+    </article>
+    <article class="dashboard-panel">
+        <div class="dashboard-panel-head"><div><span>Compliance</span><h2>Document Work</h2></div></div>
+        <div class="dashboard-owner-queue">
+            <a href="{% url 'properties:owner_mis_report' %}"><span>Pending Agreements</span><strong>{{ pending_agreement_count }}</strong></a>
+            <a href="{% url 'properties:owner_mis_report' %}"><span>Pending Documents</span><strong>{{ pending_document_count }}</strong></a>
+            <a href="{% url 'crm:unassigned_leads' %}"><span>Unassigned Leads</span><strong>{{ unassigned_leads }}</strong></a>
+        </div>
+    </article>
+    <article class="dashboard-panel">
+        <div class="dashboard-panel-head"><div><span>Commission</span><h2>{% if dashboard_is_owner %}Payout Position{% else %}My Commission{% endif %}</h2></div>{% if dashboard_is_owner %}<a href="{% url 'properties:commission_rules' %}">Rules</a>{% endif %}</div>
+        <div class="dashboard-owner-queue">
+            <a href="{% url 'properties:owner_mis_report' %}"><span>Payable</span><strong>Rs {{ commission_payable|floatformat:0 }}</strong></a>
+            <a href="{% url 'properties:owner_mis_report' %}"><span>Paid</span><strong>Rs {{ commission_paid|floatformat:0 }}</strong></a>
+            <a href="{% url 'properties:owner_mis_report' %}"><span>Unpaid</span><strong>Rs {{ commission_unpaid|floatformat:0 }}</strong></a>
+        </div>
+    </article>
+</section>
+{% endif %}
+
+{% if not dashboard_is_owner and not dashboard_is_manager %}
+<section class="dashboard-main-grid dashboard-main-grid-secondary">
+    <article class="dashboard-panel">
+        <div class="dashboard-panel-head"><div><span>My Earnings</span><h2>Commission Position</h2></div></div>
+        <div class="dashboard-owner-queue">
+            <div><span>Payable</span><strong>Rs {{ commission_payable|floatformat:0 }}</strong></div>
+            <div><span>Paid</span><strong>Rs {{ commission_paid|floatformat:0 }}</strong></div>
+            <div><span>Pending</span><strong>Rs {{ commission_unpaid|floatformat:0 }}</strong></div>
+        </div>
+    </article>
+    <article class="dashboard-panel">
+        <div class="dashboard-panel-head"><div><span>My Commission Work</span><h2>Booking Performance</h2></div></div>
+        <div class="dashboard-owner-queue">
+            <div><span>Commission Bookings</span><strong>{{ commission_booking_count }}</strong></div>
+            <div><span>Paid Payouts</span><strong>{{ commission_paid_count }}</strong></div>
+            <div><span>Pending Payouts</span><strong>{{ commission_pending_count }}</strong></div>
+        </div>
+    </article>
+    <article class="dashboard-panel">
+        <div class="dashboard-panel-head"><div><span>My Field Work</span><h2>Visit Performance</h2></div><a href="{% url 'properties:visit_index' %}">Open visits</a></div>
+        <div class="dashboard-owner-queue">
+            <div><span>Total Visits</span><strong>{{ visit_total }}</strong></div>
+            <div><span>Completed</span><strong>{{ completed_visits }}</strong></div>
+            <div><span>Bookings / Closed</span><strong>{{ booked_visits }}</strong></div>
+        </div>
+    </article>
+</section>
+{% endif %}
 
 <section class="dashboard-main-grid">
     <article class="dashboard-panel dashboard-panel-large">
@@ -192,6 +292,14 @@
                         <path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/><path d="M9 10h.01M12 10h.01M15 10h.01"/>
                         {% elif action.icon == "users" %}
                         <circle cx="9" cy="7" r="4"/><path d="M2 21v-2a4 4 0 0 1 4-4h6"/><path d="M17 11h5"/><path d="M19.5 8.5v5"/>
+                        {% elif action.icon == "search" %}
+                        <circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/>
+                        {% elif action.icon == "lead" %}
+                        <path d="M4 5h16M4 12h10M4 19h7"/><circle cx="18" cy="17" r="3"/>
+                        {% elif action.icon == "calendar" %}
+                        <rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/>
+                        {% elif action.icon == "report" %}
+                        <path d="M5 21V10M12 21V3M19 21v-7"/>
                         {% else %}
                         <path d="M20 6 9 17l-5-5"/>
                         {% endif %}

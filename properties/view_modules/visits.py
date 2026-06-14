@@ -3,26 +3,33 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 
 from ..forms import PropertyVisitForm
-from ..models import PropertyVisit
+from ..policies import can_manage_property_visit
+from ..selectors import visible_visits
 from ..services import update_visit
 from .helpers import can_manage_properties_for, visible_properties_for
 
 
 @login_required
+def property_visit_index(request):
+    visits = visible_visits(request.user).select_related("property", "assigned_employee", "scheduled_by", "plot")
+    return render(request, "properties/visit_list.html", {"property_obj": None, "visits": visits, "can_manage": can_manage_properties_for(request)})
+
+
+@login_required
 def property_visit_list(request, property_id):
     property_obj = get_object_or_404(visible_properties_for(request), id=property_id)
-    visits = property_obj.visits.select_related("assigned_employee", "scheduled_by", "plot")
+    visits = visible_visits(request.user).filter(property=property_obj).select_related("assigned_employee", "scheduled_by", "plot")
     return render(request, "properties/visit_list.html", {"property_obj": property_obj, "visits": visits, "can_manage": can_manage_properties_for(request)})
 
 
 @login_required
 def property_visit_create(request, property_id, plot_id=None):
-    if not can_manage_properties_for(request):
+    property_obj = get_object_or_404(visible_properties_for(request), id=property_id)
+    if not can_manage_property_visit(request.user, property_obj=property_obj):
         messages.error(request, "You do not have access to schedule property visits.")
         return redirect("properties:detail", property_id=property_id)
-    property_obj = get_object_or_404(visible_properties_for(request), id=property_id)
     initial = {"plot": get_object_or_404(property_obj.plots, id=plot_id)} if plot_id else {}
-    form = PropertyVisitForm(request.POST or None, property_obj=property_obj, user=request.user, initial=initial)
+    form = PropertyVisitForm(request.POST or None, request.FILES or None, property_obj=property_obj, user=request.user, initial=initial)
     if request.method == "POST" and form.is_valid():
         visit = form.save(commit=False)
         visit.property = property_obj
@@ -36,20 +43,19 @@ def property_visit_create(request, property_id, plot_id=None):
 @login_required
 def property_visit_detail(request, visit_id):
     visit = get_object_or_404(
-        PropertyVisit.objects.select_related("property", "plot", "assigned_employee", "scheduled_by"),
+        visible_visits(request.user).select_related("property", "plot", "assigned_employee", "scheduled_by"),
         id=visit_id,
-        property__in=visible_properties_for(request),
     )
-    return render(request, "properties/visit_detail.html", {"visit": visit, "property_obj": visit.property, "can_manage": can_manage_properties_for(request)})
+    return render(request, "properties/visit_detail.html", {"visit": visit, "property_obj": visit.property, "can_manage": can_manage_property_visit(request.user, visit=visit)})
 
 
 @login_required
 def property_visit_edit(request, visit_id):
-    visit = get_object_or_404(PropertyVisit.objects.select_related("property"), id=visit_id, property__in=visible_properties_for(request))
-    if not can_manage_properties_for(request):
+    visit = get_object_or_404(visible_visits(request.user).select_related("property"), id=visit_id)
+    if not can_manage_property_visit(request.user, visit=visit):
         messages.error(request, "You do not have access to edit property visits.")
         return redirect("properties:visit_detail", visit_id=visit.id)
-    form = PropertyVisitForm(request.POST or None, instance=visit, property_obj=visit.property, user=request.user)
+    form = PropertyVisitForm(request.POST or None, request.FILES or None, instance=visit, property_obj=visit.property, user=request.user)
     if request.method == "POST" and form.is_valid():
         update_visit(form=form, actor=request.user)
         messages.success(request, "Property visit updated successfully.")
@@ -59,9 +65,9 @@ def property_visit_edit(request, visit_id):
 
 @login_required
 def property_visit_delete(request, visit_id):
-    visit = get_object_or_404(PropertyVisit, id=visit_id, property__in=visible_properties_for(request))
+    visit = get_object_or_404(visible_visits(request.user), id=visit_id)
     property_id = visit.property_id
-    if not can_manage_properties_for(request):
+    if not can_manage_property_visit(request.user, visit=visit):
         messages.error(request, "You do not have access to delete property visits.")
         return redirect("properties:visit_detail", visit_id=visit.id)
     if request.method == "POST":

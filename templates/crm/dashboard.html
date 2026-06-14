@@ -1,10 +1,11 @@
 {% extends "base.html" %}
 {% block title %}CRM Dashboard - Siya Real Build{% endblock %}
 {% block content %}
-<div class="app-page-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+<section class="real-dashboard-hero">
     <div>
-        <h1 class="app-page-title mb-0">CRM Dashboard</h1>
-        <p class="text-body mb-0">Lead intake, assignment, follow-ups and conversion health.</p>
+        <span class="dashboard-eyebrow">Sales CRM Workspace</span>
+        <h1>Lead Conversion Command Center</h1>
+        <p>Manage enquiries, assignments, follow-ups, property matching, visits, and conversion health.</p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
         {% if can_configure_meta %}<a class="btn btn-outline-primary" href="{% url 'crm:meta_source_list' %}">Meta Sources</a>{% endif %}
@@ -13,20 +14,18 @@
         <a class="btn btn-light" href="{% url 'crm:reports' %}">Reports</a>
         <a class="btn btn-primary" href="{% url 'crm:lead_create' %}">Add Lead</a>
     </div>
-</div>
+</section>
 
-<div class="row g-3 mb-3">
-    <div class="col-md-6 col-xl-2"><section class="profile-panel h-100"><span class="text-body small">Total Leads</span><h2 class="mb-0">{{ total_leads }}</h2></section></div>
-    <div class="col-md-6 col-xl-2"><section class="profile-panel h-100"><span class="text-body small">New Today</span><h2 class="mb-0">{{ new_today }}</h2></section></div>
-    <div class="col-md-6 col-xl-2"><section class="profile-panel h-100"><span class="text-body small">Unassigned</span><h2 class="mb-0">{{ unassigned }}</h2></section></div>
-    <div class="col-md-6 col-xl-2"><section class="profile-panel h-100"><span class="text-body small">Overdue</span><h2 class="mb-0">{{ overdue_followups }}</h2></section></div>
-    <div class="col-md-6 col-xl-2"><section class="profile-panel h-100"><span class="text-body small">Active</span><h2 class="mb-0">{{ active_pipeline }}</h2></section></div>
-    <div class="col-md-6 col-xl-2"><section class="profile-panel h-100"><span class="text-body small">Converted</span><h2 class="mb-0">{{ converted }}</h2></section></div>
-</div>
+<section class="dashboard-kpi-grid">
+    <article class="dashboard-kpi-card"><span>Total Leads</span><strong>{{ total_leads }}</strong><small>{{ new_today }} received today</small></article>
+    <article class="dashboard-kpi-card"><span>Active Pipeline</span><strong>{{ active_pipeline }}</strong><small>{{ unassigned }} waiting assignment</small></article>
+    <article class="dashboard-kpi-card"><span>Follow-up Risk</span><strong>{{ overdue_followups }}</strong><small>Overdue actions requiring attention</small></article>
+    <article class="dashboard-kpi-card"><span>Conversion</span><strong>{{ conversion_percent }}%</strong><small>{{ converted }} booked or closed leads</small></article>
+</section>
 
 <div class="row g-4">
     <div class="col-xl-7">
-        <section class="profile-panel h-100">
+        <section class="dashboard-panel h-100">
             <div class="profile-panel-head">
                 <div><h2>Pipeline By Status</h2><p>Current CRM stage distribution.</p></div>
                 <a class="btn btn-sm btn-light" href="{% url 'crm:lead_list' %}">Open Pipeline</a>
@@ -43,7 +42,7 @@
         </section>
     </div>
     <div class="col-xl-5">
-        <section class="profile-panel h-100">
+        <section class="dashboard-panel h-100">
             <div class="profile-panel-head"><div><h2>Lead Sources</h2><p>Where enquiries are coming from.</p></div></div>
             {% for item in source_counts %}
             <div class="d-flex align-items-center justify-content-between py-2 border-bottom">
@@ -57,7 +56,7 @@
 
 <div class="row g-4 mt-1">
     <div class="col-xl-7">
-        <section class="profile-panel h-100">
+        <section class="dashboard-panel h-100">
             <div class="profile-panel-head"><div><h2>Recent Leads</h2><p>Latest enquiries requiring action.</p></div></div>
             <div class="table-responsive">
                 <table class="table align-middle mb-0">
@@ -79,7 +78,7 @@
         </section>
     </div>
     <div class="col-xl-5">
-        <section class="profile-panel h-100">
+        <section class="dashboard-panel h-100">
             <div class="profile-panel-head">
                 <div><h2>Due Follow-ups</h2><p>Today and overdue actions.</p></div>
                 <a class="btn btn-sm btn-light" href="{% url 'crm:followup_list' %}">View All</a>

@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Plot Finder - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+  <div>
+    <h1 class="app-page-title mb-0">{{ workflow_label }}</h1>
+    <p class="text-body mb-0">Search by colony name and plot number, then open booking, quotation, commission and visit flow.</p>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+      {% if can_manage_commissions %}
+      <a class="btn btn-outline-primary" href="{% url 'properties:commission_rules' %}">Commission Management</a>
+      <a class="btn btn-outline-primary" href="{% url 'properties:owner_mis_report' %}">Payout Ledger</a>
+      {% endif %}
+      <a class="btn btn-light" href="{% url 'properties:visit_index' %}">Site Visits</a>
+  </div>
+</div>
+
+<section class="profile-panel mb-3">
+  <form method="get" class="app-filter-form">
+    <div class="app-filter-field app-filter-field-wide">
+      <label class="form-label" for="colonySearch">Colony / Project</label>
+      <input id="colonySearch" class="form-control" type="search" name="colony" value="{{ colony_query }}" placeholder="Colony, project, city, locality">
+    </div>
+    <div class="app-filter-field">
+      <label class="form-label" for="plotNumberSearch">Plot Number</label>
+      <input id="plotNumberSearch" class="form-control" type="search" name="plot_number" value="{{ plot_number }}" placeholder="A-01 / B-12">
+    </div>
+    <div class="app-filter-field">
+      <label class="form-label" for="plotStatus">Plot Status</label>
+      <select id="plotStatus" class="form-control" name="status">
+        <option value="">All</option>
+        {% for value,label in status_choices %}<option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="app-filter-actions">
+      <button class="btn btn-primary" type="submit">Search</button>
+      {% if workflow %}<input type="hidden" name="workflow" value="{{ workflow }}">{% endif %}
+      <a class="btn btn-light" href="{% url 'properties:plot_finder' %}">Clear</a>
+    </div>
+  </form>
+</section>
+
+<section class="profile-panel">
+  <div class="profile-panel-head">
+    <div>
+      <h2>Matching Plots</h2>
+      <p>Use the action buttons to continue the complete sales workflow.</p>
+    </div>
+    <span class="plot-directory-count">{{ page_obj.paginator.count }} plot{{ page_obj.paginator.count|pluralize }}</span>
+  </div>
+  <div class="table-responsive plot-directory-table">
+    <table class="table align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Colony</th>
+          <th>Plot</th>
+          <th>Pricing</th>
+          <th>Status</th>
+          <th>Activity</th>
+          <th class="text-end">Flow</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for plot in plots %}
+        <tr>
+          <td>
+            <div class="plot-directory-primary">
+              <a href="{% url 'properties:detail' plot.property.id %}">{{ plot.property.colony_name|default:plot.property.title }}</a>
+              <span>{{ plot.property.city }}{% if plot.property.locality %}, {{ plot.property.locality }}{% endif %}</span>
+            </div>
+          </td>
+          <td>
+            <div class="plot-directory-primary">
+              <a href="{% url 'properties:plot_detail' plot.property.id plot.id %}">{{ plot.plot_number }}</a>
+              <span>{{ plot.get_plot_category_display }} / {{ plot.area_sqft }} sqft</span>
+            </div>
+          </td>
+          <td><div class="plot-directory-price"><strong>Rs. {{ plot.price }}</strong><span>Rate {{ plot.base_rate }} / sqft · PLC {{ plot.plc_rate }}%</span></div></td>
+          <td><span class="badge rounded-pill property-status {{ plot.status }}">{{ plot.get_status_display }}</span></td>
+          <td>
+            <div class="plot-directory-metrics"><span><strong>{{ plot.quotations.count }}</strong> Quotes</span><span><strong>{{ plot.bookings.count }}</strong> Bookings</span><span><strong>{{ plot.visits.count }}</strong> Visits</span></div>
+          </td>
+          <td class="text-end">
+            <div class="plot-directory-actions">
+              <a class="btn btn-sm btn-outline-primary" href="{% url 'properties:plot_detail' plot.property.id plot.id %}">Detail</a>
+              {% if can_manage %}
+              <a class="btn btn-sm btn-light" href="{% url 'properties:plot_quotation_create' plot.property.id plot.id %}">Quotation</a>
+              <a class="btn btn-sm btn-light" href="{% url 'properties:plot_booking_create' plot.property.id plot.id %}">Booking</a>
+              <a class="btn btn-sm btn-light" href="{% url 'properties:plot_visit_create' plot.property.id plot.id %}">Visit</a>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6"><div class="plot-directory-empty"><strong>No matching plots found</strong><span>Try a colony name, project title, city, status, or exact plot number.</span><a class="btn btn-light btn-sm" href="{% url 'properties:plot_finder' %}">Clear Search</a></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "accounts/partials/pagination.html" with page_obj=page_obj %}
+</section>
+{% endblock %}

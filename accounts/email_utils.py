@@ -230,6 +230,16 @@ def send_property_share_email(*, to_email, property_title, property_summary, sen
     )
 
 
+def send_property_document_email(*, to_email, subject, title, intro, body, pdf_bytes, filename):
+    text_body = f"{title}\n\n{intro}\n\n{body}"
+    html_body = render_to_string("emails/notification.html", {"title": title, "intro": intro, "body": body, "badge": "Property Document"})
+    email = EmailMultiAlternatives(subject, text_body, settings.DEFAULT_FROM_EMAIL, [to_email])
+    email.attach_alternative(html_body, "text/html")
+    email.attach(filename, pdf_bytes, "application/pdf")
+    _attach_logo(email)
+    _send_and_record(email, recipient=to_email, subject=subject, category="property_document")
+
+
 def send_meeting_notification_email(*, to_email, name, meeting_title, starts_at, ends_at=None, location="", meeting_link="", description="", action_label="Meeting scheduled"):
     first_name = (name or "there").strip().split(" ", 1)[0]
     details = [f"Meeting: {meeting_title}", f"Starts at: {starts_at}"]

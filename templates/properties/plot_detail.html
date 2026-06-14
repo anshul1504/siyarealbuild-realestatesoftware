@@ -1,22 +1,31 @@
 {% extends "base.html" %}
 {% block title %}Plot {{ plot.plot_number }} - {{ property_obj.title }}{% endblock %}
 {% block content %}
-<div class="app-page-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
-    <div>
-        <h1 class="app-page-title mb-0">Plot {{ plot.plot_number }}</h1>
-        <p class="text-body mb-0"><a href="{% url 'properties:detail' property_obj.id %}">{{ property_obj.title }}</a> / {{ property_obj.city }}{% if property_obj.locality %}, {{ property_obj.locality }}{% endif %}</p>
+<div class="plot-detail-page">
+<section class="plot-detail-hero">
+    <div class="plot-detail-hero-copy">
+        <span>{{ property_obj.get_category_display }} · {{ property_obj.city }}{% if property_obj.locality %}, {{ property_obj.locality }}{% endif %}</span>
+        <h1>Plot {{ plot.plot_number }}</h1>
+        <p><a href="{% url 'properties:detail' property_obj.id %}">{{ property_obj.title }}</a>{% if plot.block %} · Block {{ plot.block }}{% endif %}</p>
+        <div class="plot-detail-metrics">
+            <div><span>Status</span><strong>{{ plot.get_status_display }}</strong></div>
+            <div><span>Area</span><strong>{{ plot.area_sqft }} sqft</strong></div>
+            <div><span>Final Price</span><strong>Rs. {{ plot.price }}</strong></div>
+            <div><span>Payment</span><strong>{% if bookings %}{{ bookings.0.payment_progress_percent }}% paid{% else %}Not booked{% endif %}</strong></div>
+        </div>
     </div>
-    <div class="d-flex gap-2">
+    <div class="plot-detail-actions">
         <a href="{% url 'properties:detail' property_obj.id %}" class="btn btn-light">Property Detail</a>
+        <a href="{% url 'properties:plot_pdf' property_obj.id plot.id %}" class="btn btn-light">Download PDF</a>
         <a href="https://wa.me/?text={{ property_obj.title|urlencode }}%20Plot%20{{ plot.plot_number|urlencode }}%20Area%20{{ plot.area_sqft }}%20sqft%20Price%20Rs.%20{{ plot.price }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-success">Share WhatsApp</a>
-        {% if can_manage %}
+        {% if can_edit %}
         <a href="{% url 'properties:plot_edit' property_obj.id plot.id %}" class="btn btn-outline-primary">Edit Plot</a>
         <a href="{% url 'properties:plot_quotation_create' property_obj.id plot.id %}" class="btn btn-light">Quotation</a>
-        <a href="{% url 'properties:plot_booking_create' property_obj.id plot.id %}" class="btn btn-light">Book Plot</a>
+        <a href="{% url 'properties:plot_booking_create' property_obj.id plot.id %}" class="btn btn-light">{% if dashboard_is_owner %}Book Plot{% else %}Request Booking{% endif %}</a>
         <a href="{% url 'properties:plot_visit_create' property_obj.id plot.id %}" class="btn btn-primary">Add Visit</a>
         {% endif %}
     </div>
-</div>
+</section>
 
 <section class="profile-panel mb-3">
     <div class="profile-panel-head"><div><h2>Plot Details</h2><p>Individual plot inventory and pricing information.</p></div></div>
@@ -31,42 +40,248 @@
         <div><span>Road Width</span><strong>{% if plot.road_width_ft %}{{ plot.road_width_ft }} ft{% else %}-{% endif %}</strong></div>
         <div><span>Price</span><strong>Rs. {{ plot.price }}</strong></div>
         <div><span>Base Rate</span><strong>Rs. {{ plot.base_rate }}/sqft</strong></div>
-        <div><span>PLC Rate</span><strong>Rs. {{ plot.plc_rate }}/sqft</strong></div>
+        <div><span>PLC</span><strong>{{ plot.plc_rate }}%</strong></div>
         <div><span>Extra Charges</span><strong>Rs. {{ plot.extra_charges }}</strong></div>
-        <div><span>Flags</span><strong>{% if plot.is_corner %}Corner {% endif %}{% if plot.is_garden_facing %}Garden-facing {% endif %}{% if plot.is_main_road %}Main-road{% endif %}</strong></div>
+        <div><span>Flags</span><strong>{% if plot.is_corner %}Corner {% endif %}{% if plot.is_garden_facing %}Garden-facing {% endif %}{% if plot.is_main_road %}Main-road {% endif %}{% if plot.is_wide_road %}Wide-road{% endif %}</strong></div>
         <div class="profile-overview-wide"><span>Notes</span><strong>{{ plot.notes|default:"-" }}</strong></div>
     </div>
 </section>
 
-<div class="row g-4 mb-3">
-    <div class="col-xl-6">
+<div class="row g-3 mb-3">
+    <div class="col-12">
         <section class="profile-panel h-100">
             <div class="profile-panel-head"><div><h2>Quotations</h2><p>Client pricing generated for this plot.</p></div></div>
             <div class="table-responsive">
                 <table class="table align-middle mb-0">
-                    <thead><tr><th>Client</th><th>Total</th><th>Status</th><th>Valid</th></tr></thead>
+                    <thead><tr><th>Client</th><th>Total</th><th>Status</th><th>Valid</th><th>Actions</th></tr></thead>
                     <tbody>
                     {% for quote in quotations %}
-                    <tr><td>{{ quote.client_name }}<br><small>{{ quote.client_phone|default:quote.client_email }}</small></td><td>Rs. {{ quote.total_amount }}</td><td>{{ quote.get_status_display }}</td><td>{{ quote.valid_until|default:"-" }}</td></tr>
-                    {% empty %}<tr><td colspan="4" class="text-center text-body py-3">No quotations yet.</td></tr>{% endfor %}
+                    <tr><td>{{ quote.client_name }}<br><small>{{ quote.client_phone|default:quote.client_email }}</small></td><td>Rs. {{ quote.total_amount }}</td><td>{{ quote.get_status_display }}</td><td>{{ quote.valid_until|default:"-" }}</td><td><a class="btn btn-sm btn-light" href="{% url 'properties:plot_quotation_edit' property_obj.id plot.id quote.id %}">Edit</a> <a class="btn btn-sm btn-light" href="{% url 'properties:plot_quotation_pdf' property_obj.id plot.id quote.id %}">PDF</a></td></tr>
+                    {% empty %}<tr><td colspan="5" class="text-center text-body py-3">No quotations yet.</td></tr>{% endfor %}
                     </tbody>
                 </table>
             </div>
         </section>
     </div>
-    <div class="col-xl-6">
+    <div class="col-12">
         <section class="profile-panel h-100">
             <div class="profile-panel-head"><div><h2>Bookings</h2><p>Booking and deal status for this plot.</p></div></div>
-            <div class="table-responsive">
-                <table class="table align-middle mb-0">
-                    <thead><tr><th>Client</th><th>Booking</th><th>Deal</th><th>Status</th></tr></thead>
-                    <tbody>
-                    {% for booking in bookings %}
-                    <tr><td>{{ booking.client_name }}<br><small>{{ booking.client_phone|default:booking.client_email }}</small></td><td>Rs. {{ booking.booking_amount }}</td><td>Rs. {{ booking.total_deal_value }}</td><td>{{ booking.get_status_display }}</td></tr>
-                    {% empty %}<tr><td colspan="4" class="text-center text-body py-3">No bookings yet.</td></tr>{% endfor %}
-                    </tbody>
-                </table>
+            {% for booking in bookings %}
+            <div class="booking-ledger-block mb-3">
+                <div class="booking-ledger-head">
+                    <div><span>BOOKING RECORD</span><h3>{{ booking.client_name }}</h3><p>{{ booking.client_phone|default:booking.client_email|default:"No contact provided" }}</p></div>
+                    <div class="booking-ledger-actions"><a class="btn btn-sm btn-light" href="{% url 'properties:plot_booking_edit' property_obj.id plot.id booking.id %}">Edit Booking</a><a class="btn btn-sm btn-light" href="{% url 'properties:plot_booking_pdf' property_obj.id plot.id booking.id %}">Download PDF</a></div>
+                </div>
+                <div class="booking-summary-cards mb-3">
+                    <div><span>Deal Value</span><strong>Rs. {{ booking.total_deal_value }}</strong></div>
+                    <div><span>Paid</span><strong>Rs. {{ booking.paid_amount }}</strong></div>
+                    <div><span>Balance</span><strong>Rs. {{ booking.balance_amount }}</strong></div>
+                    <div><span>Status</span><strong>{{ booking.get_status_display }}</strong></div>
+                    <div><span>Payment Progress</span><strong>{{ booking.payment_progress_percent }}%</strong></div>
+                    <div><span>Coupon / Discount</span><strong>{{ booking.coupon_code|default:"-" }} · Rs. {{ booking.coupon_discount_amount }}</strong></div>
+                    {% if dashboard_is_owner %}<div><span>Total Commission</span><strong>Rs. {{ booking.commission_amount }}</strong></div>{% endif %}
+                </div>
+                {% if dashboard_is_owner and booking.status == "requested" %}
+                <form method="post" action="{% url 'properties:booking_request_approve' property_obj.id plot.id booking.id %}" class="d-flex justify-content-end mb-3">
+                    {% csrf_token %}
+                    <button class="btn btn-primary" type="submit">Approve Booking Request</button>
+                </form>
+                {% endif %}
+                <div class="table-responsive mb-3">
+                    <table class="table align-middle mb-0">
+                        <thead><tr><th>Commission Role</th><th>Amount</th><th>Status</th><th>Paid</th><th>Reference / Note</th><th>Action</th></tr></thead>
+                        <tbody>
+                        {% for payout in booking.visible_commission_payouts %}
+                        <tr>
+                            <td>{{ payout.get_role_display }}<br><small>{{ payout.get_calculation_type_display }} {{ payout.rule_value }}</small></td>
+                            <td>Rs. {{ payout.amount }}</td>
+                            <td>{{ payout.get_status_display }}</td>
+                            <td>{% if payout.paid_at %}{{ payout.paid_at|date:"d M Y" }}<br><small>{{ payout.paid_by.get_full_name|default:payout.paid_by.email }}</small>{% else %}-{% endif %}</td>
+                            <td>{{ payout.payout_reference|default:"-" }}<br><small>{{ payout.note|default:"-" }}</small></td>
+                            <td>
+                                {% if can_manage_commissions %}
+                                <form method="post" action="{% url 'properties:booking_commission_payout_update' property_obj.id plot.id booking.id payout.id %}" class="agreement-inline-form">
+                                    {% csrf_token %}
+                                    <select class="form-control form-control-sm mb-1" name="status">
+                                        {% for value,label in commission_payout_status_choices %}
+                                        <option value="{{ value }}" {% if payout.status == value %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <input class="form-control form-control-sm mb-1" name="payout_reference" value="{{ payout.payout_reference }}" placeholder="Reference">
+                                    <input class="form-control form-control-sm mb-1" name="note" value="{{ payout.note }}" placeholder="Note">
+                                    <button class="btn btn-sm btn-outline-primary" type="submit">Update</button>
+                                </form>
+                                {% else %}-{% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}<tr><td colspan="6" class="text-center text-body py-3">No commission payout rows generated.</td></tr>{% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="table-responsive mb-3">
+                    <table class="table align-middle mb-0">
+                        <thead><tr><th>Installment</th><th>Due</th><th>Amount</th><th>Paid</th><th>Balance</th><th>Status</th></tr></thead>
+                        <tbody>
+                        {% for installment in booking.installments.all %}
+                        <tr>
+                            <td>{{ installment.title }}</td>
+                            <td>{{ installment.due_date }}</td>
+                            <td>Rs. {{ installment.amount }}</td>
+                            <td>Rs. {{ installment.paid_amount }}</td>
+                            <td>Rs. {{ installment.balance_amount }}</td>
+                            <td>{{ installment.get_status_display }}</td>
+                        </tr>
+                        {% empty %}<tr><td colspan="6" class="text-center text-body py-3">No installments added.</td></tr>{% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="table-responsive mb-3">
+                    <table class="table align-middle mb-0">
+                        <thead><tr><th>Received On</th><th>Amount</th><th>Mode</th><th>Reference</th><th>Received By</th></tr></thead>
+                        <tbody>
+                        {% for payment in booking.payments.all %}
+                        <tr>
+                            <td>{{ payment.received_on }}</td>
+                            <td>Rs. {{ payment.amount }}</td>
+                            <td>{{ payment.get_mode_display }}</td>
+                            <td>{{ payment.reference_number|default:"-" }}</td>
+                            <td>{% if payment.received_by %}{{ payment.received_by.get_full_name|default:payment.received_by.email }}{% else %}-{% endif %}</td>
+                        </tr>
+                        {% empty %}<tr><td colspan="5" class="text-center text-body py-3">No payments received.</td></tr>{% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="table-responsive mb-3">
+                    <table class="table align-middle mb-0">
+                        <thead><tr><th>Agreement</th><th>Status</th><th>Dates</th><th>Reference</th><th>File</th><th>Action</th></tr></thead>
+                        <tbody>
+                        {% for agreement in booking.agreements.all %}
+                        <tr>
+                            <td>{{ agreement.get_agreement_type_display }}<br><small>{{ agreement.title }}</small></td>
+                            <td>{{ agreement.get_status_display }}</td>
+                            <td>
+                                Prepared: {{ agreement.prepared_on|default:"-" }}<br>
+                                Signed: {{ agreement.signed_on|default:"-" }}<br>
+                                Registered: {{ agreement.registered_on|default:"-" }}
+                            </td>
+                            <td>No: {{ agreement.agreement_number|default:"-" }}<br><small>Stamp: {{ agreement.stamp_number|default:"-" }}</small></td>
+                            <td>{% if agreement.file %}<a class="btn btn-sm btn-light" href="{% url 'properties:booking_agreement_download' property_obj.id plot.id booking.id agreement.id %}">Download</a>{% else %}-{% endif %}</td>
+                            <td>
+                                {% if can_manage %}
+                                <form method="post" enctype="multipart/form-data" action="{% url 'properties:booking_agreement_update' property_obj.id plot.id booking.id agreement.id %}" class="agreement-inline-form">
+                                    {% csrf_token %}
+                                    <select class="form-control form-control-sm mb-1" name="status">
+                                        {% for value,label in agreement_status_choices %}
+                                        <option value="{{ value }}" {% if agreement.status == value %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <input type="hidden" name="agreement_type" value="{{ agreement.agreement_type }}">
+                                    <input type="hidden" name="title" value="{{ agreement.title }}">
+                                    <input type="hidden" name="agreement_number" value="{{ agreement.agreement_number }}">
+                                    <input type="hidden" name="stamp_number" value="{{ agreement.stamp_number }}">
+                                    <input type="hidden" name="prepared_on" value="{{ agreement.prepared_on|date:'Y-m-d' }}">
+                                    <input type="hidden" name="signed_on" value="{{ agreement.signed_on|date:'Y-m-d' }}">
+                                    <input type="hidden" name="registered_on" value="{{ agreement.registered_on|date:'Y-m-d' }}">
+                                    <input type="hidden" name="registration_office" value="{{ agreement.registration_office }}">
+                                    <input type="hidden" name="next_action_date" value="{{ agreement.next_action_date|date:'Y-m-d' }}">
+                                    <input type="hidden" name="note" value="{{ agreement.note }}">
+                                    <button class="btn btn-sm btn-outline-primary" type="submit">Update</button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}<tr><td colspan="6" class="text-center text-body py-3">No agreements added.</td></tr>{% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if can_manage %}
+                <div class="row g-3">
+                    <div class="col-lg-6">
+                        <form method="post" action="{% url 'properties:booking_installment_create' property_obj.id plot.id booking.id %}" class="profile-panel-subform">
+                            {% csrf_token %}
+                            <h3>Add Installment</h3>
+                            <div class="row g-2">
+                                <div class="col-md-6"><label class="form-label">Title</label><input class="form-control" name="title" required></div>
+                                <div class="col-md-6"><label class="form-label">Due Date</label><input class="form-control" type="date" name="due_date" required></div>
+                                <div class="col-md-6"><label class="form-label">Amount</label><input class="form-control" type="number" name="amount" min="1" step="0.01" required></div>
+                                <div class="col-md-6"><label class="form-label">Note</label><input class="form-control" name="note"></div>
+                            </div>
+                            <button class="btn btn-outline-primary w-100 mt-3" type="submit">Add Installment</button>
+                        </form>
+                    </div>
+                    <div class="col-lg-6">
+                        <form method="post" action="{% url 'properties:booking_payment_create' property_obj.id plot.id booking.id %}" class="profile-panel-subform">
+                            {% csrf_token %}
+                            <h3>Receive Payment</h3>
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <label class="form-label">Installment</label>
+                                    <select class="form-control" name="installment">
+                                        <option value="">General payment</option>
+                                        {% for installment in booking.installments.all %}
+                                        {% if installment.balance_amount > 0 %}
+                                        <option value="{{ installment.id }}">{{ installment.title }} - Balance Rs. {{ installment.balance_amount }}</option>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-6"><label class="form-label">Received On</label><input class="form-control" type="date" name="received_on" required></div>
+                                <div class="col-md-6"><label class="form-label">Amount</label><input class="form-control" type="number" name="amount" min="1" step="0.01" required></div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Mode</label>
+                                    <select class="form-control" name="mode">
+                                        {% for value,label in payment_mode_choices %}
+                                        <option value="{{ value }}">{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-6"><label class="form-label">Reference</label><input class="form-control" name="reference_number"></div>
+                                <div class="col-md-6"><label class="form-label">Note</label><input class="form-control" name="note"></div>
+                            </div>
+                            <button class="btn btn-primary w-100 mt-3" type="submit">Receive Payment</button>
+                        </form>
+                    </div>
+                    <div class="col-lg-12">
+                        <form method="post" enctype="multipart/form-data" action="{% url 'properties:booking_agreement_create' property_obj.id plot.id booking.id %}" class="profile-panel-subform">
+                            {% csrf_token %}
+                            <h3>Add Agreement / Registry Document</h3>
+                            <div class="row g-2">
+                                <div class="col-md-3">
+                                    <label class="form-label">Type</label>
+                                    <select class="form-control" name="agreement_type">
+                                        {% for value,label in agreement_type_choices %}
+                                        <option value="{{ value }}">{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-3"><label class="form-label">Title</label><input class="form-control" name="title" required></div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Status</label>
+                                    <select class="form-control" name="status">
+                                        {% for value,label in agreement_status_choices %}
+                                        <option value="{{ value }}">{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-3"><label class="form-label">File</label><input class="form-control" type="file" name="file" accept=".pdf,image/*"></div>
+                                <div class="col-md-3"><label class="form-label">Agreement No.</label><input class="form-control" name="agreement_number"></div>
+                                <div class="col-md-3"><label class="form-label">Stamp No.</label><input class="form-control" name="stamp_number"></div>
+                                <div class="col-md-3"><label class="form-label">Prepared On</label><input class="form-control" type="date" name="prepared_on"></div>
+                                <div class="col-md-3"><label class="form-label">Signed On</label><input class="form-control" type="date" name="signed_on"></div>
+                                <div class="col-md-3"><label class="form-label">Registered On</label><input class="form-control" type="date" name="registered_on"></div>
+                                <div class="col-md-3"><label class="form-label">Registry Office</label><input class="form-control" name="registration_office"></div>
+                                <div class="col-md-3"><label class="form-label">Next Action</label><input class="form-control" type="date" name="next_action_date"></div>
+                                <div class="col-md-3"><label class="form-label">Note</label><input class="form-control" name="note"></div>
+                            </div>
+                            <button class="btn btn-outline-primary w-100 mt-3" type="submit">Save Agreement</button>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
             </div>
+            {% empty %}
+            <p class="text-center text-body py-3 mb-0">No bookings yet.</p>
+            {% endfor %}
         </section>
     </div>
 </div>
@@ -97,7 +312,7 @@
                 <tr>
                     <td>{{ visit.visit_at|date:"d M Y, h:i A" }}</td>
                     <td>{{ visit.client_name }}<br><small class="text-body">{{ visit.client_phone|default:visit.client_email|default:"-" }}</small></td>
-                    <td>{{ visit.assigned_employee.get_full_name|default:visit.assigned_employee.email|default:"-" }}</td>
+                    <td>{% if visit.assigned_employee %}{{ visit.assigned_employee.get_full_name|default:visit.assigned_employee.email }}{% else %}-{% endif %}</td>
                     <td>{{ visit.get_status_display }}</td>
                     <td>{{ visit.get_outcome_display }}</td>
                     <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'properties:visit_detail' visit.id %}">View</a></td>
@@ -109,4 +324,5 @@
         </table>
     </div>
 </section>
+</div>
 {% endblock %}

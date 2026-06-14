@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Commission Rules - Siya Real Build{% endblock %}
+{% block content %}
+<div class="app-page-head d-flex flex-wrap gap-3 align-items-center justify-content-between">
+  <div>
+    <h1 class="app-page-title mb-0">Commission Rules</h1>
+    <p class="text-body mb-0">Set role-wise commission by percentage, fixed amount, or per sqft value.</p>
+  </div>
+  <a class="btn btn-outline-primary" href="{% url 'properties:owner_mis_report' %}">Payout Ledger</a>
+</div>
+
+<section class="profile-panel mb-3">
+  <form method="get" class="row g-3 align-items-end">
+    <div class="col-md-8">
+      <label class="form-label" for="commissionProperty">Select Colony / Project</label>
+      <select id="commissionProperty" class="form-control" name="property">
+        {% for property in properties %}
+        <option value="{{ property.id }}" {% if selected_property_id == property.id|stringformat:"s" %}selected{% endif %}>{{ property.colony_name|default:property.title }} - {{ property.city }}</option>
+        {% empty %}
+        <option value="">No colony project found</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-4 d-flex gap-2">
+      <button class="btn btn-primary" type="submit">Load Rules</button>
+      <a class="btn btn-light" href="{% url 'properties:create' %}">Add Colony</a>
+    </div>
+  </form>
+</section>
+
+{% if property_obj and commission_formset %}
+<form method="post" class="profile-panel">
+  {% csrf_token %}
+  <input type="hidden" name="property" value="{{ property_obj.id }}">
+  {{ commission_formset.management_form }}
+  <div class="profile-panel-head">
+    <div>
+      <h2>{{ property_obj.colony_name|default:property_obj.title }}</h2>
+      <p>Percentage is calculated on base deal amount, fixed amount is flat payout, and per sqft uses plot area.</p>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table align-middle mb-0">
+      <thead><tr><th>Role</th><th>Type</th><th>Value</th><th>Note</th><th>Active</th><th>Delete</th></tr></thead>
+      <tbody>
+        {% for form in commission_formset %}
+        <tr>
+          {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+          <td>{{ form.role }}{% for error in form.role.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</td>
+          <td>{{ form.calculation_type }}{% for error in form.calculation_type.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</td>
+          <td>{{ form.value }}{% for error in form.value.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</td>
+          <td>{{ form.note }}{% for error in form.note.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</td>
+          <td>{{ form.is_active }}</td>
+          <td>{% if form.DELETE %}{{ form.DELETE }}{% endif %}</td>
+        </tr>
+        {% for error in form.non_field_errors %}<tr><td colspan="6" class="text-danger small">{{ error }}</td></tr>{% endfor %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% for error in commission_formset.non_form_errors %}<div class="alert alert-danger mt-3">{{ error }}</div>{% endfor %}
+  <div class="d-flex flex-wrap justify-content-end gap-2 mt-4">
+    <a class="btn btn-light" href="{% url 'properties:detail' property_obj.id %}">Property Detail</a>
+    <button class="btn btn-primary" type="submit">Save Commission Rules</button>
+  </div>
+</form>
+{% else %}
+<section class="profile-panel">
+  <p class="text-body mb-0">Add a colony project first, then set role-wise commission rules.</p>
+</section>
+{% endif %}
+{% endblock %}

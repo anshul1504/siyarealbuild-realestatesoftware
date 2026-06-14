@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import ColonyPlot, PlotBooking, PlotQuotation, PlotStatusHistory, Property, PropertyDeveloper, PropertyDocument, PropertyPhoto, PropertyVisit
+from .models import BookingAgreement, BookingInstallment, BookingPayment, ColonyPlot, MISReportSnapshot, PlotBooking, PlotQuotation, PlotStatusHistory, Property, PropertyCommissionPayout, PropertyCommissionRule, PropertyDeveloper, PropertyDocument, PropertyPhoto, PropertyVisit
 
 
 class PropertyPhotoInline(admin.TabularInline):
@@ -21,7 +21,13 @@ class ColonyPlotInline(admin.TabularInline):
 class PropertyVisitInline(admin.TabularInline):
     model = PropertyVisit
     extra = 0
-    fields = ("plot", "client_name", "assigned_employee", "visit_at", "status", "outcome")
+    fields = ("plot", "client_name", "assigned_employee", "image", "visit_at", "status", "outcome")
+
+
+class PropertyCommissionRuleInline(admin.TabularInline):
+    model = PropertyCommissionRule
+    extra = 1
+    fields = ("role", "calculation_type", "value", "note", "is_active")
 
 
 @admin.register(Property)
@@ -42,7 +48,7 @@ class PropertyAdmin(admin.ModelAdmin):
         "nearby_commercial",
         "nearby_landmarks",
     )
-    inlines = (PropertyPhotoInline, PropertyDocumentInline, ColonyPlotInline, PropertyVisitInline)
+    inlines = (PropertyPhotoInline, PropertyDocumentInline, PropertyCommissionRuleInline, ColonyPlotInline, PropertyVisitInline)
     date_hierarchy = "created_at"
 
 
@@ -55,9 +61,9 @@ class PropertyPhotoAdmin(admin.ModelAdmin):
 
 @admin.register(PropertyDocument)
 class PropertyDocumentAdmin(admin.ModelAdmin):
-    list_display = ("property", "document_type", "title", "uploaded_at")
-    list_filter = ("document_type", "uploaded_at")
-    search_fields = ("property__title", "title")
+    list_display = ("property", "document_type", "title", "document_number", "review_status", "expires_on", "uploaded_at")
+    list_filter = ("document_type", "review_status", "expires_on", "uploaded_at")
+    search_fields = ("property__title", "title", "document_number", "review_note")
 
 
 @admin.register(ColonyPlot)
@@ -72,6 +78,21 @@ class PropertyDeveloperAdmin(admin.ModelAdmin):
     list_display = ("name", "company_name", "company", "mobile", "email", "is_active")
     list_filter = ("is_active", "company")
     search_fields = ("name", "company_name", "contact_person", "mobile", "email")
+
+
+@admin.register(PropertyCommissionRule)
+class PropertyCommissionRuleAdmin(admin.ModelAdmin):
+    list_display = ("property", "role", "calculation_type", "value", "is_active")
+    list_filter = ("role", "calculation_type", "is_active")
+    search_fields = ("property__title", "note")
+
+
+@admin.register(PropertyCommissionPayout)
+class PropertyCommissionPayoutAdmin(admin.ModelAdmin):
+    list_display = ("booking", "role", "amount", "status", "paid_by", "paid_at", "updated_at")
+    list_filter = ("status", "role", "paid_at")
+    search_fields = ("booking__client_name", "booking__plot__plot_number", "payout_reference", "note")
+    readonly_fields = ("booking", "role", "calculation_type", "rule_value", "amount", "generated_by", "created_at", "updated_at")
 
 
 @admin.register(PlotStatusHistory)
@@ -89,14 +110,42 @@ class PlotQuotationAdmin(admin.ModelAdmin):
 
 @admin.register(PlotBooking)
 class PlotBookingAdmin(admin.ModelAdmin):
-    list_display = ("plot", "client_name", "booking_date", "booking_amount", "total_deal_value", "status", "created_by")
+    list_display = ("plot", "client_name", "booking_date", "booking_amount", "total_deal_value", "paid_amount", "balance_amount", "status", "created_by")
     list_filter = ("status", "booking_date")
     search_fields = ("plot__plot_number", "plot__property__title", "client_name", "client_phone", "client_email")
 
 
+@admin.register(BookingInstallment)
+class BookingInstallmentAdmin(admin.ModelAdmin):
+    list_display = ("booking", "title", "due_date", "amount", "paid_amount", "status")
+    list_filter = ("status", "due_date")
+    search_fields = ("booking__client_name", "booking__plot__plot_number", "title")
+
+
+@admin.register(BookingPayment)
+class BookingPaymentAdmin(admin.ModelAdmin):
+    list_display = ("booking", "installment", "received_on", "amount", "mode", "reference_number", "received_by")
+    list_filter = ("mode", "received_on")
+    search_fields = ("booking__client_name", "booking__plot__plot_number", "reference_number")
+
+
+@admin.register(BookingAgreement)
+class BookingAgreementAdmin(admin.ModelAdmin):
+    list_display = ("booking", "agreement_type", "title", "status", "agreement_number", "prepared_on", "signed_on", "registered_on")
+    list_filter = ("agreement_type", "status", "prepared_on", "signed_on", "registered_on")
+    search_fields = ("booking__client_name", "booking__plot__plot_number", "title", "agreement_number", "stamp_number")
+
+
+@admin.register(MISReportSnapshot)
+class MISReportSnapshotAdmin(admin.ModelAdmin):
+    list_display = ("title", "company", "report_type", "period_start", "period_end", "generated_by", "created_at")
+    list_filter = ("report_type", "period_start", "period_end", "created_at")
+    search_fields = ("title", "company__name", "generated_by__email")
+
+
 @admin.register(PropertyVisit)
 class PropertyVisitAdmin(admin.ModelAdmin):
-    list_display = ("property", "plot", "client_name", "assigned_employee", "visit_at", "status", "outcome")
+    list_display = ("property", "plot", "client_name", "assigned_employee", "visit_at", "status", "outcome", "image")
     list_filter = ("status", "outcome", "visit_at")
     search_fields = ("property__title", "plot__plot_number", "client_name", "client_phone", "assigned_employee__email")
     date_hierarchy = "visit_at"

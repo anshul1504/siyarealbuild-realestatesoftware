@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="record-detail-page">
+  <section class="profile-panel record-detail-hero">
+    <div>
+      <span class="record-detail-kicker">BOOKING RECORD</span>
+      <h1>{{ booking.client_name }}</h1>
+      <p>{{ property_obj.title }} · Plot {{ plot.plot_number }} · {{ booking.get_status_display }}</p>
+    </div>
+    <div class="record-detail-actions">
+      <a class="btn btn-light" href="{% url 'properties:booking_list' %}">Booking Register</a>
+      <a class="btn btn-light" href="{% url 'properties:plot_detail' property_obj.id plot.id %}">Plot Details</a>
+      <a class="btn btn-primary" href="{% url 'properties:plot_booking_pdf' property_obj.id plot.id booking.id %}">Download Booking PDF</a>
+      {% if can_edit %}<a class="btn btn-outline-primary" href="{% url 'properties:plot_booking_edit' property_obj.id plot.id booking.id %}">Edit Booking</a>{% endif %}
+    </div>
+  </section>
+
+  <div class="booking-detail-metrics">
+    <div><span>Deal Value</span><strong>Rs. {{ booking.total_deal_value }}</strong></div>
+    <div><span>Paid Amount</span><strong>Rs. {{ booking.paid_amount }}</strong></div>
+    <div><span>Balance Due</span><strong>Rs. {{ booking.balance_amount }}</strong></div>
+    <div><span>Payment Progress</span><strong>{{ booking.payment_progress_percent }}%</strong></div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-6"><section class="profile-panel h-100"><div class="profile-panel-head"><div><h2>Client & KYC</h2></div></div><div class="profile-overview-grid">
+      <div><span>Client Name</span><strong>{{ booking.client_name }}</strong></div><div><span>Phone</span><strong>{{ booking.client_phone|default:"-" }}</strong></div>
+      <div><span>Email</span><strong>{{ booking.client_email|default:"-" }}</strong></div><div><span>Government ID</span><strong>{{ booking.get_government_id_type_display|default:"-" }} · {{ booking.government_id_number|default:"-" }}</strong></div>
+      <div class="profile-overview-wide"><span>Address</span><strong>{{ booking.client_address|default:"-" }}</strong></div>
+    </div></section></div>
+    <div class="col-lg-6"><section class="profile-panel h-100"><div class="profile-panel-head"><div><h2>Plot & Booking</h2></div></div><div class="profile-overview-grid">
+      <div><span>Plot</span><strong>{{ plot.plot_number }}</strong></div><div><span>Category</span><strong>{{ plot.get_plot_category_display }}</strong></div>
+      <div><span>Area</span><strong>{{ booking.plot_area_sqft }} sqft</strong></div><div><span>Facing</span><strong>{{ booking.plot_facing|default:"-" }}</strong></div>
+      <div><span>Booking Date</span><strong>{{ booking.booking_date }}</strong></div><div><span>Status</span><strong>{{ booking.get_status_display }}</strong></div>
+    </div></section></div>
+  </div>
+
+  <section class="profile-panel"><div class="profile-panel-head"><div><h2>Pricing & Payment</h2></div></div><div class="booking-detail-metrics">
+    <div><span>Agreed Rate</span><strong>Rs. {{ booking.agreed_rate }}/sqft</strong></div><div><span>PLC</span><strong>Rs. {{ booking.plc_amount }}</strong></div>
+    <div><span>Charges</span><strong>Rs. {{ booking.charges_amount }}</strong></div><div><span>Total Discount</span><strong>Rs. {{ booking.discount_amount|add:booking.coupon_discount_amount }}</strong></div>
+  </div></section>
+
+  <section class="profile-panel"><div class="profile-panel-head"><div><h2>Payment Ledger</h2></div></div><div class="table-responsive"><table class="table align-middle"><thead><tr><th>Date</th><th>Amount</th><th>Mode</th><th>Reference</th></tr></thead><tbody>{% for payment in booking.payments.all %}<tr><td>{{ payment.received_on }}</td><td>Rs. {{ payment.amount }}</td><td>{{ payment.get_mode_display }}</td><td>{{ payment.reference_number|default:"-" }}</td></tr>{% empty %}<tr><td colspan="4">No payment received.</td></tr>{% endfor %}</tbody></table></div></section>
+
+  {% if commission_payouts %}<section class="profile-panel"><div class="profile-panel-head"><div><h2>Commission</h2><p>Role-wise booking commission.</p></div></div><div class="table-responsive"><table class="table align-middle"><thead><tr><th>Role</th><th>Rule</th><th>Amount</th><th>Status</th></tr></thead><tbody>{% for payout in commission_payouts %}<tr><td>{{ payout.get_role_display }}</td><td>{{ payout.get_calculation_type_display }} · {{ payout.rule_value }}</td><td>Rs. {{ payout.amount }}</td><td>{{ payout.get_status_display }}</td></tr>{% endfor %}</tbody></table></div></section>{% endif %}
+</div>
+{% endblock %}
