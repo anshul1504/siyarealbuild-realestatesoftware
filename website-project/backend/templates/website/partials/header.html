@@ -1,0 +1,42 @@
+{# Shared topbar and primary navigation. Keep Django tags on single lines. #}
+<div class="site-topbar">
+  <div class="topbar-contact">
+    {% if site_settings.phone %}
+      <a href="tel:{{ site_settings.phone }}"><span class="topbar-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6.6 10.8a15.5 15.5 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1.1-.2 1.2.4 2.5.7 3.8.7.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.7 21 3 13.3 3 3.7c0-.6.4-1 1-1h3.4c.6 0 1 .4 1 1 0 1.3.2 2.6.7 3.8.1.4 0 .8-.2 1.1l-2.3 2.2Z"/></svg></span>{{ site_settings.phone }}</a>
+    {% endif %}
+    {% if site_settings.email %}
+      <a href="mailto:{{ site_settings.email }}"><span class="topbar-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Zm0 4-8 5-8-5V6l8 5 8-5v2Z"/></svg></span>{{ site_settings.email }}</a>
+    {% endif %}
+    {% if site_settings.address %}
+      <span><span class="topbar-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5Z"/></svg></span>{{ site_settings.address|truncatechars:70 }}</span>
+    {% endif %}
+  </div>
+  <div class="topbar-socials">
+    <span>Connect with us</span>
+    {% if site_settings.facebook_url %}<a class="topbar-social-icon" href="{{ site_settings.facebook_url }}" target="_blank" rel="noopener" aria-label="Facebook"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 8h3V4h-3c-3 0-5 2-5 5v2H6v4h3v7h4v-7h3l1-4h-4V9c0-.7.3-1 1-1Z"/></svg></a>{% endif %}
+    {% if site_settings.instagram_url %}<a class="topbar-social-icon" href="{{ site_settings.instagram_url }}" target="_blank" rel="noopener" aria-label="Instagram"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5Zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7Zm10.5 1.5a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5ZM12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10Zm0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg></a>{% endif %}
+    {% if site_settings.youtube_url %}<a class="topbar-social-icon" href="{{ site_settings.youtube_url }}" target="_blank" rel="noopener" aria-label="YouTube"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12c0 2.2-.3 4.1-.7 5.1-.3.8-1 1.5-1.8 1.8-1.6.6-7.5.6-7.5.6s-5.9 0-7.5-.6a3.1 3.1 0 0 1-1.8-1.8C2.3 16.1 2 14.2 2 12s.3-4.1.7-5.1c.3-.8 1-1.5 1.8-1.8C6.1 4.5 12 4.5 12 4.5s5.9 0 7.5.6c.8.3 1.5 1 1.8 1.8.4 1 .7 2.9.7 5.1Zm-12.2 4.1 6-4.1-6-4.1v8.2Z"/></svg></a>{% endif %}
+  </div>
+</div>
+
+<header class="site-header">
+  <a class="brand" href="{% url 'website:home' %}">
+    {% if site_settings.logo %}
+      <img src="{{ site_settings.logo.url }}" alt="{{ site_settings.company_name }}">
+    {% else %}
+      <span class="brand-mark">SRB</span>
+    {% endif %}
+  </a>
+  <button class="menu-toggle" aria-label="Open navigation" aria-expanded="false"><span></span><span></span><span></span></button>
+  <nav class="site-nav">
+    <a href="{% url 'website:home' %}">Home</a>
+    <a href="{% url 'website:about' %}">About</a>
+    <a href="{% url 'website:property_list' %}">Properties</a>
+    <a href="{% url 'website:services' %}">Services</a>
+    <a href="{% url 'website:team' %}">Team</a>
+    <a href="{% url 'website:gallery' %}">Gallery</a>
+    <a href="{% url 'website:contact' %}">Contact</a>
+    {% if site_settings.portal_login_url %}<a class="portal-login" href="{{ site_settings.portal_login_url }}">{{ site_settings.portal_login_label }}</a>{% endif %}
+    <a class="post-property-link" href="{% url 'website:post_property' %}">{{ site_settings.post_property_label }}</a>
+  </nav>
+</header>

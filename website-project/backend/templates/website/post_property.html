@@ -1,0 +1,11 @@
+{% extends "website/base.html" %}
+{% block title %}Post a Property | Siya Real Build{% endblock %}
+{% block content %}
+<section class="page-hero post-property-hero"{% if site_settings.post_property_banner_image %} style="background-image:url('{{ site_settings.post_property_banner_image.url }}')"{% endif %}><div><span class="eyebrow">Sell With Confidence</span><h1>Post Your Property</h1><p>Share your property details with Siya Real Build and connect with serious, relevant buyers.</p></div></section>
+<section class="post-property-main">
+<div class="post-property-info"><span class="eyebrow">Owner Assistance</span><h2>A simpler way to market your property</h2><p>Our property team reviews every submission, verifies the details and helps present your property professionally.</p>
+<div class="post-benefits"><article><span>01</span><div><h3>Submit property details</h3><p>Tell us about the property, location, pricing and key specifications.</p></div></article><article><span>02</span><div><h3>Verification call</h3><p>Our advisor contacts you to verify ownership and understand the opportunity.</p></div></article><article><span>03</span><div><h3>Reach relevant buyers</h3><p>Approved properties are professionally presented to suitable buyers and investors.</p></div></article></div>
+<div class="post-property-note"><strong>No automatic publishing</strong><p>Every property is reviewed by the Siya Real Build team before it appears publicly.</p></div></div>
+<div class="post-property-form-wrap"><span class="eyebrow">Property Submission</span><h2>Tell us about your property</h2><p>Complete the form below. Our team will contact you after reviewing the information.</p><form class="post-property-form" method="post" enctype="multipart/form-data">{% csrf_token %}{{ form.as_p }}<button class="button primary" type="submit">Submit Property for Review</button></form></div>
+</section>
+{% endblock %}

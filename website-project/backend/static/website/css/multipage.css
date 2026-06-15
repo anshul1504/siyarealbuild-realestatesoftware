@@ -1,0 +1,16 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
+body,input,select,textarea,button{font-family:'Poppins',Arial,sans-serif;font-weight:400}
+h1,h2,h3,.brand,.site-nav,.button,.eyebrow,.property-content span,.property-content a,.section-heading>a,.enquiry-form label,.contact-copy>a,.hero-stats strong{font-weight:500}
+.site-nav{font-weight:500}.menu-toggle,.brand-mark{font-weight:600}
+.hero-slider{height:calc(100vh - 78px);min-height:650px;position:relative;overflow:hidden;background:#173d2c}
+.hero-slide{position:absolute;inset:0;display:flex;align-items:center;opacity:0;visibility:hidden;transform:scale(1.03);transition:opacity .8s ease,transform 1.2s ease,visibility .8s;background-position:center;background-size:cover}
+.hero-slide.active{opacity:1;visibility:visible;transform:scale(1)}
+.hero-slide .hero-shade{background:rgba(5,18,11,.68)}
+.hero-slide{justify-content:center;text-align:center}
+.hero-slide .hero-content{padding:80px 20px 40px;max-width:900px;margin:0 auto}
+.hero-slide .hero-content h1,.hero-slide .hero-content p,.hero-slide .eyebrow{text-shadow:0 3px 18px rgba(0,0,0,.55)}
+.hero-actions{justify-content:center}
+.slider-controls{position:absolute;z-index:4;inset:50% 28px auto;display:flex;align-items:center;justify-content:space-between;transform:translateY(-50%);pointer-events:none}
+.slider-controls button{width:44px;height:44px;border:1px solid rgba(255,255,255,.6);background:rgba(0,0,0,.2);color:#fff;border-radius:50%;cursor:pointer}
+.slider-controls button{pointer-events:auto}
+.text-link{display:inline-block;margin-top:15px;color:#1d5b40;font-weight:700}.quote-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}.quote-grid article{background:#fff;padding:28px}.quote-grid span{display:block;color:#647069;font-size:13px}.faq-list{display:grid;gap:12px;max-width:900px}.faq-list details{border:1px solid #dce3dd;padding:18px 22px}.faq-list summary{font-weight:700;cursor:pointer}.faq-list p{margin:12px 0 0;color:#647069}.contact-banner{padding:70px clamp(20px,8vw,130px);background:#1d5b40;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:30px}.contact-banner .eyebrow{color:#d6ef65}@media(max-width:900px){.hero-slider{height:700px}.quote-grid{grid-template-columns:1fr}.contact-banner{align-items:flex-start;flex-direction:column}}

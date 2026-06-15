@@ -1,0 +1,15 @@
+:root{--ink:#241b16;--green:#c85a18;--lime:#ff9d3d;--cream:#fff7ef;--white:#fff;--muted:#75675e;--line:#eadbd0}
+.primary,.nav-cta{background:#f58220;color:#fff}
+.eyebrow,.property-content span,.property-content a,.section-heading>a,.text-link,.service-grid b{color:#d8661f}
+.secondary{border-color:#fff;color:#fff}
+.hero-slide .eyebrow,.contact-copy .eyebrow,.contact-banner .eyebrow{color:#ffad5c}
+.contact-section,.contact-banner{background:#b94d12}
+.page-hero{background:#9f4211}
+.detail-hero{background-color:#9f4211}
+.brand-mark{background:#c85a18;color:#fff}
+.site-nav a:after{background:#f58220}
+.menu-toggle{border-color:#f58220;color:#c85a18}
+.image-placeholder{background:linear-gradient(135deg,#a84310,#e87624);color:#fff3e6}
+.slider-controls button{border-color:rgba(255,173,92,.85);background:rgba(190,75,15,.55)}
+.property-card{box-shadow:0 10px 35px rgba(122,57,20,.1)}
+.whatsapp{background:#f58220}

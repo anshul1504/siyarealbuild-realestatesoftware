@@ -1,0 +1,85 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{% block title %}{{ site_settings.seo_title|default:"Siya Real Build" }}{% endblock %}</title>
+    <meta
+      name="description"
+      content="{{ site_settings.seo_description|default:'Trusted real estate opportunities.' }}"
+    />
+    {% if site_settings.favicon %}
+      <link rel="icon" href="{{ site_settings.favicon.url }}">
+      <link rel="apple-touch-icon" href="{{ site_settings.favicon.url }}">
+    {% elif site_settings.logo %}
+      <link rel="icon" href="{{ site_settings.logo.url }}">
+      <link rel="apple-touch-icon" href="{{ site_settings.logo.url }}">
+    {% endif %}
+
+    {# Shared and page-specific stylesheets #}
+    <link rel="stylesheet" href="{% static 'website/css/site.css' %}" />
+    <link rel="stylesheet" href="{% static 'website/css/cms.css' %}" />
+    <link rel="stylesheet" href="{% static 'website/css/header.css' %}" />
+    <link rel="stylesheet" href="{% static 'website/css/multipage.css' %}" />
+    <link rel="stylesheet" href="{% static 'website/css/theme-orange.css' %}" />
+    <link rel="stylesheet" href="{% static 'website/css/slider-fix.css' %}" />
+    <link rel="stylesheet" href="{% static 'website/css/about-home.css' %}" />
+    <link rel="stylesheet" href="{% static 'website/css/about-page.css' %}" />
+    <link
+      rel="stylesheet"
+      href="{% static 'website/css/properties-page.css' %}"
+    />
+    <link
+      rel="stylesheet"
+      href="{% static 'website/css/property-detail.css' %}"
+    />
+    <link
+      rel="stylesheet"
+      href="{% static 'website/css/services-interactive.css' %}"
+    />
+    <link
+      rel="stylesheet"
+      href="{% static 'website/css/services-page.css' %}"
+    />
+    <link rel="stylesheet" href="{% static 'website/css/faq-home.css' %}" />
+    <link
+      rel="stylesheet"
+      href="{% static 'website/css/testimonials-home.css' %}"
+    />
+    <link
+      rel="stylesheet"
+      href="{% static 'website/css/site-visit-home.css' %}"
+    />
+    <link rel="stylesheet" href="{% static 'website/css/team-gallery.css' %}" />
+    <link rel="stylesheet" href="{% static 'website/css/gallery-page.css' %}" />
+    <link rel="stylesheet" href="{% static 'website/css/contact-page.css' %}" />
+    <link
+      rel="stylesheet"
+      href="{% static 'website/css/post-property.css' %}"
+    />
+    <link rel="stylesheet" href="{% static 'website/css/footer.css' %}" />
+    <link
+      rel="stylesheet"
+      href="{% static 'website/css/home-adjustments.css' %}"
+    />
+    <link rel="stylesheet" href="{% static 'website/css/responsive-final.css' %}" />
+  </head>
+  <body>
+    {% include "website/partials/header.html" %}
+    {% if messages %}
+    <div class="messages">
+      {% for message in messages %}
+      <div>{{ message }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <main>{% block content %}{% endblock %}</main>
+
+    {% include "website/partials/footer.html" %}
+    {% include "website/partials/whatsapp_button.html" %}
+
+    <script src="{% static 'website/js/site.js' %}"></script>
+  </body>
+</html>
