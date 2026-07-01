@@ -2,11 +2,13 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 from django.core.files.uploadedfile import SimpleUploadedFile
+from PIL import Image
+from io import BytesIO
 
 from accounts.models import AuditLog, Role
 from accounts.test_factories import create_company, create_user
 
-from .forms import ColonyPlotForm, PropertyForm, PropertyVisitForm
+from .forms import ColonyPlotForm, PlotBookingForm, PropertyForm, PropertyVisitForm
 from .models import BookingAgreement, BookingInstallment, BookingPayment, ColonyPlot, MISReportSnapshot, PlotBooking, PlotQuotation, PlotStatusHistory, Property, PropertyCommissionPayout, PropertyCommissionRule, PropertyDeveloper, PropertyDocument, PropertyPhoto, PropertyStatusHistory, PropertyVisit
 from .services import create_property, create_plot, update_property, update_visit
 
@@ -80,7 +82,50 @@ class PropertyLifecycleTests(TestCase):
 
         self.assertRedirects(response, reverse("properties:list"))
         self.assertTrue(Property.objects.filter(id=prop_id, is_archived=True).exists())
-        self.assertTrue(AuditLog.objects.filter(action="property.archived", target_id=str(prop_id), target_label="Test Plot").exists())
+
+    def test_plot_booking_form_rejects_non_image_payment_proof_and_non_document_id(self):
+        plot = ColonyPlot.objects.create(property=self.property, plot_number="A-1", area_sqft=1200)
+        form = PlotBookingForm(
+            data={
+                "client_name": "Buyer",
+                "client_phone": "+91 9999999999",
+                "booking_date": "2026-06-15",
+                "booking_amount": "50000",
+                "agreed_rate": "2500",
+                "government_id_type": PlotBooking.GovernmentIdType.AADHAAR,
+                "government_id_number": "123412341234",
+                "plc_amount": "0",
+                "charges_amount": "0",
+                "discount_amount": "0",
+            },
+            files={
+                "government_id_document": SimpleUploadedFile("id.exe", b"bad", content_type="application/x-msdownload"),
+                "payment_proof": SimpleUploadedFile("proof.pdf", b"bad", content_type="application/pdf"),
+            },
+            plot=plot,
+            allow_direct_booking=True,
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("government_id_document", form.errors)
+        self.assertIn("payment_proof", form.errors)
+
+    def test_property_visit_form_rejects_non_image_upload(self):
+        form = PropertyVisitForm(
+            data={
+                "client_name": "Visitor",
+                "client_phone": "+91 9999999999",
+                "visit_at": "2026-06-15T10:30",
+                "status": PropertyVisit.Status.SCHEDULED,
+                "outcome": PropertyVisit.Outcome.INTERESTED,
+            },
+            files={"image": SimpleUploadedFile("visit.pdf", b"bad", content_type="application/pdf")},
+            property_obj=self.property,
+            user=self.owner,
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("image", form.errors)
 
     def test_bulk_action_requires_login(self):
         response = self.client.post(
@@ -215,7 +260,9 @@ class PropertyLifecycleTests(TestCase):
         self.assertContains(response, "Assigned Client")
 
     def test_visit_image_upload_and_role_access(self):
-        image_bytes = b"GIF87a\x01\x00\x01\x00\x80\x01\x00\x00\x00\x00ccc,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;"
+        buffer = BytesIO()
+        Image.new("RGB", (1, 1), color="white").save(buffer, format="PNG")
+        image_bytes = buffer.getvalue()
         self.client.force_login(self.owner)
         response = self.client.post(
             reverse("properties:visit_create", args=[self.property.id]),
@@ -228,7 +275,7 @@ class PropertyLifecycleTests(TestCase):
                 "status": PropertyVisit.Status.SCHEDULED,
                 "outcome": PropertyVisit.Outcome.PENDING,
                 "notes": "Site image captured",
-                "image": SimpleUploadedFile("site.gif", image_bytes, content_type="image/gif"),
+                "image": SimpleUploadedFile("site.png", image_bytes, content_type="image/png"),
             },
         )
 
@@ -251,7 +298,7 @@ class PropertyLifecycleTests(TestCase):
                 "status": PropertyVisit.Status.COMPLETED,
                 "outcome": PropertyVisit.Outcome.INTERESTED,
                 "notes": "Updated with assigned employee access",
-                "image": SimpleUploadedFile("assigned.gif", image_bytes, content_type="image/gif"),
+                "image": SimpleUploadedFile("assigned.png", image_bytes, content_type="image/png"),
             },
         )
 

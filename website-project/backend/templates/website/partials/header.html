@@ -36,7 +36,7 @@
     <a href="{% url 'website:team' %}">Team</a>
     <a href="{% url 'website:gallery' %}">Gallery</a>
     <a href="{% url 'website:contact' %}">Contact</a>
-    {% if site_settings.portal_login_url %}<a class="portal-login" href="{{ site_settings.portal_login_url }}">{{ site_settings.portal_login_label }}</a>{% endif %}
+    <a class="portal-login" href="{{ portal_login_url }}">{{ portal_login_label }}</a>
     <a class="post-property-link" href="{% url 'website:post_property' %}">{{ site_settings.post_property_label }}</a>
   </nav>
 </header>

@@ -497,6 +497,12 @@ class PlotBookingForm(forms.ModelForm):
     def clean_coupon_code(self):
         return (self.cleaned_data.get("coupon_code") or "").upper().strip()
 
+    def clean_government_id_document(self):
+        return validate_property_document(self.cleaned_data.get("government_id_document"))
+
+    def clean_payment_proof(self):
+        return validate_property_image(self.cleaned_data.get("payment_proof"))
+
     def clean(self):
         cleaned_data = super().clean()
         coupon_code = cleaned_data.get("coupon_code")
@@ -720,6 +726,9 @@ class PropertyVisitForm(forms.ModelForm):
             value = self.initial.get(field_name) or getattr(self.instance, field_name, None)
             if value:
                 self.initial[field_name] = value.strftime("%Y-%m-%dT%H:%M")
+
+    def clean_image(self):
+        return validate_property_image(self.cleaned_data.get("image"))
 
     def clean(self):
         cleaned_data = super().clean()

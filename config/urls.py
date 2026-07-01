@@ -24,9 +24,10 @@ from config.views import health
 urlpatterns = [
     path("health/", health, name="health"),
     path("admin/", admin.site.urls),
-    path("", include("properties.urls")),
-    path("auth/", include("accounts.urls")),
-    path("crm/", include("crm.urls")),
+    path("app/", include("properties.urls")),
+    path("app/auth/", include("accounts.urls")),
+    path("app/crm/", include("crm.urls")),
+    path("", include("website.urls")),
 ]
 
 if settings.DEBUG:

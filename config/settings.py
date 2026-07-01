@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 import os
+import sys
 from pathlib import Path
 
 
@@ -31,6 +32,11 @@ def env_required(name):
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+WEBSITE_BACKEND_DIR = BASE_DIR / "website-project" / "backend"
+if WEBSITE_BACKEND_DIR.exists():
+    website_backend_path = str(WEBSITE_BACKEND_DIR)
+    if website_backend_path not in sys.path:
+        sys.path.insert(0, website_backend_path)
 SIYA_ENV = os.environ.get("SIYA_ENV", "local").strip().lower()
 IS_PRODUCTION = SIYA_ENV == "production"
 
@@ -63,6 +69,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "website",
     "accounts",
     "properties",
     "crm",
@@ -99,7 +106,7 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "templates"],
+        "DIRS": [BASE_DIR / "templates", WEBSITE_BACKEND_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -107,6 +114,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "accounts.context_processors.dashboard_access",
+                "website.context_processors.site_settings",
             ],
         },
     },
@@ -181,7 +189,7 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 
-STATICFILES_DIRS = [BASE_DIR / "static"]
+STATICFILES_DIRS = [BASE_DIR / "static", WEBSITE_BACKEND_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},

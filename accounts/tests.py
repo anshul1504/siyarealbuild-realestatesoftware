@@ -1,6 +1,7 @@
 from django.core import mail
 from django.core.cache import cache
 from django.core.files.base import ContentFile
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.auth import get_user_model
 from django.contrib.admin.sites import AdminSite
 from django.db import IntegrityError
@@ -12,7 +13,7 @@ from .admin import CompanyProfileAdmin
 from django.test import TestCase, override_settings
 from datetime import timedelta
 
-from .forms import AddEmployeeForm, CompanyProfileForm, SignupRequestForm, SoftwarePopupForm
+from .forms import AddEmployeeForm, CompanyEventForm, CompanyProfileForm, SignupRequestForm, SoftwarePopupForm
 from .models import AuditLog, AuthenticationSupportRequest, CompanyProfile, EmailOTP, EmployeeEmailChangeRequest, EmployeeInvite, EmployeeRoleChangeRequest, NotificationDelivery, OfficeLocation, ReferralReward, Role, RoleMatrixRule, RoleTarget, SignupRequest, SignupRequestOwnerMessage, SignupRequestStatus, SoftwarePopup, TeamEmailMessage, UserProfile
 
 
@@ -2081,6 +2082,39 @@ class MarketingOfferWorkflowTests(TestCase):
 
         self.assertFalse(form.is_valid())
         self.assertIn("CTA label and CTA URL", str(form.errors))
+
+    def test_popup_form_rejects_non_image_offer_upload(self):
+        form = SoftwarePopupForm(
+            data={
+                "popup-title": "Offer",
+                "popup-message": "Message",
+                "popup-deal_label": "Deal",
+                "popup-roles": [Role.MANAGER],
+                "popup-is_active": "on",
+            },
+            files={"popup-offer_image": SimpleUploadedFile("offer.pdf", b"pdf", content_type="application/pdf")},
+            prefix="popup",
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("offer_image", form.errors)
+
+    def test_event_form_rejects_non_image_cover_upload(self):
+        form = CompanyEventForm(
+            data={
+                "title": "Launch",
+                "caption": "Caption",
+                "description": "Desc",
+                "starts_at": "2026-06-15T10:00",
+                "ends_at": "2026-06-15T12:00",
+                "roles": [Role.MANAGER],
+                "is_active": "on",
+            },
+            files={"cover_image": SimpleUploadedFile("cover.pdf", b"pdf", content_type="application/pdf")},
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("cover_image", form.errors)
 
     def test_sidebar_shows_my_referrals_without_owner_marketing_links(self):
         executive = get_user_model().objects.create_user(username="exec-sidebar@example.com", email="exec-sidebar@example.com")

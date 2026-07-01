@@ -36,6 +36,21 @@ PHONE_INPUT_ATTRS = {
 }
 
 
+def validate_uploaded_image(upload, *, label, max_size_mb):
+    if not upload:
+        return upload
+    if getattr(upload, "_committed", False):
+        return upload
+    if not hasattr(upload, "size"):
+        return upload
+    if upload.size > max_size_mb * 1024 * 1024:
+        raise forms.ValidationError(f"{label} size must be {max_size_mb} MB or less.")
+    content_type = getattr(upload, "content_type", "")
+    if content_type and content_type not in {"image/jpeg", "image/png", "image/webp"}:
+        raise forms.ValidationError(f"Upload a JPG, PNG, or WebP {label.lower()} only.")
+    return upload
+
+
 def normalize_indian_phone(value):
     digits = "".join(ch for ch in (value or "") if ch.isdigit())
     if digits.startswith("91") and len(digits) > 10:
@@ -293,15 +308,7 @@ class UserProfileForm(forms.ModelForm):
         return self._clean_profile_document("pan_document")
 
     def clean_profile_image(self):
-        image = self.cleaned_data.get("profile_image")
-        if not image or not hasattr(image, "size"):
-            return image
-        if image.size > 2 * 1024 * 1024:
-            raise forms.ValidationError("Profile image size must be 2 MB or less.")
-        content_type = getattr(image, "content_type", "")
-        if content_type and content_type not in {"image/jpeg", "image/png", "image/webp"}:
-            raise forms.ValidationError("Upload JPG, PNG, or WebP profile image only.")
-        return image
+        return validate_uploaded_image(self.cleaned_data.get("profile_image"), label="Profile image", max_size_mb=2)
 
     def _clean_profile_document(self, field_name):
         document = self.cleaned_data.get(field_name)
@@ -471,12 +478,7 @@ class CompanyProfileForm(forms.ModelForm):
         return value
 
     def clean_logo(self):
-        logo = self.cleaned_data.get("logo")
-        if logo and hasattr(logo, "size") and logo.size > 2 * 1024 * 1024:
-            raise forms.ValidationError("Logo size must be 2 MB or less.")
-        if logo and hasattr(logo, "content_type") and logo.content_type not in {"image/jpeg", "image/png", "image/webp"}:
-            raise forms.ValidationError("Upload a PNG, JPG, or WebP logo.")
-        return logo
+        return validate_uploaded_image(self.cleaned_data.get("logo"), label="Logo", max_size_mb=2)
 
     def clean_rera_number(self):
         value = (self.cleaned_data.get("rera_number") or "").upper().strip()
@@ -862,6 +864,9 @@ class CompanyEventForm(forms.ModelForm):
     def clean_roles(self):
         return self.cleaned_data.get("roles") or []
 
+    def clean_cover_image(self):
+        return validate_uploaded_image(self.cleaned_data.get("cover_image"), label="Cover image", max_size_mb=5)
+
     def clean(self):
         cleaned_data = super().clean()
         if not cleaned_data.get("is_global") and not cleaned_data.get("roles"):
@@ -1008,6 +1013,9 @@ class SoftwarePopupForm(forms.ModelForm):
 
     def clean_roles(self):
         return self.cleaned_data.get("roles") or []
+
+    def clean_offer_image(self):
+        return validate_uploaded_image(self.cleaned_data.get("offer_image"), label="Offer image", max_size_mb=5)
 
     def clean(self):
         cleaned_data = super().clean()
